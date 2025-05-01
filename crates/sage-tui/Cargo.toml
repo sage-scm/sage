@@ -1,0 +1,10 @@
+[package]
+license = "MIT OR Apache-2.0"
+name = "sage-tui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+comfy-table = "7.1.4"
+crossterm = "0.29.0"
+ratatui = "0.29.0"

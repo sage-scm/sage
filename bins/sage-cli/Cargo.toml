@@ -1,0 +1,20 @@
+[package]
+license = "MIT OR Apache-2.0"
+name = "sage-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
+indicatif = "0.17.11"
+owo-colors = "4.2.0"
+sage-core = { version = "0.1.0", path = "../../crates/sage-core" }
+sage-git = { version = "0.1.0", path = "../../crates/sage-git" }
+sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
+sage-tui = { version = "0.1.0", path = "../../crates/sage-tui", optional = true }
+
+[features]
+default = []
+stack   = []
+ai      = []
+tui     = ["dep:sage-tui"]

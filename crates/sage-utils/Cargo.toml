@@ -1,0 +1,10 @@
+[package]
+license = "MIT OR Apache-2.0"
+name = "sage-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+serde = "1.0.219"
+thiserror = "2.0.12"
