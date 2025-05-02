@@ -11,13 +11,13 @@ use std::time::Instant;
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
     /// Can the branch be created?
-    create: bool,
+    pub create: bool,
     /// Should we fetch remote first?
-    fetch: bool,
+    pub fetch: bool,
     /// Should we switch to root branch first?
-    use_root: bool,
+    pub use_root: bool,
     /// Push to remote?
-    push: bool,
+    pub push: bool,
 }
 
 pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {

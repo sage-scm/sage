@@ -2,5 +2,11 @@ use anyhow::Result;
 use sage_core::{change_branch, ChangeBranchOpts};
 
 pub fn work(name: &str) -> Result<()> {
-    change_branch(name, ChangeBranchOpts::default())
+    let opts = ChangeBranchOpts {
+        create: true,
+        fetch: true,
+        use_root: true,
+        push: true,
+    };
+    change_branch(name, opts)
 }
