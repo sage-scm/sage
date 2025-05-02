@@ -1,6 +1,6 @@
 use anyhow::Result;
-use sage_core::workflows::create_branch;
+use sage_core::{change_branch, ChangeBranchOpts};
 
 pub fn work(name: &str) -> Result<()> {
-    create_branch(name)
+    change_branch(name, ChangeBranchOpts::default())
 }
