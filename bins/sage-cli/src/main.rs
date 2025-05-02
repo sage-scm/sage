@@ -96,17 +96,27 @@ enum Command {
 // ───────────────────────────────── Argument structs ──────────────────────────
 #[derive(Args, Debug)]
 pub struct SaveArgs {
-    #[arg(short = 'm')]
+    /// The message to commit with
+    #[clap(value_parser)]
     message: Option<String>,
-    #[arg(long)]
+    /// Use AI to generate a commit message
+    #[arg(short, long)]
     ai: bool,
+    /// Commit all changes
     #[arg(long)]
     all: bool,
+    /// Commit only these paths
+    #[arg(short, long, value_delimiter = ',')]
     paths: Option<Vec<String>>,
+    /// Amend the previous commit
     #[arg(long)]
     amend: bool,
+    /// Push the commit to the remote
     #[arg(short, long)]
     push: bool,
+    /// Create an empty git commit
+    #[arg(short, long)]
+    empty: bool,
 }
 
 #[derive(Args, Debug)]
