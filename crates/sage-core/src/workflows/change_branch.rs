@@ -6,6 +6,7 @@ use sage_git::{
     },
     repo::fetch_remote,
 };
+use sage_utils::defer;
 use std::time::Instant;
 
 #[derive(Debug, Default)]
@@ -22,8 +23,12 @@ pub struct ChangeBranchOpts {
 
 pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
     println!("🌿  sage — work");
+
     // Starting timer
     let start = Instant::now();
+    defer! {
+        println!("Done in {:?} s", start.elapsed());
+    };
 
     if opts.fetch {
         fetch_remote()?;
@@ -32,7 +37,6 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
 
     if name == get_current()? {
         println!("⚠️  Already on {name}");
-        println!("Done in {:?} s", start.elapsed());
         return Ok(());
     }
 
@@ -40,7 +44,6 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
     if !is_default_branch()? && is_default(name)? {
         switch(name, false)?;
         println!("🚀  Switched to {name}");
-        println!("Done in {:?} s", start.elapsed());
         return Ok(());
     }
 
@@ -67,7 +70,5 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
     }
 
     println!("🚀  Switched to {name}");
-    println!("Done in {:?} s", start.elapsed());
-
     Ok(())
 }

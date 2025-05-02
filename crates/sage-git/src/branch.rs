@@ -119,3 +119,14 @@ pub fn is_default(branch: &str) -> Result<bool> {
     let head_branch = get_default_branch()?;
     Ok(head_branch == branch)
 }
+
+/// Determine if the branch has any changes on it.
+pub fn is_clean() -> Result<bool> {
+    let result = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .output()?;
+
+    let stdout = String::from_utf8(result.stdout)?;
+    Ok(stdout.trim().is_empty())
+}

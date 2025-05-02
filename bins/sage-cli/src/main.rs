@@ -102,7 +102,9 @@ pub struct SaveArgs {
     ai: bool,
     #[arg(long)]
     all: bool,
-    paths: Vec<String>,
+    paths: Option<Vec<String>>,
+    #[arg(long)]
+    amend: bool,
 }
 
 #[derive(Args, Debug)]
@@ -177,7 +179,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Work { branch } => cmd::work(&branch),
-        Command::Save(args) => todo!("save {:?}", args),
+        Command::Save(args) => cmd::save(&args),
         Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),
