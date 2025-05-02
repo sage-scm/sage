@@ -11,5 +11,6 @@ pub fn save(args: &crate::SaveArgs) -> Result<()> {
     }
     opts.ai = args.ai;
     opts.amend = args.amend;
+    opts.push = args.push;
     sage_core::save(&opts)
 }

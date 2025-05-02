@@ -105,6 +105,8 @@ pub struct SaveArgs {
     paths: Option<Vec<String>>,
     #[arg(long)]
     amend: bool,
+    #[arg(short, long)]
+    push: bool,
 }
 
 #[derive(Args, Debug)]

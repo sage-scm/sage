@@ -16,6 +16,8 @@ pub struct SaveOpts {
     pub ai: bool,
     /// Amend the previous commit
     pub amend: bool,
+    /// Push to remote
+    pub push: bool,
 }
 
 pub fn save(opts: &SaveOpts) -> Result<()> {
