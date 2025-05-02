@@ -90,6 +90,12 @@ cargo test --all
 
 ---
 
+## Dog‑fooding
+
+We believe in using our own medicine. Throughout development **Sage manages its own repository**—every branch, save, sync, and PR is executed with the CLI you see taking shape here. Expect real‑world polish to land fast because we feel the pain first.
+
+---
+
 ## Contributing
 
 1. Fork & clone  
