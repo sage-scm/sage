@@ -208,7 +208,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
         return Ok(());
     }
 
-    // Litterally nothing to commit.
+    // Literally nothing to commit.
     if !staged_changes && !unstaged_changes && !untracked_files {
         println!("⚠️  No changes staged");
         return Ok(());
