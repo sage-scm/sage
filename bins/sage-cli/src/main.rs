@@ -18,9 +18,11 @@ enum Command {
     Work { branch: String },
 
     /// Stage → commit (optionally AI-assisted)
+    #[clap(alias = "s")]
     Save(SaveArgs),
 
     /// Restack + push
+    #[clap(alias = "ss")]
     Sync(SyncArgs),
 
     /// Create or update a PR
@@ -106,13 +108,13 @@ pub struct SaveArgs {
     #[arg(long)]
     all: bool,
     /// Commit only these paths
-    #[arg(short, long, value_delimiter = ',')]
+    #[arg(long, value_delimiter = ',')]
     paths: Option<Vec<String>>,
     /// Amend the previous commit
     #[arg(long)]
     amend: bool,
     /// Push the commit to the remote
-    #[arg(short, long)]
+    #[arg(short = 'p', long)]
     push: bool,
     /// Create an empty git commit
     #[arg(short, long)]
@@ -187,11 +189,17 @@ pub enum StackCmd {
     Clean,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        // Synchronous commands
         Command::Work { branch } => cmd::work(&branch),
-        Command::Save(args) => cmd::save(&args),
+
+        // Asynchronous commands
+        Command::Save(args) => cmd::save(&args).await,
+
+        // Placeholder commands
         Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),

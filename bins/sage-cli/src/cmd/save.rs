@@ -1,16 +1,15 @@
 use anyhow::Result;
+use sage_core::SaveOpts;
 
-pub fn save(args: &crate::SaveArgs) -> Result<()> {
-    let mut opts = sage_core::SaveOpts::default();
-    if let Some(message) = args.message.clone() {
-        opts.message = Some(message);
-    }
-    opts.all = args.all;
-    if let Some(paths) = args.paths.clone() {
-        opts.paths = Some(paths);
-    }
-    opts.ai = args.ai;
-    opts.amend = args.amend;
-    opts.push = args.push;
-    sage_core::save(&opts)
+pub async fn save(args: &crate::SaveArgs) -> Result<()> {
+    let opts = SaveOpts {
+        message: args.message.clone(),
+        all: args.all,
+        paths: args.paths.clone(),
+        ai: args.ai,
+        amend: args.amend,
+        push: args.push,
+        empty: args.empty,
+    };
+    sage_core::save(&opts).await
 }
