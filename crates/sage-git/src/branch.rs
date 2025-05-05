@@ -22,7 +22,8 @@ pub fn exists(branch: &str) -> Result<bool> {
         .output()?;
 
     let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().to_string().eq(branch))
+    let branches: Vec<&str> = stdout.lines().map(|line| line.trim().trim_start_matches('*').trim()).collect();
+    Ok(branches.contains(&branch))
 }
 
 /// Switch to a branch, and optionally create it if it doesn't exist.
