@@ -160,7 +160,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
         }
     }
 
-    // User is ammending the last commit without changes.
+    // User is amending the last commit without changes.
     if opts.amend && opts.empty {
         unstage_all()?;
         println!("●   Unstaged all changes ✔");
