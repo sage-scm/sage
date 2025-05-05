@@ -172,7 +172,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
         return Ok(());
     }
 
-    // User is ammending last commit with changes.
+    // User is amending last commit with changes.
     if opts.amend && !staged_changes {
         stage_all()?;
         println!("●   Staged all changes ✔");
