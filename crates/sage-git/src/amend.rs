@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use std::process::Command;
 
 pub struct AmendOpts {
-    // The message to ammend with
+    // The message to amend with
     pub message: String,
     // Create an empty git commit
     pub empty: bool,
