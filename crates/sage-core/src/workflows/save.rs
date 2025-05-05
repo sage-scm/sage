@@ -197,7 +197,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
         println!("⚠️  You have mixed changes");
         println!("Do you want to stage all changes? (y/n)");
         let mut answer = String::new();
-        std::io::stdin().read_to_string(&mut answer)?;
+        std::io::stdin().read_line(&mut answer)?;
         let answer = answer.trim();
         if answer.eq_ignore_ascii_case("y") {
             stage_all()?;
