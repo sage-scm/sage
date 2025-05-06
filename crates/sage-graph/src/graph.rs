@@ -1,6 +1,6 @@
 //! Core logic: stacks, loose branches, plus top-level `StackGraph`.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt, path::Path};
@@ -167,14 +167,14 @@ impl Default for StackGraph {
 
 impl StackGraph {
     /// Load the graph (or return default) from the repo’s `.git/sage_graph.json`.
-    pub fn load_or_default(_repo_root: impl AsRef<Path>) -> Result<Self> {
+    pub fn load_or_default() -> Result<Self> {
         let mut g = persist::load()?;
         g.reindex();
         Ok(g)
     }
 
     /// Persist the graph to the repo’s `.git/sage_graph.json`.
-    pub fn save(&self, _repo_root: impl AsRef<Path>) -> Result<()> {
+    pub fn save(&self) -> Result<()> {
         persist::save(self)
     }
 }
