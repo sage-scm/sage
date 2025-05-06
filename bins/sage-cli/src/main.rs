@@ -18,9 +18,11 @@ enum Command {
     Work { branch: String },
 
     /// Stage → commit (optionally AI-assisted)
+    #[clap(alias = "s")]
     Save(SaveArgs),
 
     /// Restack + push
+    #[clap(alias = "ss")]
     Sync(SyncArgs),
 
     /// Create or update a PR
@@ -96,13 +98,27 @@ enum Command {
 // ───────────────────────────────── Argument structs ──────────────────────────
 #[derive(Args, Debug)]
 pub struct SaveArgs {
-    #[arg(short = 'm')]
+    /// The message to commit with
+    #[clap(value_parser)]
     message: Option<String>,
-    #[arg(long)]
+    /// Use AI to generate a commit message
+    #[arg(short, long)]
     ai: bool,
+    /// Commit all changes
     #[arg(long)]
     all: bool,
-    paths: Vec<String>,
+    /// Commit only these paths
+    #[arg(long, value_delimiter = ',')]
+    paths: Option<Vec<String>>,
+    /// Amend the previous commit
+    #[arg(long)]
+    amend: bool,
+    /// Push the commit to the remote
+    #[arg(short = 'p', long)]
+    push: bool,
+    /// Create an empty git commit
+    #[arg(short, long)]
+    empty: bool,
 }
 
 #[derive(Args, Debug)]
@@ -173,11 +189,25 @@ pub enum StackCmd {
     Clean,
 }
 
+<<<<<<< HEAD
+#[tokio::main]
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
+    match cli.command {
+        // Synchronous commands
+        Command::Work { branch } => cmd::work(&branch),
+
+        // Asynchronous commands
+        Command::Save(args) => cmd::save(&args).await,
+
+        // Placeholder commands
+=======
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Work { branch } => cmd::work(&branch),
         Command::Save(args) => todo!("save {:?}", args),
+>>>>>>> origin/main
         Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),

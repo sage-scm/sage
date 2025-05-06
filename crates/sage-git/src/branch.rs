@@ -120,3 +120,42 @@ pub fn is_default(branch: &str) -> Result<bool> {
     let head_branch = get_default_branch()?;
     Ok(head_branch == branch)
 }
+
+/// Determine if the branch has any changes on it.
+pub fn is_clean() -> Result<bool> {
+    let result = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .output()?;
+
+    let stdout = String::from_utf8(result.stdout)?;
+    Ok(stdout.trim().is_empty())
+}
+
+/// Unstage all changes in the repository
+pub fn unstage_all() -> Result<()> {
+    let result = Command::new("git").args(["reset", "HEAD"]).output()?;
+
+    if !result.status.success() {
+        return Err(anyhow!(
+            "Failed to unstage all changes: {}",
+            String::from_utf8_lossy(&result.stderr)
+        ));
+    }
+
+    Ok(())
+}
+
+/// Stage all changes in the repository
+pub fn stage_all() -> Result<()> {
+    let result = Command::new("git").args(["add", "--all"]).output()?;
+
+    if !result.status.success() {
+        return Err(anyhow!(
+            "Failed to stage all changes: {}",
+            String::from_utf8_lossy(&result.stderr)
+        ));
+    }
+
+    Ok(())
+}
