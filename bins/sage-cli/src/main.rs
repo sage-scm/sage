@@ -189,6 +189,7 @@ pub enum StackCmd {
     Clean,
 }
 
+<<<<<<< HEAD
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -200,6 +201,13 @@ async fn main() -> Result<()> {
         Command::Save(args) => cmd::save(&args).await,
 
         // Placeholder commands
+=======
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Work { branch } => cmd::work(&branch),
+        Command::Save(args) => todo!("save {:?}", args),
+>>>>>>> origin/main
         Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),
