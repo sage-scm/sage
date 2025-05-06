@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use std::{fs, path::PathBuf, process::Command};
 
-use crate::graph::StackGraph;
+use crate::SageGraph;
 
 /// `.git/sage_graph.json` (located via `git rev-parse`).
 pub(crate) fn file_path() -> PathBuf {
@@ -16,16 +16,16 @@ pub(crate) fn file_path() -> PathBuf {
     PathBuf::from(root).join(".git").join("sage_graph.json")
 }
 
-pub(crate) fn load() -> Result<StackGraph> {
+pub(crate) fn load() -> Result<SageGraph> {
     let location = file_path();
     match fs::read_to_string(location) {
         Ok(raw) => Ok(serde_json::from_str(&raw)?),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(StackGraph::default()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(SageGraph::default()),
         Err(e) => Err(e).context("reading stack_graph file"),
     }
 }
 
-pub(crate) fn save(graph: &StackGraph) -> Result<()> {
+pub(crate) fn save(graph: &SageGraph) -> Result<()> {
     let location = file_path();
     let raw = serde_json::to_string_pretty(graph)?;
     fs::write(location, raw).context("writing stack_graph file")?;

@@ -1,29 +1,25 @@
-//! `stack_graph` – minimal branch & stack tracking for Git repos.
-//!
-//! *Everything* is in two files (`branch.rs`, `graph.rs`) plus tiny I/O glue.
-//!
-//! All public functions return `anyhow::Result<T>` so you can use the `?`
-//! operator everywhere without thinking about custom error types.
+//! **sage-graph** – keep a tiny JSON record of every branch in a repo,
+//! stacked _or_ loose, with zero mental overhead.
 //!
 //! ```no_run
-//! use stack_graph::{BranchStatus, StackGraph};
+//! use sage_graph::{BranchStatus, SageGraph};
 //!
-//! let mut g = StackGraph::load_or_default(".")?;
+//! let mut g = SageGraph::load_or_default()?;
 //!
-//! // ---- stack example ----
+//! /* stack */
 //! g.new_stack("payments", "payments/base")?;
-//! g.add_stack_child("payments", "payments/base", "feat/credit-limits", None)?;
+//! g.add_stack_child("payments", "payments/base", "feat/payment-limits", None)?;
 //!
-//! // ---- loose branch example ----
-//! g.add_loose_branch("hotfix/login-typo", Some("develop"), "Brayden")?;
+//! /* loose */
+//! g.add_loose_branch("hotfix/login-typo", "develop", "Brayden")?;
 //!
-//! g.save(".")?;
+//! g.save()?;
 //! # anyhow::Ok(())
 //! ```
 
 pub mod branch;
-pub mod graph;
 pub mod persist;
+pub mod graph;
 
 pub use branch::{BranchId, BranchInfo, BranchStatus};
-pub use graph::{Stack, StackGraph};
+pub use graph::{SageGraph, Stack};

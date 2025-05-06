@@ -1,13 +1,13 @@
-//! Common metadata shared by *all* tracked branches.
+//! Per-branch metadata shared by stacks **and** loose branches.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Convenience alias = one less `String` to type.
+/// Just a convenient alias – fewer raw `String`s wandering around.
 pub type BranchId = String;
 
-/// Basic life-cycle state.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+/// Simple life-cycle enum you can extend later.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BranchStatus {
     Draft,
@@ -16,23 +16,30 @@ pub enum BranchStatus {
     Abandoned,
 }
 
-/// Everything we know about a branch.
+/// Everything we want to remember about a branch.
+///
+/// * `parent` is **always** set → no special cases.
+/// * `pr_number` lets the CLI skip an API round-trip when it already knows.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BranchInfo {
-    pub name: BranchId,
-    /// Parent branch of this branch (always present).
-    pub parent: BranchId,
-    pub created: DateTime<Utc>,
-    pub hosted: Option<DateTime<Utc>>,
-    pub author: String,
-    pub status: BranchStatus,
-    pub depth: usize,
+    pub name:       BranchId,
+    pub parent:     BranchId,
+    pub created:    DateTime<Utc>,
+    pub hosted:     Option<DateTime<Utc>>,
+    pub author:     String,
+    pub status:     BranchStatus,
+    pub depth:      usize,
+    pub pr_number:  Option<u64>,
 }
 
 impl BranchInfo {
-    /// Constructor used by both stack and loose branches.
-    /// Constructor. `parent` must be provided (e.g. for a root branch, pass its own name).
-    pub fn new(name: BranchId, parent: BranchId, author: impl Into<String>, depth: usize) -> Self {
+    /// Handy constructor used everywhere.
+    pub fn new(
+        name: BranchId,
+        parent: BranchId,
+        author: impl Into<String>,
+        depth: usize,
+    ) -> Self {
         Self {
             name,
             parent,
@@ -41,6 +48,7 @@ impl BranchInfo {
             author: author.into(),
             status: BranchStatus::Draft,
             depth,
+            pr_number: None,
         }
     }
 }

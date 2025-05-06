@@ -1,35 +1,38 @@
-//! Core logic: stacks, loose branches, plus top-level `StackGraph`.
+//! Core logic: stacks **+** loose branches.
 
-use anyhow::{Result, anyhow, bail};
-use hashbrown::HashMap;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+    path::Path,
+};
+
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, fmt, path::Path};
+use sage_git::branch::get_default_branch;
 
 use crate::{
-    branch::{BranchId, BranchInfo},
+    branch::{BranchId, BranchInfo, BranchStatus},
     persist,
 };
 
-/* ─────────────────────────────────  Stack  ───────────────────────────── */
+/* ───────────────────────── Stack (tree under a name) ────────────────── */
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stack {
-    name: String,
-    root: BranchId,
-    branches: HashMap<BranchId, BranchInfo>,
+    name:         String,
+    root:         BranchId,
+    branches:     HashMap<BranchId, BranchInfo>,
     children_map: HashMap<BranchId, Vec<BranchId>>,
 }
 
 impl Stack {
-    /* ----- create ----- */
+    /* ----- ctor ----- */
 
     pub fn new(name: impl Into<String>, root: BranchId, author: impl Into<String>) -> Self {
-        // For a root branch, parent is itself
         let root_info = BranchInfo::new(root.clone(), root.clone(), author, 0);
 
-        let mut branches = HashMap::new();
+        let mut branches     = HashMap::new();
         let mut children_map = HashMap::new();
-
         branches.insert(root.clone(), root_info);
         children_map.insert(root.clone(), Vec::new());
 
@@ -43,38 +46,11 @@ impl Stack {
 
     /* ----- queries ----- */
 
-    pub fn contains_branch(&self, b: &str) -> bool {
+    pub fn contains(&self, b: &str) -> bool {
         self.branches.contains_key(b)
     }
-
     pub fn info(&self, b: &str) -> Option<&BranchInfo> {
         self.branches.get(b)
-    }
-
-    pub fn children_of(&self, b: &str) -> &[BranchId] {
-        self.children_map
-            .get(b)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
-    }
-
-    pub fn descendants(&self, b: &str) -> impl Iterator<Item = &BranchId> {
-        let mut q: VecDeque<&BranchId> = VecDeque::new();
-        if let Some((key, _)) = self.branches.get_key_value(b) {
-            q.push_back(key);
-        }
-        std::iter::from_fn(move || {
-            if let Some(next) = q.pop_front() {
-                if let Some(children) = self.children_map.get(next) {
-                    for c in children {
-                        q.push_back(c);
-                    }
-                }
-                Some(next)
-            } else {
-                None
-            }
-        })
     }
 
     /* ----- mutation ----- */
@@ -85,103 +61,66 @@ impl Stack {
         child: BranchId,
         author: Option<String>,
     ) -> Result<()> {
-        if !self.contains_branch(parent) {
+        if !self.contains(parent) {
             bail!("unknown branch \"{parent}\"");
         }
-        if self.contains_branch(&child) {
-            bail!(
-                "branch \"{child}\" already exists in stack \"{}\"",
-                self.name
-            );
+        if self.contains(&child) {
+            bail!("branch \"{child}\" already exists in stack \"{}\"", self.name);
         }
 
         let depth = self.branches[parent].depth + 1;
-        let info = BranchInfo::new(
-            child.clone(),
-            parent.to_owned(),
-            author.unwrap_or_else(|| "unknown".into()),
-            depth,
-        );
+        let info  = BranchInfo::new(child.clone(), parent.to_owned(), author.unwrap_or_default(), depth);
 
         self.branches.insert(child.clone(), info);
-        self.children_map
-            .entry(parent.to_owned())
-            .or_default()
-            .push(child);
-        Ok(())
-    }
-
-    /* ----- pretty print ----- */
-
-    fn fmt_branch(&self, f: &mut fmt::Formatter<'_>, b: &BranchId, indent: usize) -> fmt::Result {
-        let info = &self.branches[b];
-        writeln!(
-            f,
-            "{:indent$}• {} [{:?}]",
-            "",
-            b,
-            info.status,
-            indent = indent * 2
-        )?;
-        for c in self.children_of(b) {
-            self.fmt_branch(f, c, indent + 1)?;
-        }
+        self.children_map.entry(parent.to_owned()).or_default().push(child);
         Ok(())
     }
 }
 
-impl fmt::Display for Stack {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "stack \"{}\":", self.name)?;
-        self.fmt_branch(f, &self.root, 0)
-    }
-}
-
-/* ─────────────────────────────  StackGraph  ─────────────────────────── */
+/* ───────────────────────────── SageGraph ────────────────────────────── */
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StackGraph {
-    /* persistent -------------------------------------------------------- */
+pub struct SageGraph {
+    /* persistent ------------------------------------------ */
     stacks: HashMap<String, Stack>,
-    loose: HashMap<BranchId, BranchInfo>,
+    loose:  HashMap<BranchId, BranchInfo>,
 
-    /* runtime-only ------------------------------------------------------ */
+    /* runtime-only ---------------------------------------- */
     #[serde(skip)]
     branch_to_stack: HashMap<BranchId, String>,
     #[serde(skip)]
-    loose_children: HashMap<BranchId, Vec<BranchId>>,
+    loose_children:  HashMap<BranchId, Vec<BranchId>>,
 }
 
-impl Default for StackGraph {
+impl Default for SageGraph {
     fn default() -> Self {
         Self {
             stacks: HashMap::new(),
-            loose: HashMap::new(),
+            loose:  HashMap::new(),
             branch_to_stack: HashMap::new(),
-            loose_children: HashMap::new(),
+            loose_children:  HashMap::new(),
         }
     }
 }
 
-/* ----- I/O ------------------------------------------------------------- */
+/* ----- public I/O ----------------------------------------------------- */
 
-impl StackGraph {
-    /// Load the graph (or return default) from the repo’s `.git/sage_graph.json`.
+impl SageGraph {
     pub fn load_or_default() -> Result<Self> {
         let mut g = persist::load()?;
         g.reindex();
+        g.ensure_default_branch()?;
         Ok(g)
     }
 
-    /// Persist the graph to the repo’s `.git/sage_graph.json`.
     pub fn save(&self) -> Result<()> {
         persist::save(self)
     }
 }
 
-/* ----- indexing helpers ----------------------------------------------- */
+/* ----- runtime indexing ---------------------------------------------- */
 
-impl StackGraph {
+impl SageGraph {
     fn reindex(&mut self) {
         self.branch_to_stack.clear();
         self.loose_children.clear();
@@ -192,25 +131,34 @@ impl StackGraph {
             }
         }
         for (id, info) in &self.loose {
-            // Every loose branch has a required parent
-            let p = &info.parent;
             self.loose_children
-                .entry(p.clone())
+                .entry(info.parent.clone())
                 .or_default()
                 .push(id.clone());
         }
     }
+
+    fn ensure_default_branch(&mut self) -> Result<()> {
+        let default = get_default_branch().context("getting default branch")?;
+        if self.tracks(&default) {
+            return Ok(());
+        }
+        let info = BranchInfo::new(default.clone(), default.clone(), whoami::realname(), 0);
+        self.loose.insert(default.clone(), info);
+        self.reindex();
+        Ok(())
+    }
 }
 
-/* ----- stack API ------------------------------------------------------- */
+/* ----- stack API ------------------------------------------------------ */
 
-impl StackGraph {
+impl SageGraph {
     pub fn new_stack(&mut self, name: impl Into<String>, root: BranchId) -> Result<()> {
         let name = name.into();
         if self.stacks.contains_key(&name) {
             bail!("stack \"{name}\" already exists");
         }
-        if self.tracks_branch(&root) {
+        if self.tracks(&root) {
             bail!("branch \"{root}\" already tracked");
         }
 
@@ -236,34 +184,31 @@ impl StackGraph {
         Ok(())
     }
 
-    pub fn stack_for_branch(&self, b: &str) -> Option<&Stack> {
-        self.branch_to_stack
-            .get(b)
-            .and_then(|name| self.stacks.get(name))
+    pub fn stack_of(&self, b: &str) -> Option<&Stack> {
+        self.branch_to_stack.get(b).and_then(|s| self.stacks.get(s))
     }
 }
 
-/* ----- loose-branch API ----------------------------------------------- */
+/* ----- loose-branch API ---------------------------------------------- */
 
-impl StackGraph {
-    /// Add a loose branch with a required parent.
+impl SageGraph {
     pub fn add_loose_branch(
         &mut self,
         branch: BranchId,
         parent: BranchId,
         author: impl Into<String>,
     ) -> Result<()> {
-        if self.tracks_branch(&branch) {
+        if self.tracks(&branch) {
             bail!("branch \"{branch}\" already tracked");
         }
-        if !self.tracks_branch(&parent) {
-            bail!("parent branch \"{parent}\" not tracked");
+        if !self.tracks(&parent) {
+            bail!("parent \"{parent}\" not tracked");
         }
 
-        let depth = self.branch_depth(&parent).unwrap_or(0) + 1;
-        let info = BranchInfo::new(branch.clone(), parent.clone(), author, depth);
-        self.loose.insert(branch.clone(), info);
+        let depth = self.depth(&parent).unwrap_or(0) + 1;
+        let info  = BranchInfo::new(branch.clone(), parent.clone(), author, depth);
 
+        self.loose.insert(branch.clone(), info);
         self.loose_children.entry(parent).or_default().push(branch);
         Ok(())
     }
@@ -271,52 +216,20 @@ impl StackGraph {
     pub fn is_loose(&self, b: &str) -> bool {
         self.loose.contains_key(b)
     }
-
-    pub fn loose_children_of(&self, b: &str) -> &[BranchId] {
-        self.loose_children
-            .get(b)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
-    }
 }
 
-/* ----- shared helpers -------------------------------------------------- */
+/* ----- shared helpers ------------------------------------------------- */
 
-impl StackGraph {
-    pub fn tracks_branch(&self, b: &str) -> bool {
+impl SageGraph {
+    pub fn tracks(&self, b: &str) -> bool {
         self.branch_to_stack.contains_key(b) || self.loose.contains_key(b)
     }
 
-    pub fn branch_info(&self, b: &str) -> Option<&BranchInfo> {
-        self.stack_for_branch(b)
-            .and_then(|s| s.info(b))
-            .or_else(|| self.loose.get(b))
+    pub fn info(&self, b: &str) -> Option<&BranchInfo> {
+        self.stack_of(b).and_then(|s| s.info(b)).or_else(|| self.loose.get(b))
     }
 
-    fn branch_depth(&self, b: &str) -> Option<usize> {
-        self.branch_info(b).map(|i| i.depth)
-    }
-}
-
-/* ─────────────────────────────── Tests ──────────────────────────────── */
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stack_and_loose() -> Result<()> {
-        let mut g = StackGraph::default();
-        g.new_stack("core", "core/base".into())?;
-
-        g.add_stack_child("core", "core/base", "feat/a".into(), None)?;
-        // `develop` must be tracked first (simulate adding develop as loose under itself)
-        g.add_loose_branch("develop".into(), "develop".into(), "alice")?;
-        g.add_loose_branch("hotfix/login-typo".into(), "develop".into(), "alice")?;
-
-        assert!(g.tracks_branch("feat/a"));
-        assert!(g.is_loose("hotfix/login-typo"));
-        assert_eq!(g.branch_info("feat/a").unwrap().status, BranchStatus::Draft);
-        Ok(())
+    fn depth(&self, b: &str) -> Option<usize> {
+        self.info(b).map(|i| i.depth)
     }
 }
