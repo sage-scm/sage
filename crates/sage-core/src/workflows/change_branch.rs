@@ -62,7 +62,6 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
     }
 
     if opts.push {
-        set_upstream(name)?;
         push(name, false)?;
         println!("●  Push origin/{name} ✔");
     }
