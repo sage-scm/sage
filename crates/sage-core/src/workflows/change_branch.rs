@@ -1,4 +1,5 @@
 use anyhow::Result;
+use colored::Colorize;
 use sage_git::{
     branch::{
         exists, get_current, get_default_branch, is_default, is_default_branch, push, set_upstream,
@@ -32,7 +33,7 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
 
     if name == get_current()? {
         println!("⚠️  Already on {name}");
-        println!("Done in {:?} s", start.elapsed());
+        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -40,7 +41,7 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
     if !is_default_branch()? && is_default(name)? {
         switch(name, false)?;
         println!("🚀  Switched to {name}");
-        println!("Done in {:?} s", start.elapsed());
+        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -66,8 +67,8 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
         println!("●  Push origin/{name} ✔");
     }
 
-    println!("🚀  Switched to {name}");
-    println!("Done in {:?} s", start.elapsed());
+    println!("🚀  Switched to {}", name.blue());
+    println!("Done in {:?}", start.elapsed());
 
     Ok(())
 }
