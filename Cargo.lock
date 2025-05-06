@@ -1640,7 +1640,6 @@ dependencies = [
  "indicatif",
  "openai-api-rs",
  "sage-git",
- "sage-utils",
  "serde",
  "serde_json",
  "uuid",
