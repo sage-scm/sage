@@ -5,7 +5,7 @@ mod cmd;
 
 /// 🌿 Sage -- Burning away git complexities
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about = "🌿 Sage — A Git workflow tool for managing branches and commits", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
