@@ -1,6 +1,9 @@
-use clap::{Parser, Subcommand, Args};
+use anyhow::Result;
+use clap::{Args, Parser, Subcommand};
 
-/// 🌿 Sage – stupid‑simple Git workflow enhancer
+mod cmd;
+
+/// 🌿 Sage -- Burning away git complexities
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
@@ -148,7 +151,9 @@ pub enum StackCmd {
     Log,
     Next,
     Prev,
-    Goto { branch: String },
+    Goto {
+        branch: String,
+    },
     Restack {
         #[arg(long)]
         continue_: bool,
@@ -168,10 +173,10 @@ pub enum StackCmd {
     Clean,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Work { branch } => todo!("work on {branch}"),
+        Command::Work { branch } => cmd::work(&branch),
         Command::Save(args) => todo!("save {:?}", args),
         Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
@@ -185,8 +190,11 @@ fn main() {
         Command::Config { op } => todo!("config {:?}", op),
         Command::Completion { shell } => todo!("completion {shell}"),
         Command::Plugin { cmd } => todo!("plugin {:?}", cmd),
-        #[cfg(feature = "stack")] Command::Stack { cmd } => todo!("stack {:?}", cmd),
-        #[cfg(feature = "ai")]   Command::Tips => todo!("tips"),
-        #[cfg(feature = "tui")]  Command::Ui => todo!("ui"),
+        #[cfg(feature = "stack")]
+        Command::Stack { cmd } => todo!("stack {:?}", cmd),
+        #[cfg(feature = "ai")]
+        Command::Tips => todo!("tips"),
+        #[cfg(feature = "tui")]
+        Command::Ui => todo!("ui"),
     }
 }

@@ -8,6 +8,7 @@ edition = "2024"
 clap = { version = "4.5.37", features = ["derive"] }
 indicatif = "0.17.11"
 owo-colors = "4.2.0"
+anyhow = { workspace = true }
 sage-core = { version = "0.1.0", path = "../../crates/sage-core" }
 sage-git = { version = "0.1.0", path = "../../crates/sage-git" }
 sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
@@ -15,6 +16,6 @@ sage-tui = { version = "0.1.0", path = "../../crates/sage-tui", optional = true 
 
 [features]
 default = []
-stack   = []
-ai      = []
-tui     = ["dep:sage-tui"]
+stack = []
+ai = []
+tui = ["dep:sage-tui"]
