@@ -1,0 +1,22 @@
+command: ["bash", "./install.sh"]
+
+watch:
+  - "./crates/**"
+  - "./bins/**"
+
+ext: "rs"
+
+debounce: 500
+
+ignore:
+  - "target/**"
+  - ".git/**"
+  - ".vscode/**"
+  - ".idea/**"
+  - "*.iml"
+  - "*.swp"
+  - "*.swo"
+  - "**/.DS_Store"
+
+clear: true
+initial: true
