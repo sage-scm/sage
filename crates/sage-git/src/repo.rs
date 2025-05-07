@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::process::Command;
 
 /// Check if we're in a git repo.
@@ -41,7 +41,7 @@ pub fn fetch_remote() -> Result<()> {
 /// Get the diff between the current branch and the remote branch with enhanced context.
 /// Provides rich context for AI commit message generation.
 pub fn diff() -> Result<String> {
-    use crate::status::{get_status_entries, StatusType};
+    use crate::status::{StatusType, get_status_entries};
 
     // Get all status entries to understand what files are changed
     let status_entries = get_status_entries()?;
@@ -50,15 +50,18 @@ pub fn diff() -> Result<String> {
     let mut summary = String::new();
 
     // Group files by status type
-    let staged_files: Vec<_> = status_entries.iter()
+    let staged_files: Vec<_> = status_entries
+        .iter()
         .filter(|e| e.status_type == StatusType::Staged)
         .collect();
 
-    let unstaged_files: Vec<_> = status_entries.iter()
+    let unstaged_files: Vec<_> = status_entries
+        .iter()
         .filter(|e| e.status_type == StatusType::Unstaged)
         .collect();
 
-    let untracked_files: Vec<_> = status_entries.iter()
+    let untracked_files: Vec<_> = status_entries
+        .iter()
         .filter(|e| e.status_type == StatusType::Untracked)
         .collect();
 
@@ -102,9 +105,7 @@ pub fn diff() -> Result<String> {
         diff_content = String::from_utf8(output.stdout)?;
     } else if !unstaged_files.is_empty() {
         // No staged changes, get unstaged changes
-        let output = Command::new("git")
-            .args(["diff", "--patch"])
-            .output()?;
+        let output = Command::new("git").args(["diff", "--patch"]).output()?;
 
         diff_content = String::from_utf8(output.stdout)?;
     }
@@ -121,14 +122,14 @@ pub fn diff() -> Result<String> {
                 let mime = String::from_utf8_lossy(&check.stdout);
                 if mime.starts_with("text/") {
                     // It's a text file, get its content
-                    let cat = Command::new("cat")
-                        .arg(&entry.path)
-                        .output();
+                    let cat = Command::new("cat").arg(&entry.path).output();
 
                     if let Ok(content) = cat {
                         let file_content = String::from_utf8_lossy(&content.stdout);
-                        if file_content.len() < 1000 { // Only include small files
-                            diff_content.push_str(&format!("\n--- /dev/null\n+++ b/{}\n", entry.path));
+                        if file_content.len() < 1000 {
+                            // Only include small files
+                            diff_content
+                                .push_str(&format!("\n--- /dev/null\n+++ b/{}\n", entry.path));
                             for line in file_content.lines() {
                                 diff_content.push_str(&format!("+{}\n", line));
                             }
@@ -141,4 +142,21 @@ pub fn diff() -> Result<String> {
 
     // Combine summary and diff content
     Ok(format!("{}\n# Diff Content\n\n{}", summary, diff_content))
+}
+
+/// Get commiter details
+pub fn get_commiter() -> Result<(String, String)> {
+    let name_cmd = Command::new("git")
+        .arg("config")
+        .arg("user.name")
+        .output()?;
+
+    let email_cmd = Command::new("git")
+        .arg("config")
+        .arg("user.email")
+        .output()?;
+
+    let name = String::from_utf8(name_cmd.stdout)?.trim().to_string();
+    let email = String::from_utf8(email_cmd.stdout)?.trim().to_string();
+    Ok((name, email))
 }
