@@ -199,3 +199,26 @@ pub fn stage_all() -> Result<()> {
 
     Ok(())
 }
+
+/// List all local branches
+pub fn list_branches() -> Result<Vec<String>> {
+    let result = Command::new("git")
+        .args(["branch", "--format=%(refname:short)"])
+        .output()?;
+
+    if !result.status.success() {
+        return Err(anyhow!(
+            "Failed to list branches: {}",
+            String::from_utf8_lossy(&result.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8(result.stdout)?;
+    let branches = stdout
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    Ok(branches)
+}

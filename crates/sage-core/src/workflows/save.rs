@@ -7,7 +7,7 @@ use sage_git::{
     commit::{self, commit_empty},
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
-use std::{io::Read, time::Instant};
+use std::time::Instant;
 
 use crate::ai::commit::commit_message;
 
