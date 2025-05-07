@@ -8,7 +8,6 @@ use sage_git::{
     repo::{fetch_remote, get_commiter},
 };
 use sage_graph::SageGraph;
-use std::time::Instant;
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
@@ -26,10 +25,6 @@ pub struct ChangeBranchOpts {
 }
 
 pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
-    println!("🌿  sage — work");
-
-    // Starting timer
-    let start = Instant::now();
     let current_branch = get_current()?;
 
     // Handle fuzzy search if enabled
@@ -50,12 +45,11 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
 
     if opts.fetch {
         fetch_remote()?;
-        println!("●  Fetch remote ✔");
+        println!("●   Fetch remote ✔");
     }
 
     if *name == current_branch {
         println!("⚠️  Already on {name}");
-        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -63,7 +57,6 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
     if !is_default_branch()? && is_default(name)? {
         switch(name, false)?;
         println!("🚀  Switched to {name}");
-        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -96,7 +89,6 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
     }
 
     println!("🚀  Switched to {name}");
-    println!("Done in {:?}", start.elapsed());
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use sage_git::{
@@ -7,7 +7,6 @@ use sage_git::{
     commit::{self, commit_empty},
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
-use std::time::Instant;
 
 use crate::ai::commit::commit_message;
 
@@ -30,18 +29,16 @@ pub struct SaveOpts {
 }
 
 pub async fn save(opts: &SaveOpts) -> Result<()> {
-    println!("🌿  sage — save");
-    let start = Instant::now();
-
     // Check if a message is required (do this early)
     if !opts.empty && !opts.amend && opts.message.is_none() && !opts.ai {
-        return Err(anyhow!("Commit message is required. Use -m to provide a message, --ai to generate one, --empty for an empty commit, or --amend to amend the previous commit."));
+        return Err(anyhow!(
+            "Commit message is required. Use -m to provide a message, --ai to generate one, --empty for an empty commit, or --amend to amend the previous commit."
+        ));
     }
 
     // Early exit if working tree is clean and we're not creating an empty commit
     if is_clean()? && !opts.empty && !opts.amend {
         println!("⚠️  Working tree is clean");
-        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -66,14 +63,12 @@ pub async fn save(opts: &SaveOpts) -> Result<()> {
 
                 // Display a more helpful error message
                 println!("❌  Failed to create empty commit: {}", clean_error.red());
-                println!("Done in {:?}", start.elapsed());
                 return Ok(());
             }
         };
 
         push_changes(opts)?;
         println!("●   Write empty commit ✔ {}", commit_id.yellow());
-        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -87,7 +82,6 @@ pub async fn save(opts: &SaveOpts) -> Result<()> {
         amend::amend(&amend_opts)?;
         println!("●   Amended previous commit ✔");
         push_changes(opts)?;
-        println!("Done in {:?}", start.elapsed());
         return Ok(());
     }
 
@@ -119,7 +113,6 @@ pub async fn save(opts: &SaveOpts) -> Result<()> {
     // Handle push if requested
     push_changes(opts)?;
 
-    println!("Done in {:?}", start.elapsed());
     Ok(())
 }
 
@@ -257,7 +250,9 @@ async fn get_commit_message(opts: &SaveOpts) -> Result<String> {
             return Ok(String::new());
         } else {
             // This should not be reached due to the check above, but providing a fallback
-            return Err(anyhow!("Commit message is required. Use -m to provide a message, --ai to generate one, --empty for an empty commit, or --amend to amend the previous commit."));
+            return Err(anyhow!(
+                "Commit message is required. Use -m to provide a message, --ai to generate one, --empty for an empty commit, or --amend to amend the previous commit."
+            ));
         }
     }
     Ok(opts.message.clone().unwrap())
