@@ -15,7 +15,8 @@ pub struct Cli {
 enum Command {
     // ────────────────────────────────── Core workflow ─────────────────────────
     /// Smart create / checkout a branch
-    Work { branch: String },
+    #[clap(alias = "w")]
+    Work(WorkArgs),
 
     /// Stage → commit (optionally AI-assisted)
     #[clap(alias = "s")]
@@ -122,6 +123,22 @@ pub struct SaveArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct WorkArgs {
+    /// The branch to work on
+    #[clap(value_parser)]
+    branch: String,
+    /// Do not fetch from remote
+    #[clap(long, short, default_value = "false")]
+    no_fetch: bool,
+    /// Use the root branch
+    #[clap(long, short, default_value = "false")]
+    root: bool,
+    /// Push to remote after
+    #[clap(long, short, default_value = "false")]
+    push: bool,
+}
+
+#[derive(Args, Debug)]
 pub struct SyncArgs {
     #[arg(long)]
     continue_: bool,
@@ -194,7 +211,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         // Synchronous commands
-        Command::Work { branch } => cmd::work(&branch),
+        Command::Work(args) => cmd::work(&args),
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
