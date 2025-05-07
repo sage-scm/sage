@@ -1,9 +1,9 @@
-use anyhow::Result;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use anyhow::{Result, bail};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use sage_git::{
     branch::{
-        exists, get_current, get_default_branch, is_default, is_default_branch, list_branches, push,
-        switch,
+        exists, get_current, get_default_branch, is_default, is_default_branch, list_branches,
+        push, switch,
     },
     repo::{fetch_remote, get_commiter},
 };
@@ -34,31 +34,16 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
 
     // Handle fuzzy search if enabled
     if opts.fuzzy && !opts.name.is_empty() {
-        // Skip fuzzy search if the branch exists exactly as specified
-        if !exists(&opts.name)? {
-            let branches = list_branches()?;
-
-            // Initialize the fuzzy matcher
-            let matcher = SkimMatcherV2::default();
-            let mut best_match = None;
-            let mut best_score = 0;
-
-            // Find the best match using fuzzy-matcher
-            for branch in branches {
-                if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
-                    if score > best_score {
-                        best_score = score;
-                        best_match = Some(branch);
-                    }
-                }
-            }
-
-            // Use the best match if found
-            if let Some(branch_name) = best_match {
-                println!("🔍 Fuzzy matched '{}' to '{}'", opts.name, branch_name);
-                opts.name = branch_name;
-            }
+        match fuzzy_find_branch(&opts) {
+            Ok(Some(branch)) => opts.name = branch,
+            Ok(None) => bail!("No branch found"),
+            Err(e) => bail!(e),
         }
+    } else if opts.name.is_empty() {
+        // We will ask the user which branch they want to switch to
+        let branches = list_branches()?;
+        let branch = sage_tui::basic::select(String::from("Switch to branch"), branches)?;
+        opts.name = branch;
     }
 
     let name = &opts.name;
@@ -114,4 +99,33 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
     println!("Done in {:?}", start.elapsed());
 
     Ok(())
+}
+
+fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
+    // Skip fuzzy search if the branch exists exactly as specified
+    if !exists(&opts.name)? {
+        let branches = list_branches()?;
+
+        // Initialize the fuzzy matcher
+        let matcher = SkimMatcherV2::default();
+        let mut best_match = None;
+        let mut best_score = 0;
+
+        // Find the best match using fuzzy-matcher
+        for branch in branches {
+            if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
+                if score > best_score {
+                    best_score = score;
+                    best_match = Some(branch);
+                }
+            }
+        }
+
+        // Use the best match if found
+        if let Some(branch_name) = best_match {
+            println!("🔍 Fuzzy matched '{}' to '{}'", opts.name, branch_name);
+            return Ok(Some(branch_name));
+        }
+    }
+    Ok(None)
 }
