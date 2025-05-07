@@ -1642,6 +1642,7 @@ dependencies = [
  "indicatif",
  "openai-api-rs",
  "sage-git",
+ "sage-graph",
  "serde",
  "serde_json",
  "uuid",
@@ -1652,6 +1653,7 @@ name = "sage-git"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "once_cell",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -1663,6 +1665,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "hashbrown",
+ "sage-git",
  "serde",
  "serde_json",
  "tempfile",

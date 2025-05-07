@@ -1,16 +1,17 @@
 use anyhow::Result;
-use colored::Colorize;
 use sage_git::{
     branch::{
         exists, get_current, get_default_branch, is_default, is_default_branch, push, set_upstream,
         switch,
     },
-    repo::fetch_remote,
+    repo::{fetch_remote, get_commiter},
 };
+use sage_graph::SageGraph;
 use std::time::Instant;
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
+    pub name: String,
     /// Can the branch be created?
     pub create: bool,
     /// Should we fetch remote first?
@@ -21,17 +22,19 @@ pub struct ChangeBranchOpts {
     pub push: bool,
 }
 
-pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
+pub fn change_branch(opts: ChangeBranchOpts) -> Result<()> {
     println!("🌿  sage — work");
+    let name = &opts.name;
     // Starting timer
     let start = Instant::now();
+    let current_branch = get_current()?;
 
     if opts.fetch {
         fetch_remote()?;
         println!("●  Fetch remote ✔");
     }
 
-    if name == get_current()? {
+    if *name == current_branch {
         println!("⚠️  Already on {name}");
         println!("Done in {:?}", start.elapsed());
         return Ok(());
@@ -66,7 +69,14 @@ pub fn change_branch(name: &str, opts: ChangeBranchOpts) -> Result<()> {
         println!("●  Push origin/{name} ✔");
     }
 
-    println!("🚀  Switched to {}", name.blue());
+    let mut graph = SageGraph::load_or_default()?;
+    if !graph.tracks(name) && !graph.is_loose(name) {
+        let (user_name, _) = get_commiter()?;
+        graph.add_loose_branch(name.into(), current_branch, user_name)?;
+        graph.save()?;
+    }
+
+    println!("🚀  Switched to {name}");
     println!("Done in {:?}", start.elapsed());
 
     Ok(())
