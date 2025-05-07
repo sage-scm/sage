@@ -12,7 +12,7 @@ pub async fn save(args: &crate::SaveArgs) -> Result<()> {
         paths: args.paths.clone(),
         ai: args.ai,
         amend: args.amend,
-        push: args.push,
+        push: args.push || args.amend,
         empty: args.empty,
     };
     sage_core::save(&opts).await?;
