@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use once_cell::sync::Lazy;
 use std::process::Command;
 
 /// Get the current branch name.
@@ -103,16 +104,55 @@ pub fn is_default_branch() -> Result<bool> {
     Ok(head_branch == current)
 }
 
+/// Cache for the default branch name
+static DEFAULT_BRANCH: Lazy<Result<String>> = Lazy::new(|| {
+    // Try to get the default branch from the remote
+    let result = Command::new("git")
+        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            // Format is refs/remotes/origin/main or refs/remotes/origin/master
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let branch = stdout
+                .trim()
+                .strip_prefix("refs/remotes/origin/")
+                .unwrap_or("main")
+                .to_string();
+            Ok(branch)
+        },
+        _ => {
+            // Fallback: try to determine from common default branch names
+            for branch in ["main", "master", "develop"] {
+                let check = Command::new("git")
+                    .args(["rev-parse", "--verify", &format!("refs/heads/{}", branch)])
+                    .output();
+
+                if let Ok(output) = check {
+                    if output.status.success() {
+                        return Ok(branch.to_string());
+                    }
+                }
+            }
+
+            // Last resort: return the current branch
+            let result = Command::new("git")
+                .args(["rev-parse", "--abbrev-ref", "HEAD"])
+                .output()?;
+
+            let stdout = String::from_utf8(result.stdout)?;
+            Ok(stdout.trim().to_string())
+        }
+    }
+});
+
 /// Get the default branch name.
 pub fn get_default_branch() -> Result<String> {
-    let result = Command::new("git")
-        .arg("rev-parse")
-        .arg("--abbrev-ref")
-        .arg("HEAD")
-        .output()?;
-
-    let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().to_string())
+    match &*DEFAULT_BRANCH {
+        Ok(branch) => Ok(branch.clone()),
+        Err(e) => Err(anyhow!("Failed to determine default branch: {}", e)),
+    }
 }
 
 /// Check if a given branch is the default branch.

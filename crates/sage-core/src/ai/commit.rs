@@ -1,13 +1,13 @@
 use crate::ai::prompts;
 use anyhow::Result;
-use sage_git::repo;
+use sage_git::diff;
 
 pub async fn commit_message() -> Result<String> {
     // Limit diff size for faster processing - 12K allows for more context
     const MAX_DIFF_SIZE: usize = 12288;
 
     // Get enhanced diff with file context
-    let mut diff = repo::diff()?;
+    let mut diff = diff::diff_ai()?;
 
     // Truncate diff if it's too large to speed up processing
     if diff.len() > MAX_DIFF_SIZE {
@@ -24,7 +24,7 @@ pub async fn commit_message() -> Result<String> {
     }
 
     // Generate and send prompt
-    let prompt = prompts::commit_message_prompt(&diff);
+    let prompt = prompts::commit_message_prompt_v2(&diff);
     let res = super::ask(&prompt).await?;
 
     // Clean up response

@@ -24,7 +24,6 @@ Guidelines:
    - feat(auth): add user authentication system
    - fix(parser): resolve null pointer in data processing
    - style(ui): align button elements consistently
-
 3. IMPORTANT - Analyze the content carefully:
    - Be SPECIFIC about what was changed - never use generic descriptions
    - NEVER use "chore: initial commit" unless it's truly the first commit in a repo
@@ -44,13 +43,46 @@ Guidelines:
    - "feat: add new file" (too vague)
    - "update code" (too vague)
    - "fix issues" (too vague)
-
 Code changes to analyze:
     "#;
 
     let static_footer = "Respond with ONLY the commit message, no additional text or formatting.";
 
     format!("{prefix}{diff}{static_footer}")
+}
+
+/// Improved prompt for generating conventional commit messages, focused and streamlined for LLM reliability
+pub fn commit_message_prompt_v2(diff: &str) -> String {
+    let prefix = r#"You are an expert at writing precise and conventional git commit messages. Analyze the code diff below and perform these steps:
+
+1. Classify the change with EXACT Conventional Commits type (choose ONE):
+   feat | fix | docs | style | refactor | test | ci | chore
+   - Use only if there is REAL evidence for that type.
+
+2. Scope: If possible, specify a relevant scope in parentheses (filename, module, config, or concise feature area).
+
+3. Description: In one short sentence, say WHAT changed and (briefly) WHY, using the imperative mood.
+   - Be SPECIFIC: Don’t use generic phrases like 'update code', 'fix issues', or 'add new file.'
+   - Summarize meaningful intent—don’t just re-list filenames or code lines.
+   - Write as if communicating to future maintainers reviewing commit history.
+   - Example good:   fix(api): properly handle 404 responses for user lookup
+   - Example bad:    fix: fix stuff
+
+4. Output ONLY the commit message on a single line; no code formatting, no extra explanations.
+
+BAD message examples (never use):
+ - chore: initial commit (unless first repo commit)
+ - feat: add new file
+ - update code
+
+Analyze and generate the commit message for this diff:
+
+---
+"#;
+
+    let footer = "\n---\nOutput:";
+
+    format!("{prefix}{diff}{footer}")
 }
 
 /// Prompt for generating pull request descriptions
