@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow, bail};
 use once_cell::sync::Lazy;
 use std::process::Command;
 
@@ -23,7 +23,10 @@ pub fn exists(branch: &str) -> Result<bool> {
         .output()?;
 
     let stdout = String::from_utf8(result.stdout)?;
-    let branches: Vec<&str> = stdout.lines().map(|line| line.trim().trim_start_matches('*').trim()).collect();
+    let branches: Vec<&str> = stdout
+        .lines()
+        .map(|line| line.trim().trim_start_matches('*').trim())
+        .collect();
     Ok(branches.contains(&branch))
 }
 
@@ -121,7 +124,7 @@ static DEFAULT_BRANCH: Lazy<Result<String>> = Lazy::new(|| {
                 .unwrap_or("main")
                 .to_string();
             Ok(branch)
-        },
+        }
         _ => {
             // Fallback: try to determine from common default branch names
             for branch in ["main", "master", "develop"] {
@@ -221,4 +224,36 @@ pub fn list_branches() -> Result<Vec<String>> {
         .collect();
 
     Ok(branches)
+}
+
+/// Pull the current branch from the remote.
+pub fn pull() -> Result<()> {
+    let res = Command::new("git")
+        .arg("pull")
+        .arg("origin")
+        .arg("--ff-only")
+        .output()?;
+
+    if !res.status.success() {
+        bail!(
+            "Failed to pull branch: {}",
+            String::from_utf8_lossy(&res.stderr)
+        )
+    }
+
+    Ok(())
+}
+
+/// Merge a specific branch into the current branch.
+pub fn merge(branch: &str) -> Result<()> {
+    let res = Command::new("git").arg("merge").arg(branch).output()?;
+
+    if !res.status.success() {
+        bail!(
+            "Failed to merge branch: {}",
+            String::from_utf8_lossy(&res.stderr)
+        )
+    }
+
+    Ok(())
 }
