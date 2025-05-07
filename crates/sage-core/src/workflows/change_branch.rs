@@ -1,7 +1,8 @@
 use anyhow::Result;
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use sage_git::{
     branch::{
-        exists, get_current, get_default_branch, is_default, is_default_branch, push, set_upstream,
+        exists, get_current, get_default_branch, is_default, is_default_branch, list_branches, push,
         switch,
     },
     repo::{fetch_remote, get_commiter},
@@ -20,14 +21,47 @@ pub struct ChangeBranchOpts {
     pub use_root: bool,
     /// Push to remote?
     pub push: bool,
+    /// Use fuzzy search for branch name?
+    pub fuzzy: bool,
 }
 
-pub fn change_branch(opts: ChangeBranchOpts) -> Result<()> {
+pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
     println!("🌿  sage — work");
-    let name = &opts.name;
+
     // Starting timer
     let start = Instant::now();
     let current_branch = get_current()?;
+
+    // Handle fuzzy search if enabled
+    if opts.fuzzy && !opts.name.is_empty() {
+        // Skip fuzzy search if the branch exists exactly as specified
+        if !exists(&opts.name)? {
+            let branches = list_branches()?;
+
+            // Initialize the fuzzy matcher
+            let matcher = SkimMatcherV2::default();
+            let mut best_match = None;
+            let mut best_score = 0;
+
+            // Find the best match using fuzzy-matcher
+            for branch in branches {
+                if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
+                    if score > best_score {
+                        best_score = score;
+                        best_match = Some(branch);
+                    }
+                }
+            }
+
+            // Use the best match if found
+            if let Some(branch_name) = best_match {
+                println!("🔍 Fuzzy matched '{}' to '{}'", opts.name, branch_name);
+                opts.name = branch_name;
+            }
+        }
+    }
+
+    let name = &opts.name;
 
     if opts.fetch {
         fetch_remote()?;

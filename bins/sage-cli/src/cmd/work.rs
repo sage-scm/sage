@@ -8,6 +8,7 @@ pub fn work(args: &crate::WorkArgs) -> Result<()> {
         fetch: !args.no_fetch,
         use_root: args.root,
         push: args.push,
+        fuzzy: args.fuzzy,
     };
     change_branch(opts)
 }
