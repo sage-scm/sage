@@ -1,3 +1,6 @@
+# We use `flash` to allow for hot-reloading whilst developing locally.
+# This is not necessary for production.
+
 command: ["bash", "./install.sh"]
 
 watch:
