@@ -136,6 +136,9 @@ pub struct WorkArgs {
     /// Push to remote after
     #[clap(long, short, default_value = "false")]
     push: bool,
+    /// Fuzzy search for branch name
+    #[clap(long, short, default_value = "false")]
+    fuzzy: bool,
 }
 
 #[derive(Args, Debug)]
