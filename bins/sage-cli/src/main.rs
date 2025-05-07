@@ -215,12 +215,12 @@ async fn main() -> Result<()> {
     match cli.command {
         // Synchronous commands
         Command::Work(args) => cmd::work(&args),
+        Command::Sync(args) => cmd::sync(&args),
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
 
         // Placeholder commands
-        Command::Sync(args) => todo!("sync {:?}", args),
         Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),
         Command::Clean { remote, dry_run } => todo!("clean r={remote} d={dry_run}"),
