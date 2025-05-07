@@ -1,17 +1,12 @@
 //! Core logic: stacks **+** loose branches.
 
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-    path::Path,
-};
-
-use anyhow::{anyhow, bail, Context, Result};
-use serde::{Deserialize, Serialize};
+use anyhow::{Context, Result, anyhow, bail};
+use hashbrown::HashMap;
 use sage_git::branch::get_default_branch;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    branch::{BranchId, BranchInfo, BranchStatus},
+    branch::{BranchId, BranchInfo},
     persist,
 };
 
@@ -19,9 +14,9 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stack {
-    name:         String,
-    root:         BranchId,
-    branches:     HashMap<BranchId, BranchInfo>,
+    name: String,
+    root: BranchId,
+    branches: HashMap<BranchId, BranchInfo>,
     children_map: HashMap<BranchId, Vec<BranchId>>,
 }
 
@@ -31,7 +26,7 @@ impl Stack {
     pub fn new(name: impl Into<String>, root: BranchId, author: impl Into<String>) -> Self {
         let root_info = BranchInfo::new(root.clone(), root.clone(), author, 0);
 
-        let mut branches     = HashMap::new();
+        let mut branches = HashMap::new();
         let mut children_map = HashMap::new();
         branches.insert(root.clone(), root_info);
         children_map.insert(root.clone(), Vec::new());
@@ -65,14 +60,25 @@ impl Stack {
             bail!("unknown branch \"{parent}\"");
         }
         if self.contains(&child) {
-            bail!("branch \"{child}\" already exists in stack \"{}\"", self.name);
+            bail!(
+                "branch \"{child}\" already exists in stack \"{}\"",
+                self.name
+            );
         }
 
         let depth = self.branches[parent].depth + 1;
-        let info  = BranchInfo::new(child.clone(), parent.to_owned(), author.unwrap_or_default(), depth);
+        let info = BranchInfo::new(
+            child.clone(),
+            parent.to_owned(),
+            author.unwrap_or_default(),
+            depth,
+        );
 
         self.branches.insert(child.clone(), info);
-        self.children_map.entry(parent.to_owned()).or_default().push(child);
+        self.children_map
+            .entry(parent.to_owned())
+            .or_default()
+            .push(child);
         Ok(())
     }
 }
@@ -83,22 +89,22 @@ impl Stack {
 pub struct SageGraph {
     /* persistent ------------------------------------------ */
     stacks: HashMap<String, Stack>,
-    loose:  HashMap<BranchId, BranchInfo>,
+    loose: HashMap<BranchId, BranchInfo>,
 
     /* runtime-only ---------------------------------------- */
     #[serde(skip)]
     branch_to_stack: HashMap<BranchId, String>,
     #[serde(skip)]
-    loose_children:  HashMap<BranchId, Vec<BranchId>>,
+    loose_children: HashMap<BranchId, Vec<BranchId>>,
 }
 
 impl Default for SageGraph {
     fn default() -> Self {
         Self {
             stacks: HashMap::new(),
-            loose:  HashMap::new(),
+            loose: HashMap::new(),
             branch_to_stack: HashMap::new(),
-            loose_children:  HashMap::new(),
+            loose_children: HashMap::new(),
         }
     }
 }
@@ -206,7 +212,7 @@ impl SageGraph {
         }
 
         let depth = self.depth(&parent).unwrap_or(0) + 1;
-        let info  = BranchInfo::new(branch.clone(), parent.clone(), author, depth);
+        let info = BranchInfo::new(branch.clone(), parent.clone(), author, depth);
 
         self.loose.insert(branch.clone(), info);
         self.loose_children.entry(parent).or_default().push(branch);
@@ -226,7 +232,9 @@ impl SageGraph {
     }
 
     pub fn info(&self, b: &str) -> Option<&BranchInfo> {
-        self.stack_of(b).and_then(|s| s.info(b)).or_else(|| self.loose.get(b))
+        self.stack_of(b)
+            .and_then(|s| s.info(b))
+            .or_else(|| self.loose.get(b))
     }
 
     fn depth(&self, b: &str) -> Option<usize> {
