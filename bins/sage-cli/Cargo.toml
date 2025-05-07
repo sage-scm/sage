@@ -3,6 +3,15 @@ license = "MIT OR Apache-2.0"
 name = "sage-cli"
 version = "0.1.0"
 edition = "2024"
+description = "🌿 Sage — A Git workflow tool for managing branches and commits"
+repository = "https://github.com/sage-scm/sage"
+readme = "../../README.md"
+keywords = ["git", "workflow", "cli", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "sage"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
