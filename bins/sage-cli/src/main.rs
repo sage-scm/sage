@@ -65,6 +65,9 @@ enum Command {
         fix: bool,
     },
 
+    /// List local branches
+    List(ListArgs),
+
     /// Config management
     Config {
         #[command(subcommand)]
@@ -142,6 +145,13 @@ pub struct WorkArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct ListArgs {
+    /// Show above and below stats
+    #[arg(short, long)]
+    stats: bool,
+}
+
+#[derive(Args, Debug)]
 pub struct SyncArgs {
     #[arg(long)]
     continue_: bool,
@@ -216,6 +226,7 @@ async fn main() -> Result<()> {
         // Synchronous commands
         Command::Work(args) => cmd::work(&args),
         Command::Sync(args) => cmd::sync(&args),
+        Command::List(args) => cmd::list(&args),
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,

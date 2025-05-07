@@ -1,7 +1,13 @@
 use anyhow::Result;
 use sage_core::{ChangeBranchOpts, change_branch};
+use std::time::Instant;
 
 pub fn work(args: &crate::WorkArgs) -> Result<()> {
+    println!("🌿  sage — work\n");
+
+    // Starting timer
+    let start = Instant::now();
+
     let opts = ChangeBranchOpts {
         name: args.branch.clone().unwrap_or_default().to_string(),
         create: true,
@@ -10,5 +16,8 @@ pub fn work(args: &crate::WorkArgs) -> Result<()> {
         push: args.push,
         fuzzy: args.fuzzy,
     };
-    change_branch(opts)
+    change_branch(opts)?;
+
+    println!("\nDone in {:?}", start.elapsed());
+    Ok(())
 }
