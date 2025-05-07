@@ -126,7 +126,7 @@ pub struct SaveArgs {
 pub struct WorkArgs {
     /// The branch to work on
     #[clap(value_parser)]
-    branch: String,
+    branch: Option<String>,
     /// Do not fetch from remote
     #[clap(long, short, default_value = "false")]
     no_fetch: bool,
