@@ -1,0 +1,22 @@
+[package]
+name = "sage-config"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A flexible configuration library for Sage projects supporting global and local overrides."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/sage"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.7"
+dirs = "5.0"
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.6"
+assert_fs = "1.0"
+serial_test = "2.0"
