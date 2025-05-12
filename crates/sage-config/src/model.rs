@@ -11,8 +11,6 @@ pub struct Config {
     /// Name of the preferred text editor
     pub editor: Option<String>,
 
-
-
     /// Whether Sage should check for updates automatically
     pub auto_update: Option<bool>,
 
@@ -79,7 +77,6 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             editor: None,
-            theme: None,
             auto_update: None,
             plugin_dirs: None,
             tui: None,
@@ -120,12 +117,15 @@ impl Config {
         }
         if self.pull_requests.is_none() {
             self.pull_requests = defaults.pull_requests.clone();
-        } else if let (Some(ref mut mine), Some(ref theirs)) = (&mut self.pull_requests, &defaults.pull_requests) {
+        } else if let (Some(ref mut mine), Some(ref theirs)) =
+            (&mut self.pull_requests, &defaults.pull_requests)
+        {
             *mine = mine.clone().merge_with(theirs);
         }
         if self.extras.is_none() {
             self.extras = defaults.extras.clone();
-        } else if let (Some(ref mut mine), Some(ref theirs)) = (&mut self.extras, &defaults.extras) {
+        } else if let (Some(ref mut mine), Some(ref theirs)) = (&mut self.extras, &defaults.extras)
+        {
             for (k, v) in theirs {
                 mine.entry(k.clone()).or_insert_with(|| v.clone());
             }
@@ -172,7 +172,7 @@ impl TuiConfig {
             font_size: self.font_size.or(defaults.font_size),
             color_theme: self.color_theme.clone().or(defaults.color_theme.clone()),
             line_numbers: self.line_numbers.or(defaults.line_numbers),
-            extras: merge_maps(self.extras, defaults.extras.clone())
+            extras: merge_maps(self.extras, defaults.extras.clone()),
         }
     }
 }
@@ -183,7 +183,7 @@ impl AiConfig {
             api_url: self.api_url.clone().or(defaults.api_url.clone()),
             api_key: self.api_key.clone().or(defaults.api_key.clone()),
             max_tokens: self.max_tokens.or(defaults.max_tokens),
-            extras: merge_maps(self.extras, defaults.extras.clone())
+            extras: merge_maps(self.extras, defaults.extras.clone()),
         }
     }
 }
@@ -194,7 +194,7 @@ impl PrConfig {
             default_base: self.default_base.clone().or(defaults.default_base.clone()),
             provider: self.provider.clone().or(defaults.provider.clone()),
             access_token: self.access_token.clone().or(defaults.access_token.clone()),
-            extras: merge_maps(self.extras, defaults.extras.clone())
+            extras: merge_maps(self.extras, defaults.extras.clone()),
         }
     }
 }
