@@ -1,4 +1,3 @@
-sage/crates/sage-config/src/manager.rs
 use crate::{Config, ConfigError};
 use dirs::home_dir;
 use std::fs;
