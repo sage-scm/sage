@@ -7,8 +7,10 @@ use sage_git::{
     commit::{self, commit_empty},
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
+use sage_tui::basic::check;
 
-use crate::ai::commit::commit_message;
+use crate::commit::commit_message;
+
 
 #[derive(Debug, Default)]
 pub struct SaveOpts {
@@ -188,7 +190,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
     // User has both staged and unstaged/untracked changes.
     if staged_changes && (unstaged_changes || untracked_files) {
         println!("⚠️  You have mixed changes");
-        if sage_tui::basic::confirm(String::from("Do you want to stage all changes? (y/n)"))? {
+        if check(String::from("Do you want to stage all changes? (y/n)"))? {
             stage_all()?;
             println!("●   Staged all changes ✔");
         } else {
