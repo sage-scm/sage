@@ -14,7 +14,7 @@ name = "sage"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive", "color"] }
 indicatif = "0.17.11"
 owo-colors = "4.2.0"
 anyhow = { workspace = true }

@@ -45,5 +45,9 @@ pub async fn find_pull_requests_by_branch(owner: &str, repo: &str, branch: &str)
 /// Get the status/state of a pull request (e.g. "open", "closed").
 pub async fn get_pull_request_status(owner: &str, repo: &str, number: u64) -> Result<String> {
     let pr = get_pull_request(owner, repo, number).await?;
-    Ok(pr.state)
+    let state_str = match pr.state {
+        Some(state) => format!("{:?}", state),
+        None => "unknown".to_string(),
+    };
+    Ok(state_str)
 }
