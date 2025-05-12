@@ -1,4 +1,3 @@
-sage/crates/sage-config/src/lib.rs
 //! `sage-config` - Flexible configuration handling for Sage projects.
 //!
 //! Supports global (user) and local (repo-specific) configuration files.
