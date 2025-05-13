@@ -227,6 +227,12 @@ async fn main() -> Result<()> {
         Command::Work(args) => cmd::work(&args),
         Command::Sync(args) => cmd::sync(&args),
         Command::List(args) => cmd::list(&args),
+        Command::Config { op } => match op {
+            ConfigCmd::Get { key } => cmd::config_get(&key),
+            ConfigCmd::Set { key, value } => cmd::config_set(&key, &value),
+            ConfigCmd::Unset { key } => cmd::config_unset(&key),
+            ConfigCmd::Edit => cmd::config_edit(),
+        },
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
@@ -240,7 +246,6 @@ async fn main() -> Result<()> {
         Command::Resolve => todo!("resolve"),
         Command::Stats { since } => todo!("stats {:?}", since),
         Command::Doctor { fix } => todo!("doctor fix={fix}"),
-        Command::Config { op } => todo!("config {:?}", op),
         Command::Completion { shell } => todo!("completion {shell}"),
         Command::Plugin { cmd } => todo!("plugin {:?}", cmd),
         #[cfg(feature = "stack")]
