@@ -170,7 +170,12 @@ pub struct ShareArgs {
 #[derive(Subcommand, Debug)]
 pub enum ConfigCmd {
     Get { key: String },
-    Set { key: String, value: String },
+    Set {
+        key: String,
+        value: String,
+        #[arg(long)]
+        local: bool,
+    },
     Unset { key: String },
     Edit,
 }
@@ -229,7 +234,7 @@ async fn main() -> Result<()> {
         Command::List(args) => cmd::list(&args),
         Command::Config { op } => match op {
             ConfigCmd::Get { key } => cmd::config_get(&key),
-            ConfigCmd::Set { key, value } => cmd::config_set(&key, &value),
+            ConfigCmd::Set { key, value, local } => cmd::config_set(&key, &value, local),
             ConfigCmd::Unset { key } => cmd::config_unset(&key),
             ConfigCmd::Edit => cmd::config_edit(),
         },

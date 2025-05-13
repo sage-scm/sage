@@ -1,9 +1,7 @@
 use anyhow::{bail, Result};
-use std::env;
-use std::process::Command;
 use toml::Value;
 
-pub fn config_set(key: &str, value: &str) -> Result<()> {
+pub fn config_set(key: &str, value: &str, local: bool) -> Result<()> {
     let manager = sage_config::ConfigManager::new()?;
     let mut cfg = manager.load()?;
 
@@ -66,7 +64,7 @@ pub fn config_set(key: &str, value: &str) -> Result<()> {
         }
         _ => bail!("Unknown or unsupported config key: {}", key),
     }
-    manager.update(&cfg, true)?;
-    println!("Set {} = {}", key, value);
+    manager.update(&cfg, local)?;
+    println!("Set {} = {} [{}]", key, value, if local { "local" } else { "global" });
     Ok(())
 }
