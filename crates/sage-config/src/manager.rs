@@ -139,9 +139,6 @@ mod tests {
         let toml_str = toml::to_string_pretty(&local_cfg).unwrap();
         fs::write(&local_path, toml_str).unwrap();
 
-        // Manager set to repo root
-        let manager = ConfigManager::new().unwrap();
-
         // Point manager at our test paths
         let manager = ConfigManager {
             global_path: global_path.clone(),
