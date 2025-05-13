@@ -14,10 +14,12 @@
 //! println!("Current theme: {:?}", config.theme);
 //! ```
 
-mod model;
-mod manager;
+mod defaults;
 mod error;
+mod manager;
+mod merge;
+mod model;
 
-pub use model::Config;
-pub use manager::ConfigManager;
 pub use error::ConfigError;
+pub use manager::ConfigManager;
+pub use model::Config;

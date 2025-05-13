@@ -45,12 +45,14 @@ impl ConfigManager {
 
     /// Loads and merges the global and local configurations, using defaults for missing values.
     pub fn load(&self) -> Result<Config, ConfigError> {
-        let default_cfg = Config::default_values();
-        let global_cfg = self.read_config(&self.global_path).unwrap_or(Config::empty());
-        let local_cfg = self.read_config(&self.local_path).unwrap_or(Config::empty());
-
-        // Merge order: local overrides global, which overrides built-in defaults.
-        Ok(local_cfg.merge_with(&global_cfg).merge_with(&default_cfg))
+        let mut config = Config::default();
+        if let Ok(global_cfg) = self.read_config(&self.global_path) {
+            config.merge_from(&global_cfg);
+        }
+        if let Ok(local_cfg) = self.read_config(&self.local_path) {
+            config.merge_from(&local_cfg);
+        }
+        Ok(config)
     }
 
     /// Returns the path for the current global config file.
@@ -73,17 +75,15 @@ impl ConfigManager {
         } else {
             &self.global_path
         };
-        let mut config = self.read_config(path).unwrap_or(Config::empty());
-
-        // Only set non-None values from the update.
-        if let Some(v) = &update.editor { config.editor = Some(v.clone()); }
-        if let Some(v) = &update.theme { config.theme = Some(v.clone()); }
-        if let Some(v) = update.auto_update { config.auto_update = Some(v); }
-        if let Some(ref dirs) = update.plugin_dirs { config.plugin_dirs = Some(dirs.clone()); }
-        if let Some(ref extras) = update.extras {
-            config.extras.get_or_insert(Default::default()).extend(extras.clone());
-        }
-
+        let mut config = self.read_config(path).unwrap_or(Config::default());
+        // Overwrite fields directly
+        config.editor = update.editor.clone();
+        config.auto_update = update.auto_update;
+        config.plugin_dirs = update.plugin_dirs.clone();
+        config.tui = update.tui.clone();
+        config.ai = update.ai.clone();
+        config.pull_requests = update.pull_requests.clone();
+        config.extras.extend(update.extras.clone());
         self.save_config(path, &config)
     }
 
@@ -125,9 +125,8 @@ mod tests {
         let global_path = global_dir.join(CONFIG_FILENAME);
 
         // Setup initial global config.
-        let mut global_cfg = Config::empty();
-        global_cfg.editor = Some("nano".into());
-        global_cfg.theme = Some("dark".into());
+        let mut global_cfg = Config::default();
+        global_cfg.editor = "nano".into();
         let toml_str = toml::to_string_pretty(&global_cfg).unwrap();
         fs::write(&global_path, toml_str).unwrap();
 
@@ -135,13 +134,13 @@ mod tests {
         let local_dir = dir.path().join("repo/.sage");
         let _ = fs::create_dir_all(&local_dir);
         let local_path = local_dir.join(CONFIG_FILENAME);
-        let mut local_cfg = Config::empty();
-        local_cfg.theme = Some("light".into());
+        let mut local_cfg = Config::default();
+        local_cfg.editor = "emacs".into();
         let toml_str = toml::to_string_pretty(&local_cfg).unwrap();
         fs::write(&local_path, toml_str).unwrap();
 
         // Manager set to repo root
-        let manager = ConfigManager::new(Some(dir.path().join("repo"))).unwrap();
+        let manager = ConfigManager::new().unwrap();
 
         // Point manager at our test paths
         let manager = ConfigManager {
@@ -149,18 +148,15 @@ mod tests {
             local_path: local_path.clone(),
         };
 
-        // Load config: local.theme overrides global, global.editor remains.
+        // Load config: local.editor overrides global.editor
         let cfg = manager.load().unwrap();
-        assert_eq!(cfg.editor, Some("nano".to_string()));
-        assert_eq!(cfg.theme, Some("light".to_string()));
+        assert_eq!(cfg.editor, "emacs".to_string());
 
         // Update local config
-        let mut update = Config::empty();
-        update.editor = Some("emacs".to_string());
+        let mut update = Config::default();
+        update.editor = "vim".to_string();
         manager.update(&update, true).unwrap();
         let updated_cfg = manager.read_config(&local_path).unwrap();
-        assert_eq!(updated_cfg.editor, Some("emacs".to_string()));
-        // Original local theme should remain
-        assert_eq!(updated_cfg.theme, Some("light".to_string()));
+        assert_eq!(updated_cfg.editor, "vim".to_string());
     }
 }

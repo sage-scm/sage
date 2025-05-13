@@ -10,12 +10,20 @@ use std::env;
 
 /// Asks the AI with a prompt
 pub async fn ask(prompt: &str) -> Result<String> {
+    let config = sage_config::ConfigManager::new()?;
+    let cfg = config.load()?;
+    let api_url = cfg.ai.api_url;
+    let mut api_key = cfg.ai.api_key;
+
     // Get API key
-    let api_key =
-        env::var("OPENAI_API_KEY").context("Failed to get OPENAI_API_KEY environment variable")?;
+    if api_key.is_empty() {
+        api_key = env::var("OPENAI_API_KEY")
+            .context("Failed to get OPENAI_API_KEY environment variable")?;
+    }
 
     // Build client
     let mut client = OpenAIClient::builder()
+        .with_endpoint(api_url)
         .with_api_key(&api_key)
         .build()
         .expect("Failed to build OpenAI client");
