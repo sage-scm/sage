@@ -26,13 +26,14 @@ impl ConfigManager {
     /// Constructs a new ConfigManager with default locations.
     /// - `repo_root` determines the starting directory for local (per-repo) config.
     ///   Defaults to current directory if None.
-    pub fn new(repo_root: Option<PathBuf>) -> Result<Self, ConfigError> {
+    pub fn new() -> Result<Self, ConfigError> {
         let home = home_dir().ok_or(ConfigError::ConfigPathNotFound)?;
 
         let global_path = home.join(GLOBAL_CONFIG_SUBDIR).join(CONFIG_FILENAME);
 
-        let local_path = repo_root
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        let repo_root = sage_git::repo::get_repo_root()?;
+        // We will get the local path from thje git module
+        let local_path = PathBuf::from(repo_root)
             .join(LOCAL_CONFIG_SUBDIR)
             .join(CONFIG_FILENAME);
 
