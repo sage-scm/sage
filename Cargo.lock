@@ -2191,6 +2191,7 @@ dependencies = [
  "indicatif",
  "octocrab",
  "openai-api-rs",
+ "sage-config",
  "sage-git",
  "sage-graph",
  "sage-tui",

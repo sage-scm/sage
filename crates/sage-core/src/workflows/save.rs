@@ -15,11 +15,11 @@ use crate::commit::commit_message;
 #[derive(Debug, Default)]
 pub struct SaveOpts {
     /// The message to commit with
-    pub message: Option<String>,
+    pub message: String,
     /// Commit all changes
     pub all: bool,
     /// Commit only these paths
-    pub paths: Option<Vec<String>>,
+    pub paths: Vec<String>,
     /// Use AI to generate a commit message
     pub ai: bool,
     /// Amend the previous commit
@@ -32,7 +32,7 @@ pub struct SaveOpts {
 
 pub async fn save(opts: &SaveOpts) -> Result<()> {
     // Check if a message is required (do this early)
-    if !opts.empty && !opts.amend && opts.message.is_none() && !opts.ai {
+    if !opts.empty && !opts.amend && opts.message.is_empty() && !opts.ai {
         return Err(anyhow!(
             "Commit message is required. Use -m to provide a message, --ai to generate one, --empty for an empty commit, or --amend to amend the previous commit."
         ));
@@ -78,8 +78,8 @@ pub async fn save(opts: &SaveOpts) -> Result<()> {
         let amend_opts = AmendOpts {
             message: commit_message.clone(),
             empty: opts.empty,
-            no_edit: (opts.empty && opts.message.is_none())
-                || (opts.message.is_some() && !has_staged_changes()?), // Use no_edit if we're keeping the previous message
+            no_edit: (opts.empty && opts.message.is_empty())
+                || (!opts.message.is_empty() && !has_staged_changes()?), // Use no_edit if we're keeping the previous message
         };
         amend::amend(&amend_opts)?;
         println!("●   Amended previous commit ✔");
@@ -145,14 +145,12 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
     }
 
     // If the user provided files to commit.
-    if let Some(paths) = &opts.paths {
-        if !paths.is_empty() {
-            // TODO: Implement staging specific files properly
-            // For now, just stage all changes
-            stage_all()?;
-            println!("●   Staged all changes ✔");
-            return Ok(());
-        }
+    if !opts.paths.is_empty() {
+        // TODO: Implement staging specific files properly
+        // For now, just stage all changes
+        stage_all()?;
+        println!("●   Staged all changes ✔");
+        return Ok(());
     }
 
     // User is amending the last commit without changes.
@@ -163,7 +161,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
     }
 
     // No files changed, no need to stage.
-    if opts.amend && opts.message.is_some() && !changed_files {
+    if opts.amend && !opts.message.is_empty() && !changed_files {
         return Ok(());
     }
 
@@ -210,7 +208,7 @@ fn stage_correct_files(opts: &SaveOpts) -> Result<()> {
 
 /// Determines the commit message to use for the commit.
 async fn get_commit_message(opts: &SaveOpts) -> Result<String> {
-    if opts.message.is_none() {
+    if opts.message.is_empty() {
         if opts.ai {
             // Create a spinner for AI message generation
             let spinner = ProgressBar::new_spinner();
@@ -253,5 +251,5 @@ async fn get_commit_message(opts: &SaveOpts) -> Result<String> {
             ));
         }
     }
-    Ok(opts.message.clone().unwrap())
+    Ok(opts.message.clone())
 }

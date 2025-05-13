@@ -7,9 +7,9 @@ pub async fn save(args: &crate::SaveArgs) -> Result<()> {
     let start = Instant::now();
 
     let opts = SaveOpts {
-        message: args.message.clone(),
+        message: args.message.clone().unwrap_or_default(),
         all: args.all,
-        paths: args.paths.clone(),
+        paths: args.paths.clone().unwrap_or_default(),
         ai: args.ai,
         amend: args.amend,
         push: args.push || args.amend,
