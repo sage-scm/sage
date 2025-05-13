@@ -23,6 +23,8 @@ sage-core = { version = "0.1.0", path = "../../crates/sage-core" }
 sage-git = { version = "0.1.0", path = "../../crates/sage-git" }
 sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
 sage-tui = { version = "0.1.0", path = "../../crates/sage-tui", optional = true }
+sage-config = { path = "../../crates/sage-config" }
+toml = "0.7"
 
 [features]
 default = []

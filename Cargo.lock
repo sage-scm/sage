@@ -2156,11 +2156,13 @@ dependencies = [
  "clap",
  "indicatif",
  "owo-colors",
+ "sage-config",
  "sage-core",
  "sage-git",
  "sage-plugin",
  "sage-tui",
  "tokio",
+ "toml",
 ]
 
 [[package]]
