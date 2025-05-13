@@ -18,3 +18,4 @@ openai-api-rs = "6.0.4"
 indicatif = "0.17.8"
 fuzzy-matcher = "0.3.7"
 octocrab = "0.43"
+sage-config = { path = "../sage-config" }
