@@ -1,5 +1,5 @@
-use thiserror::Error;
 use std::io;
+use thiserror::Error;
 
 /// Errors that can occur when loading or saving a configuration.
 #[derive(Error, Debug)]
@@ -11,7 +11,7 @@ pub enum ConfigError {
     Toml(#[from] toml::de::Error),
 
     #[error("TOML serialization failed: {0}")]
-    TomlSer(#[from] toml::ser::Error),
+    TomlSer(toml::ser::Error),
 
     #[error("Could not determine a valid config path")]
     ConfigPathNotFound,
@@ -37,3 +37,4 @@ impl From<anyhow::Error> for ConfigError {
         ConfigError::Custom(format!("{:?}", e))
     }
 }
+

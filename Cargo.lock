@@ -2170,6 +2170,7 @@ dependencies = [
  "anyhow",
  "assert_fs",
  "dirs",
+ "sage-git",
  "serde",
  "serde_json",
  "serde_yaml",
