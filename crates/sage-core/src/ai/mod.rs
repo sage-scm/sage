@@ -12,8 +12,10 @@ use std::env;
 pub async fn ask(prompt: &str) -> Result<String> {
     let config = sage_config::ConfigManager::new()?;
     let cfg = config.load()?;
+
     let api_url = cfg.ai.api_url;
     let mut api_key = cfg.ai.api_key;
+    let ai_model = cfg.ai.model;
 
     // Get API key
     if api_key.is_empty() {
@@ -30,7 +32,7 @@ pub async fn ask(prompt: &str) -> Result<String> {
 
     // Create request with the o4-mini model for speed
     let req = ChatCompletionRequest::new(
-        "o4-mini".to_string(), // Using o4-mini for speed
+        ai_model, // Using o4-mini for speed
         vec![chat_completion::ChatCompletionMessage {
             role: chat_completion::MessageRole::user,
             content: chat_completion::Content::Text(String::from(prompt)),
