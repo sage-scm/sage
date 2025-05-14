@@ -12,12 +12,12 @@ serde = { workspace = true, features = ["derive"] }
 sage-git = { path = "../sage-git" }
 serde_json = "1.0"
 serde_yaml = "0.9"
-toml = "0.7"
-dirs = "5.0"
+toml = "0.8"
+dirs = "6.0"
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.6"
 assert_fs = "1.0"
-serial_test = "2.0"
+serial_test = "3.2"
