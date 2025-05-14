@@ -52,6 +52,7 @@ pub fn config_get(key: &str) -> Result<()> {
             }
         }
         _ => {
+            eprintln!("✖ Key ‘does.not.exist’ not found.");
             eprintln!("Unknown config key: {}", key);
         }
     }
