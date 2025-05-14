@@ -65,6 +65,6 @@ pub fn config_set(key: &str, value: &str, local: bool) -> Result<()> {
         _ => bail!("Unknown or unsupported config key: {}", key),
     }
     manager.update(&cfg, local)?;
-    println!("Set {} = {} [{}]", key, value, if local { "local" } else { "global" });
+    println!("✔ Saved.");
     Ok(())
 }

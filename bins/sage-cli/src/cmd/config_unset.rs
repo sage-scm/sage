@@ -20,6 +20,6 @@ pub fn config_unset(key: &str) -> Result<()> {
         _ => bail!("Only extras fields can be unset. To reset a field, set it to an empty value."),
     }
     manager.update(&cfg, true)?;
-    println!("Unset {}", key);
+    println!("✔ Saved.");
     Ok(())
 }
