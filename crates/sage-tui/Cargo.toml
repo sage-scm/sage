@@ -8,5 +8,5 @@ edition = "2024"
 comfy-table = "7.1.4"
 crossterm = "0.29.0"
 ratatui = "0.29.0"
-inquire = "0.6.0"
+inquire = "0.7.5"
 anyhow = { workspace = true }
