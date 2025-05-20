@@ -9,11 +9,13 @@ pub mod config_get;
 pub mod config_list;
 pub mod config_set;
 pub mod config_unset;
+pub mod log;
 
 pub use list::list;
 pub use save::save;
 pub use sync::sync;
 pub use work::work;
+pub use log::log;
 
 // Config commands
 pub use config_edit::config_edit;
