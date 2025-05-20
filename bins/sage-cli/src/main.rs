@@ -130,9 +130,9 @@ pub struct WorkArgs {
     /// The branch to work on
     #[clap(value_parser)]
     branch: Option<String>,
-    /// Do not fetch from remote
+    /// Fetch from remote before switching (only when switching to existing branches)
     #[clap(long, short, default_value = "false")]
-    no_fetch: bool,
+    fetch: bool,
     /// Use the root branch
     #[clap(long, short, default_value = "false")]
     root: bool,
