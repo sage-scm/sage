@@ -35,7 +35,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@1.87
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Set up Git
         run: |
@@ -43,17 +43,43 @@ jobs:
           git config --global user.name "Sage Format Bot"
           git config --global user.email "sage-format-bot@users.noreply.github.com"
 
+      # Install cargo dependencies
+      - name: Install dependencies
+        run: |
+          rustc --version
+          cargo --version
+          cargo fmt --version
+
+      # Run cargo fmt with verbose output for debugging
       - name: Run cargo fmt
-        run: cargo fmt -- --config imports_granularity=Item
+        run: |
+          # First try with the specific config
+          cargo fmt --all -- --config imports_granularity=Item || \
+          # If that fails, try without the specific config
+          cargo fmt --all
 
       - name: Check for changes
         id: git-check
         run: |
+          # Make sure we're looking at all changes
+          git status
+
+          # Check for any changes to tracked files
           if git diff --exit-code; then
-            echo "No formatting changes detected"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to tracked files"
+
+            # Also check for untracked files that might need to be added
+            if [ -z "$(git ls-files --others --exclude-standard)" ]; then
+              echo "No untracked files found"
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+            else
+              echo "Untracked files found"
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+              echo "Untracked files:"
+              git ls-files --others --exclude-standard
+            fi
           else
-            echo "Formatting changes detected"
+            echo "Changes to tracked files detected"
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "Files changed:"
             git diff --name-only
@@ -71,10 +97,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SERVICE_ACCOUNT_TOKEN }}
         run: |
+          # Print debug info (without exposing the token)
+          echo "GitHub Actor: ${GITHUB_ACTOR}"
+          echo "GitHub Repository: ${GITHUB_REPOSITORY}"
+          echo "GitHub Ref: ${GITHUB_REF}"
+
           # Set the remote URL with authentication
-          remote_repo="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # Using the token directly in the URL
+          remote_repo="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git remote set-url origin "${remote_repo}"
 
+          # Get current branch name
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "Current branch: ${BRANCH_NAME}"
+
           # Push the changes
-          git push origin HEAD:${GITHUB_REF#refs/heads/}
-          echo "Changes pushed to repository"
+          echo "Pushing changes to ${BRANCH_NAME}..."
+          git push origin HEAD:${BRANCH_NAME} && echo "Changes pushed successfully" || echo "Failed to push changes"
