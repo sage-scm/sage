@@ -1,0 +1,25 @@
+name: format
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+
+jobs:
+  general:
+    name: Format / etc
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.87
+        with:
+          components: rustfmt
+      - name: cargo fmt 
+        run: cargo fmt -- --config imports_granularity=Item --check
+        
