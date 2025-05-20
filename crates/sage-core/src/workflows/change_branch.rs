@@ -94,30 +94,33 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
 }
 
 fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
-    // Skip fuzzy search if the branch exists exactly as specified
-    if !exists(&opts.name)? {
-        let branches = list_branches()?;
+    let branches = list_branches()?;
+    let matcher = SkimMatcherV2::default();
+    let mut best_match = None;
+    let mut best_score = 0;
 
-        // Initialize the fuzzy matcher
-        let matcher = SkimMatcherV2::default();
-        let mut best_match = None;
-        let mut best_score = 0;
-
-        // Find the best match using fuzzy-matcher
-        for branch in branches {
-            if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
-                if score > best_score {
-                    best_score = score;
-                    best_match = Some(branch);
-                }
-            }
-        }
-
-        // Use the best match if found
-        if let Some(branch_name) = best_match {
-            println!("🔍 Fuzzy matched '{}' to '{}'", opts.name, branch_name);
-            return Ok(Some(branch_name));
+    // First check for exact match (case-insensitive)
+    for branch in &branches {
+        if branch.eq_ignore_ascii_case(&opts.name) {
+            return Ok(Some(branch.clone()));
         }
     }
-    Ok(None)
+
+    // If no exact match, perform fuzzy search
+    for branch in branches {
+        if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
+            if score > best_score {
+                best_score = score;
+                best_match = Some(branch);
+            }
+        }
+    }
+
+    // Use the best match if found
+    if let Some(branch_name) = best_match {
+        println!("🔍 Fuzzy matched '{}' to '{}'", opts.name, branch_name);
+        Ok(Some(branch_name))
+    } else {
+        Ok(None)
+    }
 }
