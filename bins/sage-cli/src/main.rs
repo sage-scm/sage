@@ -169,14 +169,20 @@ pub struct ShareArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum ConfigCmd {
+    /// List all available configuration options with their current values
+    List,
+    /// Get the value of a specific configuration key
     Get { key: String },
+    /// Set a configuration value
     Set {
         key: String,
         value: String,
         #[arg(long)]
         local: bool,
     },
+    /// Unset a configuration value
     Unset { key: String },
+    /// Open the configuration file in your default editor
     Edit,
 }
 
@@ -233,6 +239,7 @@ async fn main() -> Result<()> {
         Command::Sync(args) => cmd::sync(&args),
         Command::List(args) => cmd::list(&args),
         Command::Config { op } => match op {
+            ConfigCmd::List => cmd::config_list(),
             ConfigCmd::Get { key } => cmd::config_get(&key),
             ConfigCmd::Set { key, value, local } => cmd::config_set(&key, &value, local),
             ConfigCmd::Unset { key } => cmd::config_unset(&key),
