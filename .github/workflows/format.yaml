@@ -1,25 +1,80 @@
+# This workflow automatically formats Rust code using rustfmt
+# It runs daily and on pull requests to main, and can be manually triggered
+# It commits and pushes changes using a service account
+#
+# Required secrets:
+# - SERVICE_ACCOUNT_TOKEN: A personal access token with repo scope for the service account
+#
 name: format
 on:
+  # Run on schedule - once a day at midnight
+  schedule:
+    - cron: '0 0 * * *'
+  # Run on pull requests to main
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
-
+  # Allow manual triggering
   workflow_dispatch:
 
-
 jobs:
-  general:
-    name: Format / etc
+  format:
+    name: Format Code
     runs-on: ubuntu-latest
+    # Use a GitHub token with write permissions
+    permissions:
+      contents: write
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.87
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SERVICE_ACCOUNT_TOKEN }}
+          fetch-depth: 0  # Fetch all history for proper commits
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.87
         with:
           components: rustfmt
-      - name: cargo fmt 
-        run: cargo fmt -- --config imports_granularity=Item --check
-        
+
+      - name: Set up Git
+        run: |
+          # Configure Git to use the service account identity
+          git config --global user.name "Sage Format Bot"
+          git config --global user.email "sage-format-bot@users.noreply.github.com"
+
+      - name: Run cargo fmt
+        run: cargo fmt -- --config imports_granularity=Item
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          if git diff --exit-code; then
+            echo "No formatting changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Formatting changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Files changed:"
+            git diff --name-only
+          fi
+
+      - name: Commit changes
+        if: steps.git-check.outputs.has_changes == 'true'
+        run: |
+          git add -A
+          git commit -m "style(format): apply rustfmt code formatting [skip ci]"
+          echo "Changes committed"
+
+      - name: Push changes
+        if: steps.git-check.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          # Set the remote URL with authentication
+          remote_repo="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote set-url origin "${remote_repo}"
+
+          # Push the changes
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          echo "Changes pushed to repository"
