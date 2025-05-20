@@ -9,10 +9,6 @@ pub struct SyncBranchOpts {
 }
 
 pub fn sync_branch() -> Result<()> {
-    println!("🌿  sage — sync");
-
-    let start = std::time::Instant::now();
-
     let current_branch = get_current()?;
     let mut parent = get_default_branch()?;
     let status = sage_git::status::status()?;
@@ -72,8 +68,6 @@ pub fn sync_branch() -> Result<()> {
         sage_git::branch::push(&current_branch, false)?;
         println!("●  Push origin/{}        ✔", current_branch);
     }
-
-    println!("Done in {:?}", start.elapsed());
 
     Ok(())
 }
