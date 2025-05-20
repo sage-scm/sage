@@ -26,6 +26,9 @@ enum Command {
     #[clap(alias = "ss")]
     Sync(SyncArgs),
 
+    /// Show git log
+    Log(LogArgs),
+
     /// Create or update a PR
     Share(ShareArgs),
 
@@ -97,6 +100,11 @@ enum Command {
     // ──────────────────────────────── TUI mode ───────────────────────────────
     #[cfg(feature = "tui")]
     Ui,
+}
+
+#[derive(Args, Debug)]
+pub struct LogArgs {
+
 }
 
 // ───────────────────────────────── Argument structs ──────────────────────────
@@ -245,6 +253,7 @@ async fn main() -> Result<()> {
             ConfigCmd::Unset { key } => cmd::config_unset(&key),
             ConfigCmd::Edit => cmd::config_edit(),
         },
+        Command::Log(args) => cmd::log(&args),
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
