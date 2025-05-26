@@ -140,7 +140,7 @@ pub struct WorkArgs {
     #[clap(long, short, default_value = "false")]
     push: bool,
     /// Fuzzy search for branch name
-    #[clap(long, short, default_value = "false")]
+    #[clap(long, short = 'z', default_value = "false")]
     fuzzy: bool,
 }
 
@@ -197,7 +197,7 @@ pub enum PluginCmd {
 }
 
 #[cfg(feature = "stack")]
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum StackCmd {
     Init,
     Branch {
