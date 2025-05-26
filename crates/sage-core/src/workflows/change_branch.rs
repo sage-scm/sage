@@ -1,5 +1,5 @@
-use anyhow::{Result, bail};
-use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use anyhow::{bail, Result};
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use sage_git::{
     branch::{
         exists, get_current, get_default_branch, is_default, is_default_branch, list_branches,
@@ -8,6 +8,8 @@ use sage_git::{
     repo::{fetch_remote, get_commiter},
 };
 use sage_graph::SageGraph;
+
+use crate::CliOutput;
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
@@ -24,7 +26,7 @@ pub struct ChangeBranchOpts {
     pub fuzzy: bool,
 }
 
-pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
+pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> {
     let current_branch = get_current()?;
 
     // Handle fuzzy search if enabled
@@ -44,8 +46,9 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
     let name = &opts.name;
 
     if opts.fetch {
+        cli.step_start("Fetching remote");
         fetch_remote()?;
-        println!("●   Fetch remote ✔");
+        cli.step_success("Fetched remote", None);
     }
 
     if *name == current_branch {
@@ -55,30 +58,34 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
 
     // Early exit if they are switching to the default branch.
     if !is_default_branch()? && is_default(name)? {
+        cli.step_start("Switching branch");
         switch(name, false)?;
-        println!("🚀  Switched to {name}");
+        cli.step_success_with_emoji(&format!("Switched to {name}"), None, "🚀");
         return Ok(());
     }
 
     if opts.use_root && !is_default_branch()? {
+        cli.step_start("Switching branch");
         switch(&get_default_branch()?, false)?;
-        println!("●  Switch to root branch ✔");
+        cli.step_success("Switched to root branch", None);
     }
 
     // Let's see if the new brach already exists.
     if exists(name)? {
-        println!("⚠️  Branch exists - checking it out.");
+        cli.warning("Branch exists - checking it out.");
         // We will simply switch to the branch.
         switch(name, false)?;
     } else if opts.create {
         // We will create the branch.
+        cli.step_start("Creating new branch");
         switch(name, true)?;
-        println!("●  Create branch {name} ✔");
+        cli.step_success(&format!("Created branch {name}"), None);
     }
 
     if opts.push {
+        cli.step_start("Pushing to remote");
         push(name, false)?;
-        println!("●  Push origin/{name} ✔");
+        cli.step_success(&format!("Pushed origin/{name}"), None);
     }
 
     let mut graph = SageGraph::load_or_default()?;
@@ -88,7 +95,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts) -> Result<()> {
         graph.save()?;
     }
 
-    println!("🚀  Switched to {name}");
+    cli.step_success_with_emoji(&format!("Switched to {name}"), None, "🚀");
 
     Ok(())
 }
