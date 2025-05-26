@@ -1,14 +1,12 @@
 use anyhow::Result;
 use sage_config::ConfigManager;
+use sage_core::CliOutput;
 use std::collections::BTreeMap;
-use std::time::Instant;
 
 pub fn config_list() -> Result<()> {
-    println!("🌿  sage — config list\n");
-    
-    // Starting timer
-    let start = Instant::now();
-    
+    let cli = CliOutput::new();
+    cli.header("config list");
+
     let manager = ConfigManager::new()?;
     let config = manager.load()?;
 
@@ -19,24 +17,78 @@ pub fn config_list() -> Result<()> {
     let mut config_map = BTreeMap::new();
 
     // Root level config
-    config_map.insert("editor", format!("{}  # Default text editor", config.editor));
-    config_map.insert("auto_update", format!("{}  # Check for updates automatically", config.auto_update));
-    config_map.insert("plugin_dirs", format!("{:?}  # Directories to look for plugins", config.plugin_dirs));
+    config_map.insert(
+        "editor",
+        format!("{}  # Default text editor", config.editor),
+    );
+    config_map.insert(
+        "auto_update",
+        format!("{}  # Check for updates automatically", config.auto_update),
+    );
+    config_map.insert(
+        "plugin_dirs",
+        format!(
+            "{:?}  # Directories to look for plugins",
+            config.plugin_dirs
+        ),
+    );
 
     // TUI config
-    config_map.insert("tui.font_size", format!("{}  # Font size for the TUI", config.tui.font_size));
-    config_map.insert("tui.color_theme", format!("{}  # Color theme for the TUI", config.tui.color_theme));
-    config_map.insert("tui.line_numbers", format!("{}  # Show line numbers in the TUI", config.tui.line_numbers));
+    config_map.insert(
+        "tui.font_size",
+        format!("{}  # Font size for the TUI", config.tui.font_size),
+    );
+    config_map.insert(
+        "tui.color_theme",
+        format!("{}  # Color theme for the TUI", config.tui.color_theme),
+    );
+    config_map.insert(
+        "tui.line_numbers",
+        format!(
+            "{}  # Show line numbers in the TUI",
+            config.tui.line_numbers
+        ),
+    );
 
     // AI config
-    config_map.insert("ai.model", format!("{}  # Default AI model to use", config.ai.model));
-    config_map.insert("ai.api_url", format!("{}  # API endpoint for the AI service", config.ai.api_url));
-    config_map.insert("ai.max_tokens", format!("{}  # Maximum tokens for AI responses", config.ai.max_tokens));
+    config_map.insert(
+        "ai.model",
+        format!("{}  # Default AI model to use", config.ai.model),
+    );
+    config_map.insert(
+        "ai.api_url",
+        format!("{}  # API endpoint for the AI service", config.ai.api_url),
+    );
+    config_map.insert(
+        "ai.max_tokens",
+        format!(
+            "{}  # Maximum tokens for AI responses",
+            config.ai.max_tokens
+        ),
+    );
 
     // Pull Requests config
-    config_map.insert("pull_requests.enabled", format!("{}  # Enable pull request integration", config.pull_requests.enabled));
-    config_map.insert("pull_requests.default_base", format!("{}  # Default base branch for PRs", config.pull_requests.default_base));
-    config_map.insert("pull_requests.provider", format!("{}  # Git provider (github/gitlab/etc)", config.pull_requests.provider));
+    config_map.insert(
+        "pull_requests.enabled",
+        format!(
+            "{}  # Enable pull request integration",
+            config.pull_requests.enabled
+        ),
+    );
+    config_map.insert(
+        "pull_requests.default_base",
+        format!(
+            "{}  # Default base branch for PRs",
+            config.pull_requests.default_base
+        ),
+    );
+    config_map.insert(
+        "pull_requests.provider",
+        format!(
+            "{}  # Git provider (github/gitlab/etc)",
+            config.pull_requests.provider
+        ),
+    );
 
     // Print all config values
     for (key, value) in config_map {
@@ -65,6 +117,6 @@ pub fn config_list() -> Result<()> {
     print_extras("ai.extras", &config.ai.extras);
     print_extras("pull_requests.extras", &config.pull_requests.extras);
 
-    println!("\nDone in {:?}", start.elapsed());
+    cli.summary();
     Ok(())
 }

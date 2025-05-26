@@ -1,13 +1,13 @@
 use anyhow::Result;
 use sage_core::list_branches;
-use std::time::Instant;
+use sage_core::CliOutput;
 
 pub fn list(args: &crate::ListArgs) -> Result<()> {
-    println!("🌿  sage — list\n");
-    let start_time = Instant::now();
+    let cli = CliOutput::new();
+    cli.header("list");
 
     list_branches(args.stats)?;
 
-    println!("\nDone in {:?}", start_time.elapsed());
+    cli.summary();
     Ok(())
 }
