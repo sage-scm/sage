@@ -21,7 +21,7 @@ pub fn amend(opts: &AmendOpts) -> Result<()> {
         cmd.arg("--allow-empty");
     }
 
-    if opts.no_edit {
+    if opts.no_edit || opts.message.is_empty() {
         cmd.arg("--no-edit");
     }
 
