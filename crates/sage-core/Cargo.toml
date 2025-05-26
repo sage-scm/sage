@@ -19,3 +19,4 @@ indicatif = "0.17.8"
 fuzzy-matcher = "0.3.7"
 octocrab = "0.44"
 sage-config = { path = "../sage-config" }
+console = "0.15.11"

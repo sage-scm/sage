@@ -1,8 +1,10 @@
 pub mod ai;
+pub mod cli;
 pub mod gh;
 pub mod workflows;
 
 pub use ai::*;
+pub use cli::*;
 pub use gh::*;
 pub use workflows::*;
 // Re-export config for easier access
