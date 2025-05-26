@@ -118,11 +118,13 @@ impl CliOutput {
     pub fn step_success(&self, message: &str, detail: Option<&str>) {
         print!("\r●   {}", message);
 
+        print!(" {}", style("✔").green());
+
         if let Some(detail) = detail {
             print!(" {}", style(detail).dim());
         }
 
-        println!(" {}", style("✔").green());
+        println!();
     }
 
     pub fn step_success_with_emoji(&self, message: &str, detail: Option<&str>, custom_emoji: &str) {
