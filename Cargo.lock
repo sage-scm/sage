@@ -2174,6 +2174,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "colored",
+ "console",
  "fuzzy-matcher",
  "indicatif",
  "octocrab",
