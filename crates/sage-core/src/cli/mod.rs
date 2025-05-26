@@ -29,6 +29,9 @@ pub struct SpinnerStep {
 impl SpinnerStep {
     pub fn finish_success(self, message: &str, detail: Option<&str>) {
         self.pb.finish_and_clear();
+        if let Ok(term) = Term::stdout().clear_line() {
+            let _ = term;
+        }
         let final_msg = if let Some(detail) = detail {
             format!(
                 "●   {} {} {}",
@@ -49,6 +52,9 @@ impl SpinnerStep {
         custom_emoji: &str,
     ) {
         self.pb.finish_and_clear();
+        if let Ok(term) = Term::stdout().clear_line() {
+            let _ = term;
+        }
         let final_msg = if let Some(detail) = detail {
             format!("{}   {} {}", custom_emoji, message, style(detail).dim())
         } else {
@@ -59,6 +65,9 @@ impl SpinnerStep {
 
     pub fn finish_error(self, message: &str, error: &str) {
         self.pb.finish_and_clear();
+        if let Ok(term) = Term::stdout().clear_line() {
+            let _ = term;
+        }
         let final_msg = format!(
             "●   {} {} {}",
             message,
@@ -95,7 +104,6 @@ impl CliOutput {
         println!("{}\n", header);
     }
 
-    // Create a spinner for long-running operations
     pub fn spinner(&self, message: &str) -> SpinnerStep {
         let pb = ProgressBar::new_spinner();
         pb.set_style(
@@ -116,6 +124,8 @@ impl CliOutput {
     }
 
     pub fn step_success(&self, message: &str, detail: Option<&str>) {
+        self.term.clear_line().unwrap_or(());
+
         print!("\r●   {}", message);
 
         print!(" {}", style("✔").green());
@@ -128,6 +138,8 @@ impl CliOutput {
     }
 
     pub fn step_success_with_emoji(&self, message: &str, detail: Option<&str>, custom_emoji: &str) {
+        self.term.clear_line().unwrap_or(());
+
         print!("\r{}   {}", custom_emoji, message);
 
         if let Some(detail) = detail {
@@ -141,11 +153,13 @@ impl CliOutput {
     }
 
     pub fn step_update(&self, message: &str) {
+        self.term.clear_line().unwrap_or(());
         print!("\r{}   {}", style("●").yellow(), style(message).dim());
         let _ = self.term.flush();
     }
 
     pub fn step_error(&self, message: &str, error: &str) {
+        self.term.clear_line().unwrap_or(());
         println!(
             "\r●   {} {} {}",
             message,
@@ -164,7 +178,6 @@ impl CliOutput {
         );
     }
 
-    // More advanced: boxed output
     pub fn boxed_summary(&self, title: &str, items: &[(&str, &str)]) {
         let width = 60;
         println!("\n┌{}┐", "─".repeat(width - 2));
