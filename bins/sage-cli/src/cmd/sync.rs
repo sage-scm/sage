@@ -7,7 +7,7 @@ pub fn sync(_args: &crate::SyncArgs) -> Result<()> {
     let cli = CliOutput::new();
     cli.header("sync");
 
-    sync_branch()?;
+    sync_branch(&cli)?;
 
     cli.summary();
     Ok(())
