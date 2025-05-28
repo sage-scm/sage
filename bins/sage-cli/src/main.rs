@@ -87,7 +87,7 @@ enum Command {
     #[cfg(feature = "stack")]
     Stack {
         #[command(subcommand)]
-        cmd: StackCmd,
+        op: StackCmd,
     },
 
     // ──────────────────────────────── AI extras ──────────────────────────────
@@ -130,6 +130,8 @@ pub struct WorkArgs {
     /// The branch to work on
     #[clap(value_parser)]
     branch: Option<String>,
+    #[clap(value_parser, long)]
+    parent: Option<String>,
     /// Fetch from remote before switching (only when switching to existing branches)
     #[clap(long, short, default_value = "false")]
     fetch: bool,
@@ -199,7 +201,9 @@ pub enum PluginCmd {
 #[cfg(feature = "stack")]
 #[derive(Debug, Subcommand)]
 pub enum StackCmd {
-    Init,
+    Init {
+        name: String,
+    },
     Branch {
         name: String,
         #[arg(long)]
@@ -245,6 +249,11 @@ async fn main() -> Result<()> {
             ConfigCmd::Unset { key } => cmd::config_unset(&key),
             ConfigCmd::Edit => cmd::config_edit(),
         },
+        #[cfg(feature = "stack")]
+        Command::Stack { op } => match op {
+            StackCmd::Init { name } => cmd::stack_init(&name),
+            _ => todo!(),
+        },
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
@@ -260,8 +269,6 @@ async fn main() -> Result<()> {
         Command::Doctor { fix } => todo!("doctor fix={fix}"),
         Command::Completion { shell } => todo!("completion {shell}"),
         Command::Plugin { cmd } => todo!("plugin {:?}", cmd),
-        #[cfg(feature = "stack")]
-        Command::Stack { cmd } => todo!("stack {:?}", cmd),
         #[cfg(feature = "ai")]
         Command::Tips => todo!("tips"),
         #[cfg(feature = "tui")]
