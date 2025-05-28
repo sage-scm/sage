@@ -1,6 +1,6 @@
 use anyhow::Result;
 use sage_core::{change_branch, ChangeBranchOpts, CliOutput};
-use sage_git::branch::{exists, get_current};
+use sage_git::branch::{exists, get_current, get_default_branch};
 
 pub fn work(args: &crate::WorkArgs) -> Result<()> {
     let cli = CliOutput::new();
@@ -10,7 +10,7 @@ pub fn work(args: &crate::WorkArgs) -> Result<()> {
     let branch_exists = exists(&branch_name)?;
 
     let parent_branch = if args.root {
-        sage_git::branch::get_default_branch()?
+        get_default_branch()?
     } else if args.parent.clone().unwrap_or_default().is_empty() {
         args.parent.clone().unwrap_or_default()
     } else {
