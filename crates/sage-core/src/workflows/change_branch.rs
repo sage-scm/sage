@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use octocrab::current;
 use sage_git::{
     branch::{
         exists, get_current, get_default_branch, is_default, is_default_branch, list_branches,
@@ -13,7 +14,10 @@ use crate::CliOutput;
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
+    /// Name of the branch
     pub name: String,
+    /// Parent branch of the new branch
+    pub parent: String,
     /// Can the branch be created?
     pub create: bool,
     /// Should we fetch remote first?
@@ -24,10 +28,17 @@ pub struct ChangeBranchOpts {
     pub push: bool,
     /// Use fuzzy search for branch name?
     pub fuzzy: bool,
+    /// Track the branch automatically
+    pub track: bool,
+    /// Announce the branch change
+    pub announce: bool,
 }
+
+// TODO: Implement the use of `opts.parent`
 
 pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> {
     let current_branch = get_current()?;
+    let default_branch = get_default_branch()?;
 
     // Handle fuzzy search if enabled
     if opts.fuzzy && !opts.name.is_empty() {
@@ -57,16 +68,16 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     }
 
     // Early exit if they are switching to the default branch.
-    if !is_default_branch()? && is_default(name)? {
+    if &current_branch == &default_branch && &default_branch == name {
         cli.step_start("Switching branch");
         switch(name, false)?;
         cli.step_success_with_emoji(&format!("Switched to {name}"), None, "🚀");
         return Ok(());
     }
 
-    if opts.use_root && !is_default_branch()? {
+    if opts.use_root && default_branch == current_branch {
         cli.step_start("Switching branch");
-        switch(&get_default_branch()?, false)?;
+        switch(&default_branch, false)?;
         cli.step_success("Switched to root branch", None);
     }
 
@@ -88,14 +99,25 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
         cli.step_success(&format!("Pushed origin/{name}"), None);
     }
 
-    let mut graph = SageGraph::load_or_default()?;
-    if !graph.tracks(name) && !graph.is_loose(name) {
-        let (user_name, _) = get_commiter()?;
-        graph.add_loose_branch(name.into(), current_branch, user_name)?;
-        graph.save()?;
+    if opts.track {
+        let mut graph = SageGraph::load_or_default()?;
+        if !graph.tracks(name) && !graph.is_loose(name) {
+            let (user_name, _) = get_commiter()?;
+            // TODO: fix. We don't want to track the current branch as the parent if the root is
+            // the provided as the branch to use as the parent.
+            let parent = if opts.use_root {
+                default_branch
+            } else {
+                current_branch
+            };
+            graph.add_loose_branch(name.into(), parent, user_name)?;
+            graph.save()?;
+        }
     }
 
-    cli.step_success_with_emoji(&format!("Switched to {name}"), None, "🚀");
+    if opts.announce {
+        cli.step_success_with_emoji(&format!("Switched to {name}"), None, "🚀");
+    }
 
     Ok(())
 }
