@@ -9,6 +9,8 @@ pub mod config_get;
 pub mod config_list;
 pub mod config_set;
 pub mod config_unset;
+// Stack commands
+pub mod stack_init;
 
 pub use list::list;
 pub use save::save;
@@ -21,3 +23,6 @@ pub use config_get::config_get;
 pub use config_list::config_list;
 pub use config_set::config_set;
 pub use config_unset::config_unset;
+
+// Stack commands
+pub use stack_init::stack_init;
