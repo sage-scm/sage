@@ -252,6 +252,8 @@ async fn main() -> Result<()> {
         #[cfg(feature = "stack")]
         Command::Stack { op } => match op {
             StackCmd::Init { name } => cmd::stack_init(&name),
+            StackCmd::Next => cmd::stack_navigate::down(),
+            StackCmd::Prev => cmd::stack_navigate::up(),
             _ => todo!(),
         },
 
