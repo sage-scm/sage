@@ -11,6 +11,7 @@ pub mod config_set;
 pub mod config_unset;
 // Stack commands
 pub mod stack_init;
+pub mod stack_navigate;
 
 pub use list::list;
 pub use save::save;
