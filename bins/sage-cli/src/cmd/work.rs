@@ -1,6 +1,6 @@
 use anyhow::Result;
 use sage_core::{change_branch, ChangeBranchOpts, CliOutput};
-use sage_git::branch::{exists, get_current, get_default_branch};
+use sage_git::branch::exists;
 
 pub fn work(args: &crate::WorkArgs) -> Result<()> {
     let cli = CliOutput::new();

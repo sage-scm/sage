@@ -140,7 +140,7 @@ impl CliOutput {
     pub fn step_success_with_emoji(&self, message: &str, detail: Option<&str>, custom_emoji: &str) {
         self.term.clear_line().unwrap_or(());
 
-        print!("\r{}   {}", custom_emoji, message);
+        print!("\r{}  {}", custom_emoji, message);
 
         if let Some(detail) = detail {
             print!(" {}", style(detail).dim());
