@@ -13,6 +13,10 @@
 //! /* loose */
 //! g.add_loose_branch("hotfix/login-typo", "develop", "Brayden")?;
 //!
+//! /* check if branches are in the same stack */
+//! assert!(g.same_stack("payments/base", "feat/payment-limits"));
+//! assert!(!g.same_stack("payments/base", "hotfix/login-typo"));
+//!
 //! g.save()?;
 //! # anyhow::Ok(())
 //! ```
