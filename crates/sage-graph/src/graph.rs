@@ -1,6 +1,6 @@
 //! Core logic: stacks **+** loose branches.
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use hashbrown::HashMap;
 use sage_git::branch::get_default_branch;
 use serde::{Deserialize, Serialize};
@@ -14,10 +14,10 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stack {
-    name: String,
-    root: BranchId,
-    branches: HashMap<BranchId, BranchInfo>,
-    children_map: HashMap<BranchId, Vec<BranchId>>,
+    pub name: String,
+    pub root: BranchId,
+    pub branches: HashMap<BranchId, BranchInfo>,
+    pub children_map: HashMap<BranchId, Vec<BranchId>>,
 }
 
 impl Stack {
@@ -193,6 +193,10 @@ impl SageGraph {
     pub fn stack_of(&self, b: &str) -> Option<&Stack> {
         self.branch_to_stack.get(b).and_then(|s| self.stacks.get(s))
     }
+
+    pub fn stack_name_of(&self, b: &str) -> Option<&String> {
+        self.branch_to_stack.get(b)
+    }
 }
 
 /* ----- loose-branch API ---------------------------------------------- */
@@ -239,5 +243,45 @@ impl SageGraph {
 
     fn depth(&self, b: &str) -> Option<usize> {
         self.info(b).map(|i| i.depth)
+    }
+
+    /// Check if two branches are part of the same stack.
+    /// Returns true if both branches are in the same stack, false otherwise.
+    /// Returns false if either branch is not tracked or if they are loose branches.
+    pub fn same_stack(&self, branch1: &str, branch2: &str) -> bool {
+        match (self.stack_name_of(branch1), self.stack_name_of(branch2)) {
+            (Some(stack1), Some(stack2)) => stack1 == stack2,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_same_stack() {
+        let mut graph = SageGraph::default();
+
+        // Create a stack with two branches
+        graph.new_stack("feature-stack", "feature/base".to_string()).unwrap();
+        graph.add_stack_child("feature-stack", "feature/base", "feature/child".to_string(), Some("test".to_string())).unwrap();
+
+        // Add a loose branch
+        graph.add_loose_branch("hotfix/bug".to_string(), "feature/base".to_string(), "test").unwrap();
+
+        // Test same stack
+        assert!(graph.same_stack("feature/base", "feature/child"));
+        assert!(graph.same_stack("feature/child", "feature/base"));
+
+        // Test different contexts (stack vs loose)
+        assert!(!graph.same_stack("feature/base", "hotfix/bug"));
+        assert!(!graph.same_stack("hotfix/bug", "feature/child"));
+
+        // Test non-existent branches
+        assert!(!graph.same_stack("feature/base", "non-existent"));
+        assert!(!graph.same_stack("non-existent", "feature/child"));
+        assert!(!graph.same_stack("non-existent1", "non-existent2"));
     }
 }
