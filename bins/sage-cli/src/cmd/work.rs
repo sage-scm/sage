@@ -9,20 +9,12 @@ pub fn work(args: &crate::WorkArgs) -> Result<()> {
     let branch_name = args.branch.clone().unwrap_or_default().to_string();
     let branch_exists = exists(&branch_name)?;
 
-    let parent_branch = if args.root {
-        get_default_branch()?
-    } else if args.parent.clone().unwrap_or_default().is_empty() {
-        args.parent.clone().unwrap_or_default()
-    } else {
-        get_current()?
-    };
-
     // Only fetch if explicitly requested with --fetch and the branch doesn't exist locally
     let should_fetch = args.fetch && !branch_exists;
 
     let opts = ChangeBranchOpts {
         name: branch_name,
-        parent: parent_branch,
+        parent: args.parent.clone().unwrap_or_default(),
         create: true,
         fetch: should_fetch,
         use_root: args.root,
