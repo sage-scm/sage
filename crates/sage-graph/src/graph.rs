@@ -44,8 +44,26 @@ impl Stack {
     pub fn contains(&self, b: &str) -> bool {
         self.branches.contains_key(b)
     }
+
+    pub fn get_parent(&self, b: &str) -> Option<&BranchInfo> {
+        for (parent, child_map) in self.children_map.iter() {
+            if child_map.contains(&b.to_string()) {
+                return self.branches.get(parent);
+            }
+        }
+        None
+    }
+
     pub fn info(&self, b: &str) -> Option<&BranchInfo> {
         self.branches.get(b)
+    }
+
+    pub fn children(&self, b: &str) -> Vec<String> {
+        self.children_map.get(b).cloned().unwrap_or_default()
+    }
+
+    pub fn all_branches(&self) -> Vec<String> {
+        self.branches.keys().cloned().collect()
     }
 
     /* ----- mutation ----- */
@@ -265,11 +283,22 @@ mod tests {
         let mut graph = SageGraph::default();
 
         // Create a stack with two branches
-        graph.new_stack("feature-stack", "feature/base".to_string()).unwrap();
-        graph.add_stack_child("feature-stack", "feature/base", "feature/child".to_string(), Some("test".to_string())).unwrap();
+        graph
+            .new_stack("feature-stack", "feature/base".to_string())
+            .unwrap();
+        graph
+            .add_stack_child(
+                "feature-stack",
+                "feature/base",
+                "feature/child".to_string(),
+                Some("test".to_string()),
+            )
+            .unwrap();
 
         // Add a loose branch
-        graph.add_loose_branch("hotfix/bug".to_string(), "feature/base".to_string(), "test").unwrap();
+        graph
+            .add_loose_branch("hotfix/bug".to_string(), "feature/base".to_string(), "test")
+            .unwrap();
 
         // Test same stack
         assert!(graph.same_stack("feature/base", "feature/child"));
@@ -283,5 +312,50 @@ mod tests {
         assert!(!graph.same_stack("feature/base", "non-existent"));
         assert!(!graph.same_stack("non-existent", "feature/child"));
         assert!(!graph.same_stack("non-existent1", "non-existent2"));
+    }
+
+    #[test]
+    fn test_stack_children_and_all_branches() {
+        let mut graph = SageGraph::default();
+
+        // Create a stack with multiple branches
+        graph
+            .new_stack("feature-stack", "feature/base".to_string())
+            .unwrap();
+        graph
+            .add_stack_child(
+                "feature-stack",
+                "feature/base",
+                "feature/child1".to_string(),
+                Some("test".to_string()),
+            )
+            .unwrap();
+        graph
+            .add_stack_child(
+                "feature-stack",
+                "feature/base",
+                "feature/child2".to_string(),
+                Some("test".to_string()),
+            )
+            .unwrap();
+
+        let stack = graph.stack_of("feature/base").unwrap();
+
+        // Test children method
+        let children = stack.children("feature/base");
+        assert_eq!(children.len(), 2);
+        assert!(children.contains(&"feature/child1".to_string()));
+        assert!(children.contains(&"feature/child2".to_string()));
+
+        // Test all_branches method
+        let all_branches = stack.all_branches();
+        assert_eq!(all_branches.len(), 3);
+        assert!(all_branches.contains(&"feature/base".to_string()));
+        assert!(all_branches.contains(&"feature/child1".to_string()));
+        assert!(all_branches.contains(&"feature/child2".to_string()));
+
+        // Test children for branch with no children
+        let no_children = stack.children("feature/child1");
+        assert!(no_children.is_empty());
     }
 }
