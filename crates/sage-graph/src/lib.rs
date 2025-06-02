@@ -7,11 +7,11 @@
 //! let mut g = SageGraph::load_or_default()?;
 //!
 //! /* stack */
-//! g.new_stack("payments", "payments/base")?;
-//! g.add_stack_child("payments", "payments/base", "feat/payment-limits", None)?;
+//! g.new_stack("payments", "payments/base".to_string())?;
+//! g.add_stack_child("payments", "payments/base", "feat/payment-limits".to_string(), None)?;
 //!
 //! /* loose */
-//! g.add_loose_branch("hotfix/login-typo", "develop", "Brayden")?;
+//! g.add_loose_branch("hotfix/login-typo".to_string(), "develop".to_string(), "Brayden")?;
 //!
 //! /* check if branches are in the same stack */
 //! assert!(g.same_stack("payments/base", "feat/payment-limits"));

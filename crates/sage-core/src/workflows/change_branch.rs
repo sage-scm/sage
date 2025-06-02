@@ -126,19 +126,26 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     switch(&name, true)?;
     cli.step_success("Created new branch", Some(&name));
 
+    let (username, _) = get_commiter()?;
+    let parent = if !opts.parent.is_empty() {
+        &opts.parent
+    } else {
+        &current_branch
+    };
+
     if in_stack {
         // We will add the branch to the stack.
-        let (username, _) = get_commiter()?;
-        let parent = if !opts.parent.is_empty() {
-            &opts.parent
-        } else {
-            &current_branch
-        };
         if let Some(stack_name) = graph.stack_name_of(&parent).cloned() {
-            graph.add_stack_child(&stack_name, &parent, name.clone(), Some(username))?;
+            graph.add_stack_child(&stack_name, &parent, name.clone(), Some(username.clone()))?;
         }
-        graph.save()?;
     }
+
+    if !in_stack && opts.track {
+        graph.add_loose_branch(name.to_string(), parent.clone(), username.clone())?;
+    }
+
+    // Saving the updated graph (even if it didn't change)
+    graph.save()?;
 
     // Push the branch if required
     if opts.push {
@@ -185,3 +192,4 @@ fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
 
     Ok(None)
 }
+
