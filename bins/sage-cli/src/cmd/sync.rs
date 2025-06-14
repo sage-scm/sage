@@ -1,6 +1,5 @@
 use anyhow::Result;
-use sage_core::workflows::sync_branch;
-use sage_core::{CliOutput, SyncBranchOpts};
+use sage_core::{workflows::sync_branch, CliOutput, SyncBranchOpts};
 
 /// Synchronize the current branch with the remote.
 pub fn sync(_args: &crate::SyncArgs) -> Result<()> {
