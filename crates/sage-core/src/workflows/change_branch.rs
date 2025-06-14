@@ -8,12 +8,12 @@ use sage_git::{
 use sage_graph::SageGraph;
 use sage_tui::basic::select;
 
-use crate::CliOutput;
+use crate::{BranchName, CliOutput};
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
     /// Name of the branch
-    pub name: String,
+    pub name: BranchName,
     /// Parent branch of the new branch
     pub parent: String,
     /// Can the branch be created?
@@ -41,7 +41,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     // Start a fuzzy search
     if opts.fuzzy && !opts.name.is_empty() {
         match fuzzy_find_branch(&opts) {
-            Ok(Some(branch)) => opts.name = branch,
+            Ok(Some(branch)) => opts.name = BranchName::new(branch)?,
             Ok(None) => bail!("No branch found"),
             Err(e) => return Err(e),
         }
@@ -49,7 +49,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
         // We need a name for the fuzzy search
         let branches = list_branches()?;
         let branch = select("Switch to branch".into(), branches)?;
-        opts.name = branch;
+        opts.name = BranchName::new(branch)?;
     }
 
     // The final version of the name. After both fuzzy, and tui
@@ -136,12 +136,17 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     if in_stack {
         // We will add the branch to the stack.
         if let Some(stack_name) = graph.stack_name_of(&parent).cloned() {
-            graph.add_stack_child(&stack_name, &parent, name.clone(), Some(username.clone()))?;
+            graph.add_stack_child(
+                &stack_name,
+                &parent,
+                name.clone().into(),
+                Some(username.clone()),
+            )?;
         }
     }
 
     if !in_stack && opts.track {
-        graph.add_loose_branch(name.to_string(), parent.clone(), username.clone())?;
+        graph.add_loose_branch(name.clone().into(), parent.clone(), username.clone())?;
     }
 
     // Saving the updated graph (even if it didn't change)
@@ -192,4 +197,3 @@ fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
 
     Ok(None)
 }
-

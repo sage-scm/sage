@@ -1,17 +1,17 @@
 use anyhow::{bail, Result};
 use colored::Colorize;
 
-use crate::CliOutput;
+use crate::{BranchName, CliOutput};
 
 use super::change_branch;
 
-pub fn stack_init(stack_name: &str, cli: &CliOutput) -> Result<()> {
+pub fn stack_init(stack_name: BranchName, cli: &CliOutput) -> Result<()> {
     let mut graph = sage_graph::SageGraph::load_or_default()?;
 
     let current_branch = sage_git::branch::get_current()?;
 
     // Quick exit check for a stack with the same name.
-    if graph.tracks(stack_name) {
+    if graph.tracks(&stack_name) {
         bail!("Stack or Branch with this name already exists".red())
     }
 
@@ -34,7 +34,7 @@ pub fn stack_init(stack_name: &str, cli: &CliOutput) -> Result<()> {
     // We will now create the new branch
     change_branch(
         super::ChangeBranchOpts {
-            name: stack_name.into(),
+            name: stack_name.clone(),
             parent: current_branch.clone(),
             create: true,
             fetch: true,
@@ -49,8 +49,8 @@ pub fn stack_init(stack_name: &str, cli: &CliOutput) -> Result<()> {
 
     // We will now init the stack
     cli.step_start("Initialising stack");
-    graph.new_stack(stack_name, stack_name.into())?;
-    cli.step_success("Stack initialized", Some(stack_name));
+    graph.new_stack(stack_name.to_string(), stack_name.clone().into())?;
+    cli.step_success("Stack initialized", Some(stack_name.as_str()));
 
     graph.save()?;
 

@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use sage_git::branch;
 use sage_tui::basic::select;
 
-use crate::CliOutput;
+use crate::{BranchName, CliOutput};
 
 use super::change_branch;
 
@@ -38,7 +38,7 @@ pub fn navigate(up: bool, cli: &CliOutput) -> Result<()> {
 
     change_branch(
         super::ChangeBranchOpts {
-            name: change_to.to_string(),
+            name: BranchName::new(change_to)?,
             parent: String::new(),
             create: false,
             fetch: false,
