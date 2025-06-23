@@ -1,4 +1,5 @@
 pub mod list;
+pub mod log;
 pub mod save;
 pub mod share;
 pub mod sync;
@@ -14,6 +15,7 @@ pub mod stack_init;
 pub mod stack_navigate;
 
 pub use list::list;
+pub use log::log;
 pub use save::save;
 pub use sync::sync;
 pub use work::work;
