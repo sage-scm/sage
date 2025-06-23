@@ -19,10 +19,10 @@ indicatif = "0.17.11"
 owo-colors = "4.2.0"
 anyhow = { workspace = true }
 tokio = { version = "1.36.0", features = ["full"] }
-sage-core = { version = "0.1.0", path = "../../crates/sage-core" }
-sage-git = { version = "0.1.0", path = "../../crates/sage-git" }
+sage-core = { path = "../../crates/sage-core" }
+sage-git = { path = "../../crates/sage-git" }
 sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
-sage-tui = { version = "0.1.0", path = "../../crates/sage-tui", optional = true }
+sage-tui = { path = "../../crates/sage-tui", optional = true }
 sage-config = { path = "../../crates/sage-config" }
 toml = "0.8"
 

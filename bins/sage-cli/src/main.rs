@@ -36,6 +36,9 @@ enum Command {
         watch: bool,
     },
 
+    /// Show previous commits
+    Log,
+
     /// Prune branches and reflog
     Clean {
         #[arg(long)]
@@ -249,6 +252,7 @@ async fn main() -> Result<()> {
             ConfigCmd::Unset { key } => cmd::config_unset(&key),
             ConfigCmd::Edit => cmd::config_edit(),
         },
+        Command::Log => cmd::log(),
         #[cfg(feature = "stack")]
         Command::Stack { op } => match op {
             StackCmd::Init { name } => cmd::stack_init(&name),
