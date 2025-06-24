@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::process::Command;
@@ -799,10 +799,12 @@ pub fn branch_status(branch: &str) -> Result<GitStatus> {
     // Get the branch status without switching
     let (ahead, behind) = get_branch_ahead_behind(branch)?;
     let has_stash = has_stash()?;
+    let upstream_branch = get_upstream_branch(branch)?;
 
     // For other branches, just get the basic status
     Ok(GitStatus {
         current_branch: branch.to_string(),
+        upstream_branch,
         ahead_count: ahead,
         behind_count: behind,
         has_stash,
@@ -895,7 +897,116 @@ fn has_stash() -> Result<bool> {
 
 // Update the existing status function to use branch_status
 pub fn status() -> Result<GitStatus> {
-    branch_status(get_current()?.as_str())
+    let current_branch = get_current()?;
+    let mut status = branch_status(&current_branch)?;
+    
+    // Parse the actual file status
+    let result = Command::new("git")
+        .args(["status", "--porcelain", "-z"])
+        .output()?;
+
+    if !result.status.success() {
+        return Err(anyhow!(
+            "Failed to get git status: {}",
+            String::from_utf8_lossy(&result.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8(result.stdout)?;
+    
+    // Split by null terminator for proper handling of filenames with spaces
+    for entry in stdout.split('\0') {
+        if entry.is_empty() {
+            continue;
+        }
+
+        // Git status format: XY filename
+        // X = status in index, Y = status in working tree
+        if entry.len() < 3 {
+            continue;
+        }
+
+        let status_chars = &entry[0..2];
+        let path = entry[3..].to_string();
+        
+        // Handle renamed/copied files which have format: XY oldname -> newname
+        let (status_x, status_y) = (status_chars.chars().nth(0).unwrap_or(' '), 
+                                     status_chars.chars().nth(1).unwrap_or(' '));
+
+        match (status_x, status_y) {
+            // Untracked
+            ('?', '?') => status.untracked.push(path),
+            // Ignored
+            ('!', '!') => status.ignored.push(path),
+            // Added to index
+            ('A', ' ') => status.staged_added.push(path),
+            ('A', 'M') => {
+                status.staged_added_unstaged_modified.push(path);
+            }
+            ('A', 'D') => {
+                status.staged_added_unstaged_deleted.push(path);
+            }
+            // Modified
+            ('M', ' ') => status.staged_modified.push(path),
+            ('M', 'M') => {
+                status.staged_modified_unstaged_modified.push(path);
+            }
+            ('M', 'D') => {
+                status.staged_deleted_unstaged_modified.push(path);
+            }
+            (' ', 'M') => status.unstaged_modified.push(path),
+            // Deleted
+            ('D', ' ') => status.staged_deleted.push(path),
+            ('D', 'M') => {
+                status.staged_deleted_unstaged_modified.push(path);
+            }
+            (' ', 'D') => status.unstaged_deleted.push(path),
+            // Renamed
+            ('R', ' ') => {
+                // For renamed files, parse the old -> new format
+                if let Some(arrow_pos) = path.find(" -> ") {
+                    let old_path = path[..arrow_pos].to_string();
+                    let new_path = path[arrow_pos + 4..].to_string();
+                    status.staged_renamed.push((old_path, new_path));
+                }
+            }
+            ('R', 'M') => {
+                // For renamed + modified files, we just track the new name
+                if let Some(arrow_pos) = path.find(" -> ") {
+                    let new_path = path[arrow_pos + 4..].to_string();
+                    status.staged_renamed_unstaged_modified.push(new_path);
+                }
+            }
+            // Copied
+            ('C', ' ') => {
+                // For copied files, parse the old -> new format
+                if let Some(arrow_pos) = path.find(" -> ") {
+                    let old_path = path[..arrow_pos].to_string();
+                    let new_path = path[arrow_pos + 4..].to_string();
+                    status.staged_copied.push((old_path, new_path));
+                }
+            }
+            ('C', 'M') => {
+                // For copied + modified files, we just track the new name
+                if let Some(arrow_pos) = path.find(" -> ") {
+                    let new_path = path[arrow_pos + 4..].to_string();
+                    status.staged_copied_unstaged_modified.push(new_path);
+                }
+            }
+            // Type changed
+            ('T', ' ') => status.staged_modified.push(path),
+            ('T', 'M') => {
+                status.staged_modified_unstaged_modified.push(path);
+            }
+            (' ', 'T') => status.unstaged_modified.push(path),
+            // Unmerged paths - treat as unstaged modified
+            ('U', _) | (_, 'U') => status.unstaged_modified.push(path),
+            // Unknown/other cases
+            _ => {}
+        }
+    }
+
+    Ok(status)
 }
 
 /// Get all status entries (staged, unstaged, untracked files)
@@ -929,13 +1040,22 @@ pub fn get_status_entries() -> Result<Vec<StatusEntry>> {
             continue;
         }
 
-        // Determine the status type
+        // Determine the status type based on git status format
+        // First char = index status, second char = working tree status
+        let chars: Vec<char> = status_code.chars().collect();
         let status_type = if status_code == "??" {
             StatusType::Untracked
-        } else if status_code
-            .starts_with(|c| c == 'M' || c == 'A' || c == 'D' || c == 'R' || c == 'C')
-        {
-            StatusType::Staged
+        } else if chars.len() >= 2 {
+            let index_status = chars[0];
+            let work_status = chars[1];
+            
+            if index_status != ' ' && index_status != '?' {
+                StatusType::Staged
+            } else if work_status != ' ' && work_status != '?' {
+                StatusType::Unstaged
+            } else {
+                StatusType::Unstaged // Default fallback
+            }
         } else {
             StatusType::Unstaged
         };
