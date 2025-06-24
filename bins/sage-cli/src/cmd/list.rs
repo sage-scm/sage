@@ -8,8 +8,6 @@ pub fn list(args: &crate::ListArgs) -> Result<()> {
 
     list_branches(args.stats)?;
 
-    // Create a simple hello world debug.
-    // debug!()
     cli.summary();
     Ok(())
 }
