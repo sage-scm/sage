@@ -3,6 +3,7 @@ pub mod log;
 pub mod save;
 pub mod share;
 pub mod sync;
+pub mod ui;
 pub mod work;
 // Config commands
 pub mod config_edit;
@@ -18,6 +19,7 @@ pub use list::list;
 pub use log::log;
 pub use save::save;
 pub use sync::sync;
+pub use ui::ui;
 pub use work::work;
 
 // Config commands

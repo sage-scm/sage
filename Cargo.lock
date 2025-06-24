@@ -959,9 +959,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.15.3"
+version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84b26c544d002229e640969970a2e74021aadf6e2f96372b9c58eff97de08eb3"
+checksum = "5971ac85611da7067dbfcabef3c70ebb5606018acd9e2a3903a0da507521e0d5"
 dependencies = [
  "allocator-api2",
  "equivalent",
@@ -2185,6 +2185,7 @@ dependencies = [
  "sage-tui",
  "serde",
  "serde_json",
+ "thiserror 2.0.12",
  "uuid",
 ]
 
@@ -2193,6 +2194,8 @@ name = "sage-git"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "hashbrown",
  "once_cell",
  "serde",
  "thiserror 2.0.12",

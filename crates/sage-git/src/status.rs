@@ -1,7 +1,9 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use std::fmt::Display;
+use std::process::Command;
+
+use crate::branch::get_current;
 
 /// Represents the type of status for a file
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -792,109 +794,108 @@ impl GitStatus {
     }
 }
 
-// Replace the status() function and helpers to use std::process::Command
-pub fn status() -> Result<GitStatus> {
-    let mut gs = GitStatus::default();
+/// Get the status of a specific branch without switching to it
+pub fn branch_status(branch: &str) -> Result<GitStatus> {
+    // Get the branch status without switching
+    let (ahead, behind) = get_branch_ahead_behind(branch)?;
+    let has_stash = has_stash()?;
 
-    // Get branch and status info
-    let output = Command::new("git")
-        .args(["status", "--porcelain=2", "--branch"])
-        .output()
-        .context("Failed to run git status")?;
-    if !output.status.success() {
-        return Err(anyhow!("git status failed: {}", String::from_utf8_lossy(&output.stderr)));
-    }
-    let stdout = String::from_utf8(output.stdout)?;
+    // For other branches, just get the basic status
+    Ok(GitStatus {
+        current_branch: branch.to_string(),
+        ahead_count: ahead,
+        behind_count: behind,
+        has_stash,
+        ..Default::default()
+    })
+}
 
-    // Get stash info
-    let stash_output = Command::new("git")
-        .args(["stash", "list"])
-        .output()
-        .context("Failed to run git stash list")?;
-    if !stash_output.status.success() {
-        return Err(anyhow!("git stash list failed: {}", String::from_utf8_lossy(&stash_output.stderr)));
-    }
-    let stash_stdout = String::from_utf8(stash_output.stdout)?;
-    gs.has_stash = !stash_stdout.trim().is_empty();
+/// Get the ahead and behind counts for a branch relative to its upstream
+fn get_branch_ahead_behind(branch: &str) -> Result<(usize, usize)> {
+    // Get the upstream branch name
+    let upstream = get_upstream_branch(branch)?;
 
-    // Parse status output
-    for line in stdout.lines() {
-        if line.starts_with("# branch.head ") {
-            gs.current_branch = line[13..].trim().to_string();
-        } else if line.starts_with("# branch.upstream ") {
-            gs.upstream_branch = Some(line[17..].trim().to_string());
-        } else if line.starts_with("# branch.ab ") {
-            // Format: # branch.ab +<ahead> -<behind>
-            let ab = line[13..].trim();
-            for part in ab.split_whitespace() {
-                if part.starts_with('+') {
-                    gs.ahead_count = part[1..].parse().unwrap_or(0);
-                } else if part.starts_with('-') {
-                    gs.behind_count = part[1..].parse().unwrap_or(0);
-                }
-            }
-        } else if line.starts_with("1 ") || line.starts_with("2 ") {
-            // Format: 1 <XY> ... <path>
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() < 8 { continue; }
-            let x = parts[1].chars().nth(0).unwrap_or(' ');
-            let y = parts[1].chars().nth(1).unwrap_or(' ');
-            let path = parts[7].to_string();
-            // Staged (index) status
-            match x {
-                'A' => gs.staged_added.push(path.clone()),
-                'M' => gs.staged_modified.push(path.clone()),
-                'D' => gs.staged_deleted.push(path.clone()),
-                'R' => {
-                    // Renamed: 2 <XY> ... <src> <dst>
-                    if line.starts_with("2 ") && parts.len() >= 9 {
-                        gs.staged_renamed.push((parts[8].to_string(), path.clone()));
-                    }
-                },
-                'C' => {
-                    // Copied: 2 <XY> ... <src> <dst>
-                    if line.starts_with("2 ") && parts.len() >= 9 {
-                        gs.staged_copied.push((parts[8].to_string(), path.clone()));
-                    }
-                },
-                _ => {}
-            }
-            // Unstaged (worktree) status
-            match y {
-                'M' => gs.unstaged_modified.push(path.clone()),
-                'D' => gs.unstaged_deleted.push(path.clone()),
-                _ => {}
-            }
-            // Combined states
-            if x == 'M' && y == 'M' {
-                gs.staged_modified_unstaged_modified.push(path.clone());
-            } else if x == 'A' && y == 'M' {
-                gs.staged_added_unstaged_modified.push(path.clone());
-            } else if x == 'A' && y == 'D' {
-                gs.staged_added_unstaged_deleted.push(path.clone());
-            } else if x == 'D' && y == 'M' {
-                gs.staged_deleted_unstaged_modified.push(path.clone());
-            } else if x == 'R' && y == 'M' {
-                gs.staged_renamed_unstaged_modified.push(path.clone());
-            } else if x == 'C' && y == 'M' {
-                gs.staged_copied_unstaged_modified.push(path.clone());
-            }
-        } else if line.starts_with("? ") {
-            // Untracked
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 {
-                gs.untracked.push(parts[1].to_string());
-            }
-        } else if line.starts_with("! ") {
-            // Ignored
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 {
-                gs.ignored.push(parts[1].to_string());
-            }
+    if let Some(upstream) = upstream {
+        // Get the merge base between the branch and its upstream
+        let merge_base = Command::new("git")
+            .args(["merge-base", branch, &upstream])
+            .output()?;
+
+        if !merge_base.status.success() {
+            return Ok((0, 0));
         }
-    }
 
-    Ok(gs)
+        let merge_base = String::from_utf8(merge_base.stdout)?.trim().to_string();
+
+        // Count commits ahead (in branch but not in upstream)
+        let ahead = Command::new("git")
+            .args([
+                "rev-list",
+                "--count",
+                &format!("{}..{}", merge_base, branch),
+            ])
+            .output()?;
+
+        // Count commits behind (in upstream but not in branch)
+        let behind = Command::new("git")
+            .args([
+                "rev-list",
+                "--count",
+                &format!("{}..{}", merge_base, &upstream),
+            ])
+            .output()?;
+
+        let ahead_count = if ahead.status.success() {
+            String::from_utf8(ahead.stdout)?.trim().parse().unwrap_or(0)
+        } else {
+            0
+        };
+
+        let behind_count = if behind.status.success() {
+            String::from_utf8(behind.stdout)?
+                .trim()
+                .parse()
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        Ok((ahead_count, behind_count))
+    } else {
+        // No upstream set
+        Ok((0, 0))
+    }
+}
+
+/// Get the upstream branch name for a given branch
+fn get_upstream_branch(branch: &str) -> Result<Option<String>> {
+    let output = Command::new("git")
+        .args([
+            "rev-parse",
+            "--abbrev-ref",
+            &format!("{}@{{upstream}}", branch),
+        ])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let upstream = String::from_utf8(output.stdout)?.trim().to_string();
+            Ok(Some(upstream))
+        }
+        _ => Ok(None), // No upstream set
+    }
+}
+
+/// Check if there are any stashed changes
+fn has_stash() -> Result<bool> {
+    let output = Command::new("git").args(["stash", "list"]).output()?;
+
+    Ok(!output.stdout.is_empty())
+}
+
+// Update the existing status function to use branch_status
+pub fn status() -> Result<GitStatus> {
+    branch_status(get_current()?.as_str())
 }
 
 /// Get all status entries (staged, unstaged, untracked files)

@@ -253,6 +253,7 @@ async fn main() -> Result<()> {
             ConfigCmd::Edit => cmd::config_edit(),
         },
         Command::Log => cmd::log(),
+
         #[cfg(feature = "stack")]
         Command::Stack { op } => match op {
             StackCmd::Init { name } => cmd::stack_init(&name),
@@ -260,6 +261,9 @@ async fn main() -> Result<()> {
             StackCmd::Prev => cmd::stack_navigate::up(),
             _ => todo!(),
         },
+
+        #[cfg(feature = "tui")]
+        Command::Ui => cmd::ui(),
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
@@ -277,7 +281,5 @@ async fn main() -> Result<()> {
         Command::Plugin { cmd } => todo!("plugin {:?}", cmd),
         #[cfg(feature = "ai")]
         Command::Tips => todo!("tips"),
-        #[cfg(feature = "tui")]
-        Command::Ui => todo!("ui"),
     }
 }

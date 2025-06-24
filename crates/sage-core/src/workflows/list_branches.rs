@@ -1,16 +1,11 @@
 use anyhow::Result;
-use sage_git::status;
+use sage_git::status::branch_status;
 
 pub fn list_branches(stats: bool) -> Result<()> {
     let branches = sage_git::branch::list_branches()?;
-
     let current_branch = sage_git::branch::get_current()?;
 
     for branch in branches {
-        // We need to switch to the branch to get the status.
-        sage_git::branch::switch(&branch, false)?;
-        let branch_status = status::status()?;
-
         let prefix = if branch == current_branch {
             "●  "
         } else {
@@ -18,18 +13,18 @@ pub fn list_branches(stats: bool) -> Result<()> {
         };
 
         let branch_status = if stats {
-            &format!(
-                "↑{} ↓{}",
-                branch_status.ahead_count, branch_status.behind_count
-            )
+            let status = branch_status(&branch)?;
+            if status.ahead_count > 0 || status.behind_count > 0 {
+                format!(" ↑{} ↓{}", status.ahead_count, status.behind_count)
+            } else {
+                String::new()
+            }
         } else {
-            ""
+            String::new()
         };
 
-        println!("{} {} {}", prefix, branch, branch_status);
+        println!("{} {}{}", prefix, branch, branch_status);
     }
-
-    sage_git::branch::switch(&current_branch, false)?;
 
     Ok(())
 }
