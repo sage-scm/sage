@@ -23,12 +23,18 @@ pub async fn ask(prompt: &str) -> Result<String> {
             .context("Failed to get OPENAI_API_KEY environment variable")?;
     }
 
+    println!("API_URL: {api_url}");
+    println!("API_KEY: {api_key}");
+    println!("AI_MODEL: {ai_model}");
+
     // Build client
     let mut client = OpenAIClient::builder()
         .with_endpoint(api_url)
         .with_api_key(&api_key)
         .build()
         .expect("Failed to build OpenAI client");
+
+    println!("HERE");
 
     // Create request with the o4-mini model for speed
     let req = ChatCompletionRequest::new(

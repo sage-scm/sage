@@ -1,9 +1,6 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
-use hashbrown::HashMap;
 use std::process::Command;
-
-use crate::branch::get_current;
 
 // Commit an empty git commit and return the short commit ID
 pub fn commit_empty() -> Result<String> {

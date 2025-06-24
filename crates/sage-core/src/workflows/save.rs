@@ -92,6 +92,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     }
 
     cli.step_start("Creating commit");
+
     // Create the commit and get the commit ID
     let commit_id = match commit::commit(&commit_message) {
         Ok(id) => id,
