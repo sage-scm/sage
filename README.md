@@ -59,6 +59,33 @@ Enable feature flags for extra **stack**, **ai**, and **tui** commands.
 
 ---
 
+## Using Ollama for AI Features
+
+To configure Sage to use your locally running Ollama API for AI-powered commit messages:
+
+```bash
+# Set the AI provider to Ollama
+sage config set ai.provider ollama
+
+# Set the API endpoint (default Ollama port is 11434)
+sage config set ai.api_endpoint http://localhost:11434
+
+# Set your preferred model (e.g., llama2, codellama, mistral)
+sage config set ai.model gemma3n:latest
+
+# Verify your configuration
+sage config get ai
+```
+
+Now you can use AI features with your local Ollama instance:
+
+```bash
+# Generate commit message using local Ollama
+sage save --ai
+```
+
+---
+
 ## Layout
 
 ```
