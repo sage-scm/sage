@@ -13,13 +13,13 @@ Sage wraps everyday Git pain points behind a single, intuitive CLI (and an optio
 ## Why Sage?
 
 * 🌱 **Elegantly simple** – zero mental overhead, readable Rust, no hidden
-  side‑effects  
+  side‑effects
 * ✨ **DX first** – colourful output, progress bars, AI‑assisted commit
-  messages (opt‑in)  
-* 🪄 **Stack aware** – restack, navigate, submit for review in seconds  
+  messages (opt‑in)
+* 🪄 **Stack aware** – restack, navigate, submit for review in seconds
 * 🔌 **Plugin hooks** – extend every lifecycle stage with your own Rust or
-  shell plugins  
-* 🖥️ **TUI** – full‑screen dashboard (enable with `--features tui`)  
+  shell plugins
+* 🖥️ **TUI** – full‑screen dashboard (enable with `--features tui`)
 
 ---
 
@@ -33,7 +33,7 @@ cargo run --bin sage-cli -- work my-feature
 cargo run -F stack,tui --bin sage-cli -- ui
 ```
 
-> **Note**: `--features stack` turns on advanced stacked‑diff commands,  
+> **Note**: `--features stack` turns on advanced stacked‑diff commands,
 > `--features ai` enables AI commit message generation.
 
 ---
@@ -64,9 +64,6 @@ Enable feature flags for extra **stack**, **ai**, and **tui** commands.
 To configure Sage to use your locally running Ollama API for AI-powered commit messages:
 
 ```bash
-# Set the AI provider to Ollama
-sage config set ai.provider ollama
-
 # Set the API endpoint (default Ollama port is 11434)
 sage config set ai.api_endpoint http://localhost:11434
 
@@ -125,9 +122,9 @@ We believe in using our own medicine. Throughout development **Sage manages its 
 
 ## Contributing
 
-1. Fork & clone  
-2. `cargo run …` – hack away  
-3. Make sure `cargo fmt` and `cargo clippy` are clean  
+1. Fork & clone
+2. `cargo run …` – hack away
+3. Make sure `cargo fmt` and `cargo clippy` are clean
 4. Submit a PR 🚀
 
 ---
@@ -141,7 +138,7 @@ Sage is **early‑stage and evolving rapidly**. The commands, feature flags, and
 
 Licensed under either of
 
-* **MIT** – see [LICENSE-MIT](./LICENSE-MIT) or <http://opensource.org/licenses/MIT>  
+* **MIT** – see [LICENSE-MIT](./LICENSE-MIT) or <http://opensource.org/licenses/MIT>
 * **Apache 2.0** – see [LICENSE-APACHE](./LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>
 
 at your option.
