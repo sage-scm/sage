@@ -17,10 +17,15 @@ pub async fn ask(prompt: &str) -> Result<String> {
     let mut api_key = cfg.ai.api_key;
     let ai_model = cfg.ai.model;
 
-    // Get API key
+    // Get API key - for local endpoints like Ollama, we can use a dummy key
     if api_key.is_empty() {
-        api_key = env::var("OPENAI_API_KEY")
-            .context("Failed to get OPENAI_API_KEY environment variable")?;
+        // Check if it's a local endpoint that doesn't need authentication
+        if api_url.contains("localhost") || api_url.contains("127.0.0.1") {
+            api_key = String::from("ollama"); // Dummy key for local endpoints
+        } else {
+            api_key = env::var("OPENAI_API_KEY")
+                .context("Failed to get OPENAI_API_KEY environment variable")?;
+        }
     }
 
     // Build client
