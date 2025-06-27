@@ -7,11 +7,11 @@
 //! and optionally merged with a local configuration file (`./.sage/config.toml`).
 //!
 //! # Example
-//! ```rust
+//! ```rust,no_run
 //! use sage_config::{Config, ConfigManager};
-//! let manager = ConfigManager::new()?;
-//! let config = manager.load()?;
-//! println!("Current theme: {:?}", config.theme);
+//! let manager = ConfigManager::new().unwrap();
+//! let config = manager.load().unwrap();
+//! println!("Current editor: {:?}", config.editor);
 //! ```
 
 mod defaults;

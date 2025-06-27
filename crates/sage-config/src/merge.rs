@@ -2,11 +2,14 @@ use crate::model::*;
 
 impl Config {
     pub fn merge_from(&mut self, other: &Self) {
-        if !other.editor.is_empty() {
+        if !other.editor.is_empty() && other.editor != "code" {
             self.editor = other.editor.clone();
         }
-        self.auto_update = other.auto_update;
-        if !other.plugin_dirs.is_empty() {
+        // Only override auto_update if it's explicitly set to false (non-default)
+        if !other.auto_update {
+            self.auto_update = other.auto_update;
+        }
+        if !other.plugin_dirs.is_empty() && other.plugin_dirs != vec!["plugins"] {
             self.plugin_dirs = other.plugin_dirs.clone();
         }
         self.tui.merge_from(&other.tui);
@@ -21,20 +24,23 @@ impl TuiConfig {
         if other.font_size != 14 {
             self.font_size = other.font_size;
         }
-        if !other.color_theme.is_empty() {
+        if !other.color_theme.is_empty() && other.color_theme != "SageDark" {
             self.color_theme = other.color_theme.clone();
         }
-        self.line_numbers = other.line_numbers;
+        // Only override line_numbers if it's explicitly set to false (non-default)
+        if !other.line_numbers {
+            self.line_numbers = other.line_numbers;
+        }
         self.extras.extend(other.extras.clone());
     }
 }
 
 impl AiConfig {
     pub fn merge_from(&mut self, other: &Self) {
-        if !other.model.is_empty() {
+        if !other.model.is_empty() && other.model != "o4-mini" {
             self.model = other.model.clone();
         }
-        if !other.api_url.is_empty() {
+        if !other.api_url.is_empty() && other.api_url != "https://api.openai.com/v1/" {
             self.api_url = other.api_url.clone();
         }
         if !other.api_key.is_empty() {
@@ -49,11 +55,14 @@ impl AiConfig {
 
 impl PrConfig {
     pub fn merge_from(&mut self, other: &Self) {
-        self.enabled = other.enabled;
-        if !other.default_base.is_empty() {
+        // Only override enabled if it's explicitly set to true (non-default)
+        if other.enabled {
+            self.enabled = other.enabled;
+        }
+        if !other.default_base.is_empty() && other.default_base != "main" {
             self.default_base = other.default_base.clone();
         }
-        if !other.provider.is_empty() {
+        if !other.provider.is_empty() && other.provider != "github" {
             self.provider = other.provider.clone();
         }
         if !other.access_token.is_empty() {
