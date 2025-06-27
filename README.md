@@ -65,7 +65,7 @@ To configure Sage to use your locally running Ollama API for AI-powered commit m
 
 ```bash
 # Set the API endpoint (default Ollama port is 11434)
-sage config set ai.api_endpoint http://localhost:11434
+sage config set ai.api_url http://localhost:11434
 
 # Set your preferred model (e.g., llama2, codellama, mistral)
 sage config set ai.model gemma3n:latest
