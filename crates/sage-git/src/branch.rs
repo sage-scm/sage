@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use once_cell::sync::Lazy;
 use std::process::Command;
 
