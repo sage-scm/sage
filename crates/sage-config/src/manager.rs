@@ -75,7 +75,7 @@ impl ConfigManager {
         } else {
             &self.global_path
         };
-        let mut config = self.read_config(path).unwrap_or(Config::default());
+        let mut config = self.read_config(path).unwrap_or_else(|_| Config::default());
         // Overwrite fields directly
         config.editor = update.editor.clone();
         config.auto_update = update.auto_update;
@@ -99,10 +99,10 @@ impl ConfigManager {
         Ok(())
     }
 
-    /// Reads a config from a file, returning empty config if not present.
+    /// Reads a config from a file, returning an error if not present.
     fn read_config(&self, path: &Path) -> Result<Config, ConfigError> {
         if !path.exists() {
-            return Ok(Config::empty());
+            return Err(ConfigError::ConfigPathNotFound);
         }
         let mut buf = String::new();
         fs::File::open(path)?.read_to_string(&mut buf)?;
@@ -155,5 +155,74 @@ mod tests {
         manager.update(&update, true).unwrap();
         let updated_cfg = manager.read_config(&local_path).unwrap();
         assert_eq!(updated_cfg.editor, "vim".to_string());
+    }
+
+    #[test]
+    fn boolean_merge_preserves_global_config() {
+        let dir = tempdir().unwrap();
+        let global_dir = dir.path().join("user/.config/sage");
+        let _ = fs::create_dir_all(&global_dir);
+
+        let global_path = global_dir.join(CONFIG_FILENAME);
+
+        // Setup global config with auto_update = false (non-default)
+        let global_cfg_str = r#"
+editor = "nano"
+auto_update = false
+
+[tui]
+line_numbers = false
+"#;
+        fs::write(&global_path, global_cfg_str).unwrap();
+
+        // Local config with only editor specified (auto_update will get default true)
+        let local_dir = dir.path().join("repo/.sage");
+        let _ = fs::create_dir_all(&local_dir);
+        let local_path = local_dir.join(CONFIG_FILENAME);
+        let local_cfg_str = r#"
+editor = "vim"
+"#;
+        fs::write(&local_path, local_cfg_str).unwrap();
+
+        // Point manager at our test paths
+        let manager = ConfigManager {
+            global_path: global_path.clone(),
+            local_path: local_path.clone(),
+        };
+
+        // Load config: global auto_update = false should be preserved
+        let cfg = manager.load().unwrap();
+        assert_eq!(cfg.editor, "vim".to_string(), "Local editor should override global");
+        assert_eq!(cfg.auto_update, false, "Global auto_update=false should be preserved");
+        assert_eq!(cfg.tui.line_numbers, false, "Global line_numbers=false should be preserved");
+    }
+
+    #[test]
+    fn global_config_without_local() {
+        let dir = tempdir().unwrap();
+        let global_dir = dir.path().join("user/.config/sage");
+        let _ = fs::create_dir_all(&global_dir);
+
+        let global_path = global_dir.join(CONFIG_FILENAME);
+
+        // Setup global config with custom ai.api_url
+        let global_cfg_str = r#"
+[ai]
+api_url = "wow"
+"#;
+        fs::write(&global_path, global_cfg_str).unwrap();
+
+        // Local config path that doesn't exist
+        let local_path = dir.path().join("repo/.sage").join(CONFIG_FILENAME);
+
+        // Point manager at our test paths
+        let manager = ConfigManager {
+            global_path: global_path.clone(),
+            local_path: local_path.clone(),
+        };
+
+        // Load config: global ai.api_url should be "wow"
+        let cfg = manager.load().unwrap();
+        assert_eq!(cfg.ai.api_url, "wow", "Global ai.api_url should be preserved when no local config exists");
     }
 }
