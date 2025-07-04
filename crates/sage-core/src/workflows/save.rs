@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use colored::Colorize;
 use sage_git::{
     amend::{self, AmendOpts},
@@ -8,7 +8,7 @@ use sage_git::{
 };
 use sage_tui::basic::check;
 
-use crate::{commit::commit_message, CliOutput};
+use crate::{CliOutput, commit::commit_message};
 
 #[derive(Debug, Default)]
 pub struct SaveOpts {
@@ -29,6 +29,9 @@ pub struct SaveOpts {
 }
 
 pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
+    let config = sage_config::ConfigManager::new()?;
+    let cfg = config.load()?;
+
     // Check if a message is required (do this early)
     if !opts.empty && !opts.amend && opts.message.is_empty() && !opts.ai {
         return Err(anyhow!(
@@ -45,7 +48,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     // Handle staging
     cli.step_start("Staging files");
     // The other half of this step gets concluded inside the `stage_correct_files` function
-    stage_correct_files(opts, cli)?;
+    stage_correct_files(opts, cli, &cfg)?;
     let commit_message = get_commit_message(opts, cli).await?;
 
     if opts.empty && !opts.amend {
@@ -143,7 +146,7 @@ fn push_changes(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 }
 
 /// Determines the files to stage for the commit.
-fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
+fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Config) -> Result<()> {
     let staged_changes = has_staged_changes()?;
     let unstaged_changes = has_unstaged_changes()?;
     let untracked_files = has_untracked_files()?;
@@ -194,6 +197,12 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
     // User has already staged their changes.
     if staged_changes && !unstaged_changes && !untracked_files {
+        cli.step_success("Using staged changes", None);
+        return Ok(());
+    }
+
+    // Early exit if there are staged changes and the ask_on_mixed_staging is disabled
+    if staged_changes && !cfg.save.ask_on_mixed_staging {
         cli.step_success("Using staged changes", None);
         return Ok(());
     }

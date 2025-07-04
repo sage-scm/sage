@@ -9,10 +9,19 @@ impl Default for Config {
             editor: String::from("code"),
             auto_update: true,
             plugin_dirs: vec![String::from("plugins")],
+            save: SaveConfig::default(),
             tui: TuiConfig::default(),
             ai: AiConfig::default(),
             pull_requests: PrConfig::default(),
             extras: HashMap::new(),
+        }
+    }
+}
+
+impl Default for SaveConfig {
+    fn default() -> Self {
+        Self {
+            ask_on_mixed_staging: true,
         }
     }
 }
