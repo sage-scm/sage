@@ -73,6 +73,7 @@ enum Command {
     List(ListArgs),
 
     /// Config management
+    #[clap(alias = "c")]
     Config {
         #[command(subcommand)]
         op: ConfigCmd,
@@ -176,10 +177,13 @@ pub struct ShareArgs {
 #[derive(Subcommand, Debug)]
 pub enum ConfigCmd {
     /// List all available configuration options with their current values
+    #[clap(alias = "l")]
     List,
     /// Get the value of a specific configuration key
+    #[clap(alias = "g")]
     Get { key: String },
     /// Set a configuration value
+    #[clap(alias = "s")]
     Set {
         key: String,
         value: String,
@@ -187,8 +191,10 @@ pub enum ConfigCmd {
         local: bool,
     },
     /// Unset a configuration value
+    #[clap(alias = "u")]
     Unset { key: String },
     /// Open the configuration file in your default editor
+    #[clap(alias = "e")]
     Edit,
 }
 
