@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use sage_core::check_for_updates;
 
 mod cmd;
 
@@ -239,6 +240,8 @@ pub enum StackCmd {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _ = check_for_updates().await;
+
     let cli = Cli::parse();
     match cli.command {
         // Synchronous commands
