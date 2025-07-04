@@ -1,7 +1,7 @@
 pub mod commit;
 pub mod prompts;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use openai_api_rs::v1::{
     api::OpenAIClient,
     chat_completion::{self, ChatCompletionRequest},
