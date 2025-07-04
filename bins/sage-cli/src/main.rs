@@ -240,7 +240,12 @@ pub enum StackCmd {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _ = check_for_updates().await;
+    let config = sage_config::ConfigManager::new()?;
+    let cfg = config.load()?;
+
+    if cfg.auto_update {
+        let _ = check_for_updates().await;
+    }
 
     let cli = Cli::parse();
     match cli.command {
