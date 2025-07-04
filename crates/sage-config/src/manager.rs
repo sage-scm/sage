@@ -80,6 +80,7 @@ impl ConfigManager {
         config.editor = update.editor.clone();
         config.auto_update = update.auto_update;
         config.plugin_dirs = update.plugin_dirs.clone();
+        config.save = update.save.clone();
         config.tui = update.tui.clone();
         config.ai = update.ai.clone();
         config.pull_requests = update.pull_requests.clone();

@@ -23,6 +23,8 @@ pub fn config_get(key: &str) -> Result<()> {
         ["pull_requests", "default_base"] => println!("{}", cfg.pull_requests.default_base),
         ["pull_requests", "provider"] => println!("{}", cfg.pull_requests.provider),
         ["pull_requests", "access_token"] => println!("{}", cfg.pull_requests.access_token),
+        ["save"] => println!("{:?}", cfg.save),
+        ["save", "ask_on_mixed_staging"] => println!("{}", cfg.save.ask_on_mixed_staging),
         ["extras", extra_key] => {
             if let Some(val) = cfg.extras.get(*extra_key) {
                 println!("{}", val);

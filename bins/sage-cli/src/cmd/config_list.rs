@@ -66,6 +66,17 @@ pub fn config_list() -> Result<()> {
             config.ai.max_tokens
         ),
     );
+    config_map.insert(
+        "ai.api_key",
+        format!(
+            "{}  # API key for LLM provider authentication",
+            if config.ai.api_key.is_empty() {
+                "<not set>".to_string()
+            } else {
+                "***".repeat(config.ai.api_key.len().min(20))
+            }
+        ),
+    );
 
     // Pull Requests config
     config_map.insert(
@@ -87,6 +98,26 @@ pub fn config_list() -> Result<()> {
         format!(
             "{}  # Git provider (github/gitlab/etc)",
             config.pull_requests.provider
+        ),
+    );
+    config_map.insert(
+        "pull_requests.access_token",
+        format!(
+            "{}  # Personal access token for PR authentication",
+            if config.pull_requests.access_token.is_empty() {
+                "<not set>".to_string()
+            } else {
+                "***".repeat(config.pull_requests.access_token.len().min(20))
+            }
+        ),
+    );
+
+    // Save config
+    config_map.insert(
+        "save.ask_on_mixed_staging",
+        format!(
+            "{}  # Ask when both staged and unstaged changes exist",
+            config.save.ask_on_mixed_staging
         ),
     );
 

@@ -17,6 +17,9 @@ pub struct Config {
     /// List of plugin directories
     pub plugin_dirs: Vec<String>,
 
+    /// Save config and options
+    pub save: SaveConfig,
+
     /// Built-in and extension configuration data for the terminal user interface
     pub tui: TuiConfig,
 
@@ -28,6 +31,13 @@ pub struct Config {
 
     /// Custom key-value configuration
     pub extras: HashMap<String, toml::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SaveConfig {
+    /// Weather to ask if you want to add all files to staging on a mixed stage detection
+    pub ask_on_mixed_staging: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

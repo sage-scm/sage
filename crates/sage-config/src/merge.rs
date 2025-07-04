@@ -12,10 +12,20 @@ impl Config {
         if !other.plugin_dirs.is_empty() && other.plugin_dirs != vec!["plugins"] {
             self.plugin_dirs = other.plugin_dirs.clone();
         }
+        self.save.merge_from(&other.save);
         self.tui.merge_from(&other.tui);
         self.ai.merge_from(&other.ai);
         self.pull_requests.merge_from(&other.pull_requests);
         self.extras.extend(other.extras.clone());
+    }
+}
+
+impl SaveConfig {
+    pub fn merge_from(&mut self, other: &Self) {
+        // Only override ask_on_mixed_staging if it's explicitly set to false (non-default)
+        if !other.ask_on_mixed_staging {
+            self.ask_on_mixed_staging = other.ask_on_mixed_staging;
+        }
     }
 }
 
