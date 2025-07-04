@@ -1,6 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use colored::Colorize;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use sage_git::{
     branch::{exists, get_current, get_default_branch, list_branches, push, switch},
     repo::{fetch_remote, get_commiter},
