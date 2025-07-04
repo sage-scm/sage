@@ -31,7 +31,7 @@ impl Default for TuiConfig {
 impl Default for AiConfig {
     fn default() -> Self {
         Self {
-            model: String::from("o4-mini"),
+            model: String::from("gpt-4.1-nano"),
             api_url: String::from("https://api.openai.com/v1/"),
             api_key: String::from(""),
             max_tokens: 4096,
