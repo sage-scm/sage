@@ -21,3 +21,5 @@ octocrab = "0.44"
 sage-config = { path = "../sage-config" }
 console = "0.15.11"
 thiserror.workspace = true
+semver = { version = "1.0.26", features = ["serde"] }
+dirs = "6.0.0"
