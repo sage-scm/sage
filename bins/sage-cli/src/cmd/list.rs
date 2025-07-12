@@ -1,12 +1,12 @@
 use anyhow::Result;
-use sage_core::list_branches;
 use sage_core::CliOutput;
+use sage_core::list_branches;
 
-pub fn list(args: &crate::ListArgs) -> Result<()> {
+pub fn list() -> Result<()> {
     let cli = CliOutput::new();
     cli.header("list");
 
-    list_branches(args.stats)?;
+    list_branches()?;
 
     cli.summary();
     Ok(())

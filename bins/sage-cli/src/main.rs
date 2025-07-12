@@ -70,7 +70,7 @@ enum Command {
     },
 
     /// List local branches
-    List(ListArgs),
+    List,
 
     /// Config management
     #[clap(alias = "c")]
@@ -149,13 +149,6 @@ pub struct WorkArgs {
     /// Fuzzy search for branch name
     #[clap(long, short = 'z', default_value = "false")]
     fuzzy: bool,
-}
-
-#[derive(Args, Debug)]
-pub struct ListArgs {
-    /// Show above and below stats
-    #[arg(short, long)]
-    stats: bool,
 }
 
 #[derive(Args, Debug)]
@@ -258,7 +251,7 @@ async fn main() -> Result<()> {
         // Synchronous commands
         Command::Work(args) => cmd::work(&args),
         Command::Sync(args) => cmd::sync(&args),
-        Command::List(args) => cmd::list(&args),
+        Command::List => cmd::list(),
         Command::Config { op } => match op {
             ConfigCmd::List => cmd::config_list(),
             ConfigCmd::Get { key } => cmd::config_get(&key),
