@@ -257,3 +257,33 @@ pub fn merge(branch: &str) -> Result<()> {
 
     Ok(())
 }
+
+/// Simple ahead and behind for when you dont need the full status
+pub fn ahead_behind(base: &str, compare: &str) -> Result<(i32, i32)> {
+    let res = Command::new("git")
+        .arg("rev-list")
+        .arg("--left-right")
+        .arg("--count")
+        .arg(format!("{}...{}", base, compare))
+        .output()?;
+
+    if !res.status.success() {
+        bail!(
+            "Failed to get ahead and behind for '{}': {}",
+            compare,
+            String::from_utf8_lossy(&res.stderr)
+        )
+    }
+
+    let stdout = String::from_utf8(res.stdout)?;
+    let parts: Vec<&str> = stdout.trim().split('\t').collect();
+    
+    if parts.len() != 2 {
+        bail!("Unexpected output format from git rev-list");
+    }
+
+    let ahead = parts[0].parse::<i32>()?;
+    let behind = parts[1].parse::<i32>()?;
+
+    Ok((ahead, behind))
+}
