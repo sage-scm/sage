@@ -37,6 +37,9 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Set up Git
         run: |
           # Configure Git to use the service account identity
@@ -49,14 +52,13 @@ jobs:
           rustc --version
           cargo --version
           cargo fmt --version
+          just --version
 
       # Run cargo fmt with verbose output for debugging
       - name: Run cargo fmt
         run: |
-          # First try with the specific config
-          cargo fmt --all -- --config imports_granularity=Item || \
-          # If that fails, try without the specific config
-          cargo fmt --all
+          # Use justfile fmt command which handles all formatting
+          just fmt
 
       - name: Check for changes
         id: git-check

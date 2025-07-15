@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+      
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Install just
+        uses: taiki-e/install-action@just
+        
+      - name: Run pre-release checks
+        run: just pre-release
+
+  build:
+    name: Build Release
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset_name: sage-linux-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset_name: sage-macos-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset_name: sage-macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          
+      - name: Install just
+        uses: taiki-e/install-action@just
+        
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          
+      - name: Build release
+        run: |
+          export CARGO_BUILD_TARGET=${{ matrix.target }}
+          just release
+          
+      - name: Package binary
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.asset_name }}.tar.gz sage
+          mv ${{ matrix.asset_name }}.tar.gz ../../../
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: Sage ${{ needs.prepare.outputs.version }}
+          draft: false
+          prerelease: false
+          files: artifacts/**/*.tar.gz
+          body: |
+            ## What's Changed
+            
+            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ## Installation
+            
+            ### macOS/Linux
+            ```bash
+            # Download the appropriate binary for your system
+            curl -L https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.version }}/sage-{platform}.tar.gz | tar xz
+            sudo mv sage /usr/local/bin/
+            ```
+            
+            ### Build from source
+            ```bash
+            cargo install --git https://github.com/${{ github.repository }} --tag ${{ needs.prepare.outputs.version }} sage-cli
+            ```
