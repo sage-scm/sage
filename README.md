@@ -26,11 +26,15 @@ Sage wraps everyday Git pain points behind a single, intuitive CLI (and an optio
 ## Quick start
 
 ```bash
-# build the CLI (core features only)
-cargo run --bin sage-cli -- work my-feature
+# Install sage with all features
+just install
 
-# enable extras
-cargo run -F stack,tui --bin sage-cli -- ui
+# Or install with specific features
+just install-only --stack --ai
+
+# Try commands without installing
+just try work my-feature
+just try-with stack,tui dash
 ```
 
 > **Note**: `--features stack` turns on advanced stacked‑diff commands,
@@ -102,15 +106,26 @@ sage/
 
 ---
 
-## Building
+## Development
 
 ```bash
-# check build
-cargo check
+# Quick check if code compiles
+just check
 
-# run tests across workspace
-cargo test --all
+# Run tests
+just test
+
+# Watch for changes and auto-rebuild
+just watch
+
+# Run full CI pipeline locally
+just ci
+
+# Build release version
+just release
 ```
+
+For more development commands, run `just help`.
 
 ---
 
@@ -123,8 +138,8 @@ We believe in using our own medicine. Throughout development **Sage manages its 
 ## Contributing
 
 1. Fork & clone
-2. `cargo run …` – hack away
-3. Make sure `cargo fmt` and `cargo clippy` are clean
+2. `just watch` – auto-rebuild on changes
+3. `just ci` – ensures code passes all checks
 4. Submit a PR 🚀
 
 ---
