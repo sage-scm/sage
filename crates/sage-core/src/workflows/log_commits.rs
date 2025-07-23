@@ -3,7 +3,7 @@ use anyhow::Result;
 use colored::Colorize;
 use sage_git::{branch::get_current, commit::commits};
 
-pub fn log_commits(cli: &CliOutput) -> Result<()> {
+pub fn log_commits() -> Result<()> {
     let mut logs = commits()?;
 
     let current_branch = get_current()?;

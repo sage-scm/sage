@@ -160,3 +160,41 @@ pub fn get_commiter() -> Result<(String, String)> {
     let email = String::from_utf8(email_cmd.stdout)?.trim().to_string();
     Ok((name, email))
 }
+
+/// get the owner and repo name from the remote URL
+pub fn owner_repo() -> Result<(String, String)> {
+    let result = Command::new("git")
+        .arg("remote")
+        .arg("get-url")
+        .arg("origin")
+        .output()?;
+
+    // The repo url could be SSH or it could be HTTPS
+    // We are going to handle both cases here.
+
+    let remote_url = String::from_utf8(result.stdout)?.trim().to_string();
+    if remote_url.starts_with("git@github.com:") {
+        let parts = remote_url
+            .trim_start_matches("git@github.com:")
+            .trim_end_matches(".git")
+            .split('/')
+            .collect::<Vec<_>>();
+
+        if parts.len() >= 2 {
+            return Ok((parts[0].to_string(), parts[1].to_string()));
+        }
+    }
+
+    // If we are here... we have an HTTPS URL
+    let parts = remote_url
+        .trim_start_matches("https://github.com/")
+        .trim_end_matches(".git")
+        .split("/")
+        .collect::<Vec<_>>();
+
+    if parts.len() >= 2 {
+        return Ok((parts[0].to_string(), parts[1].to_string()));
+    }
+
+    unreachable!("Invalid remote URL");
+}
