@@ -3,79 +3,27 @@
 /// Maximum tokens that can be processed in a single request
 pub const MAX_TOKENS: usize = 1_048_576;
 
-/// Prompt for generating commit messages
-pub fn commit_message_prompt(diff: &str) -> String {
-    let prefix = r#"
-    You are a precise git commit message generator. Your task is to analyze the following code changes and generate a specific, meaningful commit message that follows the Conventional Commits specification.
-
-Guidelines:
-1. Use one of these types based on the ACTUAL content of the changes:
-   - feat: A new feature or significant enhancement
-   - fix: A bug fix
-   - docs: Documentation changes
-   - style: Code style changes (formatting, missing semi-colons, etc)
-   - refactor: Code changes that neither fix a bug nor add a feature
-   - test: Adding or modifying tests
-   - ci: Changes to CI/CD configuration and scripts
-   - chore: Changes to build process or auxiliary tools
-
-2. Format: <type>(<scope>): <description>
-   Examples:
-   - feat(auth): add user authentication system
-   - fix(parser): resolve null pointer in data processing
-   - style(ui): align button elements consistently
-3. IMPORTANT - Analyze the content carefully:
-   - Be SPECIFIC about what was changed - never use generic descriptions
-   - NEVER use "chore: initial commit" unless it's truly the first commit in a repo
-   - For new files, describe what functionality they implement, not just that they were added
-   - For simple text files, describe their actual content, not just "add file"
-   - For single-file changes, include the filename or component in the scope
-   - For configuration changes, specify what was configured
-
-4. Keep the message:
-   - Specific and descriptive (ideally under 72 characters)
-   - Focused on WHAT changed and WHY
-   - In imperative mood ("add" not "added")
-   - Without unnecessary technical details
-
-5. Examples of BAD commit messages to AVOID:
-   - "chore: initial commit" for a file with specific content
-   - "feat: add new file" (too vague)
-   - "update code" (too vague)
-   - "fix issues" (too vague)
-Code changes to analyze:
-    "#;
-
-    let static_footer = "Respond with ONLY the commit message, no additional text or formatting.";
-
-    format!("{prefix}{diff}{static_footer}")
-}
-
 /// Improved prompt for generating conventional commit messages, focused and streamlined for LLM reliability
-pub fn commit_message_prompt_v2(diff: &str) -> String {
-    let prefix = r#"You are an expert at writing precise and conventional git commit messages. Analyze the code diff below and perform these steps:
+pub fn commit_message_prompt(diff: &str) -> String {
+    let prefix = r#"Craft concise, developer-friendly git commit messages following Conventional Commits. Analyze the code diff provided between two `---` fence markers to:
+- Select ONE type: feat (new feature), fix (bug fix), docs (documentation), style (formatting), refactor (restructuring), test (tests), ci (CI/CD), or chore (maintenance).
+- Include a specific, concise scope in parentheses (e.g., module, file, feature) when relevant, avoiding vague terms.
+- Write a single, imperative-mood first line (30-50 characters, max 72) describing WHAT changed and WHY, clear for maintainers.
+- For breaking changes, append `!` to the type (e.g., `feat!`) or add a `BREAKING CHANGE:` footer after a blank line.
+- For generated files or unclear diffs, use `chore` with a specific description (e.g., `chore(gen): update auto-generated config`).
+- For multi-file diffs, summarize the core change succinctly.
+- Output only the commit message, no formatting or explanations.
 
-1. Classify the change with EXACT Conventional Commits type (choose ONE):
-   feat | fix | docs | style | refactor | test | ci | chore
-   - Use only if there is REAL evidence for that type.
+Good examples:
+- feat(api): add user authentication endpoint
+- fix(db): correct index for faster queries
+- feat!(auth): replace token system with JWT
+- chore(gen): update auto-generated API bindings
 
-2. Scope: If possible, specify a relevant scope in parentheses (filename, module, config, or concise feature area).
-
-3. Description: In one short sentence, say WHAT changed and (briefly) WHY, using the imperative mood.
-   - Be SPECIFIC: Don’t use generic phrases like 'update code', 'fix issues', or 'add new file.'
-   - Summarize meaningful intent—don’t just re-list filenames or code lines.
-   - Write as if communicating to future maintainers reviewing commit history.
-   - Example good:   fix(api): properly handle 404 responses for user lookup
-   - Example bad:    fix: fix stuff
-
-4. Output ONLY the commit message on a single line; no code formatting, no extra explanations.
-
-BAD message examples (never use):
- - chore: initial commit (unless first repo commit)
- - feat: add new file
- - update code
-
-Analyze and generate the commit message for this diff:
+Bad examples (avoid):
+- chore: initial commit (except first repo commit)
+- feat: add stuff
+- fix: bug fixed
 
 ---
 "#;

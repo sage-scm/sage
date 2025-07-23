@@ -24,7 +24,7 @@ pub async fn commit_message() -> Result<String> {
     }
 
     // Generate and send prompt
-    let prompt = prompts::commit_message_prompt_v2(&diff);
+    let prompt = prompts::commit_message_prompt(&diff);
     let res = super::ask(&prompt).await?;
 
     // Clean up response - handle markdown code blocks with or without language specifiers
@@ -38,7 +38,7 @@ pub async fn commit_message() -> Result<String> {
         } else {
             without_opening
         };
-        
+
         // Remove closing backticks
         if content.ends_with("```") {
             content.trim_end_matches("```").trim().to_string()
