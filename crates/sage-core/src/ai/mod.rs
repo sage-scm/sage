@@ -7,6 +7,7 @@ use openai_api_rs::v1::{
     chat_completion::{self, ChatCompletionRequest},
 };
 use std::env;
+use std::time::Duration;
 
 /// Asks the AI with a prompt
 pub async fn ask(prompt: &str) -> Result<String> {
@@ -17,15 +18,13 @@ pub async fn ask(prompt: &str) -> Result<String> {
     let mut api_key = cfg.ai.api_key;
     let ai_model = cfg.ai.model;
 
-    // Get API key - for local endpoints like Ollama, we can use a dummy key
     if api_key.is_empty() {
-        // Check if it's a local endpoint that doesn't need authentication
-        if api_url.contains("localhost") || api_url.contains("127.0.0.1") {
-            api_key = String::from("ollama"); // Dummy key for local endpoints
+        api_key = if api_url.contains("localhost") || api_url.contains("127.0.0.1") {
+            String::from("ollama")
         } else {
-            api_key = env::var("OPENAI_API_KEY")
-                .context("Failed to get OPENAI_API_KEY environment variable")?;
-        }
+            env::var("OPENAI_API_KEY")
+                .context("Failed to get OPENAI_API_KEY environment variable")?
+        };
     }
 
     // Build client
@@ -35,35 +34,55 @@ pub async fn ask(prompt: &str) -> Result<String> {
         .build()
         .expect("Failed to build OpenAI client");
 
-    // Create request with the o4-mini model for speed
-    let req = ChatCompletionRequest::new(
-        ai_model, // Using o4-mini for speed
-        vec![chat_completion::ChatCompletionMessage {
-            role: chat_completion::MessageRole::user,
-            content: chat_completion::Content::Text(String::from(prompt)),
-            name: None,
-            tool_calls: None,
-            tool_call_id: None,
-        }],
-    );
+    // Retry logic
+    let mut attempts = 3;
+    let mut last_error = None;
+    while attempts > 0 {
+        let req = ChatCompletionRequest::new(
+            ai_model.clone(),
+            vec![chat_completion::ChatCompletionMessage {
+                role: chat_completion::MessageRole::user,
+                content: chat_completion::Content::Text(String::from(prompt)),
+                name: None,
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+        );
 
-    // Note: Performance optimization parameters removed due to API compatibility issues
-    // The o4-mini model should still be faster than larger models
+        match tokio::time::timeout(Duration::from_secs(10), client.chat_completion(req)).await {
+            Ok(Ok(result)) => {
+                if result.choices.is_empty() {
+                    return Err(anyhow!("No choices returned from API"));
+                }
+                let content = result.choices[0]
+                    .message
+                    .content
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("No content in response"))?;
 
-    // Get response
-    let result = client
-        .chat_completion(req)
-        .await
-        .context("Failed to get chat completion")?;
+                if content.trim().is_empty() {
+                    return Err(anyhow!("Empty response content"));
+                }
 
-    // Ensure we have choices
-    if result.choices.is_empty() {
-        return Err(anyhow!("No choices returned from API"));
+                return Ok(content.to_string());
+            }
+            Ok(Err(e)) => {
+                last_error = Some(anyhow::Error::from(e));
+                attempts -= 1;
+                if attempts == 0 {
+                    return Err(last_error.unwrap().context("Failed to get chat completion"));
+                }
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+            Err(_) => {
+                last_error = Some(anyhow!("Request timed out after 10 seconds"));
+                attempts -= 1;
+                if attempts == 0 {
+                    return Err(last_error.unwrap());
+                }
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        }
     }
-
-    // Extract and return content
-    match &result.choices[0].message.content {
-        Some(content) => Ok(content.to_string()),
-        None => Err(anyhow!("No content in the response message")),
-    }
+    Err(last_error.unwrap().context("Failed to get chat completion"))
 }
