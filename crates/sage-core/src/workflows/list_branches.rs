@@ -2,7 +2,7 @@ use crate::ColorizeExt;
 use anyhow::Result;
 use colored::Colorize;
 
-pub fn list_branches() -> Result<()> {
+pub fn list_branches(relative: bool) -> Result<()> {
     let current_branch = sage_git::branch::get_current()?;
     let default_branch = sage_git::branch::get_default_branch()?;
     let branches = sage_git::branch::list_branches()?;
@@ -13,12 +13,17 @@ pub fn list_branches() -> Result<()> {
     for branch in branches {
         let is_current = branch == current_branch;
         let is_default = branch == default_branch;
+        let compare_branch = if relative {
+            &current_branch
+        } else {
+            &default_branch
+        };
 
         // Get ahead/behind relative to default branch
         let (ahead, behind) = if is_default {
             (0, 0)
         } else {
-            sage_git::branch::ahead_behind(&default_branch, &branch)?
+            sage_git::branch::ahead_behind(&compare_branch, &branch)?
         };
 
         // Format branch indicator and name
