@@ -1,8 +1,10 @@
 pub mod amend;
 pub mod branch;
 pub mod commit;
+pub mod config;
 pub mod diff;
 pub mod rebase;
 pub mod repo;
+pub mod stash;
 pub mod status;
 pub mod token;

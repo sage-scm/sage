@@ -156,10 +156,27 @@ pub struct WorkArgs {
 
 #[derive(Args, Debug)]
 pub struct SyncArgs {
+    /// Continue an interrupted sync operation
     #[arg(long)]
     continue_: bool,
+    /// Abort the current sync operation
     #[arg(long)]
     abort: bool,
+    /// Rebase instead of merge when syncing
+    #[arg(long, short)]
+    rebase: bool,
+    /// Force push after successful sync
+    #[arg(long, short)]
+    force: bool,
+    /// Parent branch to sync with (defaults to tracked parent or default branch)
+    #[arg(long, short)]
+    parent: Option<String>,
+    /// Automatically stash and unstash changes if needed
+    #[arg(long)]
+    autostash: bool,
+    /// Only sync the current branch, not the entire stack
+    #[arg(long)]
+    no_stack: bool,
 }
 
 #[derive(Args, Debug)]

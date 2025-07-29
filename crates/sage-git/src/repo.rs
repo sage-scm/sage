@@ -198,3 +198,17 @@ pub fn owner_repo() -> Result<(String, String)> {
 
     unreachable!("Invalid remote URL");
 }
+
+/// Check if there are any unresolved conflicts in the repository
+pub fn has_conflicts() -> Result<bool> {
+    let output = Command::new("git")
+        .args(&["diff", "--name-only", "--diff-filter=U"])
+        .output()?;
+    
+    if !output.status.success() {
+        return Err(anyhow!("Failed to check for conflicts"));
+    }
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(!stdout.trim().is_empty())
+}
