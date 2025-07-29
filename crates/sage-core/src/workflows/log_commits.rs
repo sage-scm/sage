@@ -1,4 +1,4 @@
-use crate::{CliOutput, ColorizeExt};
+use crate::ColorizeExt;
 use anyhow::Result;
 use colored::Colorize;
 use sage_git::{branch::get_current, commit::commits};
