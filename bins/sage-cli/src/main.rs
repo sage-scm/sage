@@ -70,7 +70,10 @@ enum Command {
     },
 
     /// List local branches
-    List,
+    List {
+        #[arg(short, long)]
+        relative: bool,
+    },
 
     /// Config management
     #[clap(alias = "c")]
@@ -251,7 +254,7 @@ async fn main() -> Result<()> {
         // Synchronous commands
         Command::Work(args) => cmd::work(&args),
         Command::Sync(args) => cmd::sync(&args),
-        Command::List => cmd::list(),
+        Command::List { relative } => cmd::list(relative),
         Command::Config { op } => match op {
             ConfigCmd::List => cmd::config_list(),
             ConfigCmd::Get { key } => cmd::config_get(&key),
