@@ -9,7 +9,7 @@ use sage_git::{
     rebase::{is_rebase_in_progress, rebase, rebase_abort, rebase_continue},
     repo::{fetch_remote, has_conflicts},
     stash::{stash_pop, stash_push},
-    status::status,
+    status::branch_status,
 };
 use sage_graph::SageGraph;
 
@@ -26,15 +26,6 @@ pub struct SyncBranchOpts {
     pub no_stack: bool,
 }
 
-#[derive(Debug)]
-struct SyncState {
-    original_branch: String,
-    parent_branch: String,
-    needs_pull: bool,
-    needs_push: bool,
-    rebase: bool,
-}
-
 pub fn sync_branch(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<()> {
     if opts.continue_ || opts.abort {
         return handle_sync_interrupt(cli, opts);
@@ -43,7 +34,7 @@ pub fn sync_branch(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<()> {
     let current_branch = get_current()?;
     let graph = SageGraph::load_or_default()?;
     
-    let stashed = handle_dirty_workspace(cli, opts)?;
+    let stashed = stash_if_dirty(cli, opts)?;
     
     let result = if should_sync_entire_stack(&current_branch, &graph, opts) {
         sync_stack(cli, &current_branch, &graph, opts)
@@ -54,6 +45,174 @@ pub fn sync_branch(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<()> {
     restore_stash_if_needed(cli, stashed, &result);
     
     handle_sync_result(cli, result)
+}
+
+pub fn stash_if_dirty(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<bool> {
+    if is_clean()? {
+        return Ok(false);
+    }
+
+    if is_rebase_in_progress()? {
+        bail!("Rebase in progress. Please complete it with 'sage sync --continue' or abort with 'sage sync --abort'");
+    }
+    
+    if is_merge_in_progress()? {
+        bail!("Merge in progress. Please complete it with 'sage sync --continue' or abort with 'sage sync --abort'");
+    }
+
+    if !opts.autostash {
+        bail!("Working directory is not clean. Please commit or stash your changes before syncing, or use --autostash.");
+    }
+
+    cli.step_start("Stashing local changes");
+    stash_push(Some("sage sync autostash"))?;
+    cli.step_success("Changes stashed", Some("will restore after sync"));
+    Ok(true)
+}
+
+fn restore_stash_if_needed(cli: &CliOutput, stashed: bool, result: &Result<()>) {
+    if !stashed {
+        return;
+    }
+
+    match result {
+        Ok(_) => {
+            cli.step_start("Restoring stashed changes");
+            match stash_pop() {
+                Ok(_) => cli.step_success("Stashed changes restored", None),
+                Err(e) => {
+                    cli.step_error("Failed to restore stashed changes", &e.to_string());
+                    cli.warning("Your changes are still stashed. Use 'git stash pop' to restore them manually");
+                }
+            }
+        }
+        Err(_) => {
+            cli.warning("Note: Your changes are still stashed. They will be restored after resolving conflicts");
+        }
+    }
+}
+
+fn sync_single_branch(
+    cli: &CliOutput, 
+    current_branch: &str, 
+    graph: &SageGraph, 
+    opts: &SyncBranchOpts
+) -> Result<()> {
+    let parent_branch = find_parent_branch(current_branch, &opts.parent)?;
+
+    if current_branch == parent_branch {
+        return ensure_branch_updated(cli, current_branch);
+    }
+
+    let branch_state = branch_status(current_branch)?;
+    
+    if branch_state.needs_pull() && !branch_state.needs_push() {
+        cli.step_start(&format!("Pulling latest changes for '{}'", current_branch));
+        pull()?;
+        cli.step_success("Branch updated from remote", None);
+        return Ok(());
+    }
+    
+    if !branch_state.needs_pull() && branch_state.needs_push() {
+        cli.step_start(&format!("Pushing changes for '{}'", current_branch));
+        push(current_branch, false)?;
+        cli.step_success("Changes pushed to remote", None);
+        return Ok(());
+    }
+
+    let parent_needs_update = branch_needs_update(&parent_branch)?;
+    if !parent_needs_update && !branch_state.needs_pull() {
+        cli.step_success(&format!("'{}' is already up to date", current_branch), None);
+        return Ok(());
+    }
+
+    let use_rebase = decide_sync_method(current_branch, graph, opts.rebase)?;
+    
+    rebase_onto_parent(cli, current_branch, &parent_branch, use_rebase, opts.force_push)
+}
+
+pub fn ensure_branch_updated(cli: &CliOutput, branch: &str) -> Result<()> {
+    cli.step_start(&format!("Updating '{}'", branch));
+    
+    fetch_remote()?;
+    
+    let status = branch_status(branch)?;
+    
+    if status.needs_pull() {
+        pull()?;
+        cli.step_success(&format!("'{}' updated from remote", branch), None);
+    } else {
+        cli.step_success(&format!("'{}' already up to date", branch), None);
+    }
+    
+    Ok(())
+}
+
+fn branch_needs_update(branch: &str) -> Result<bool> {
+    let status = branch_status(branch)?;
+    Ok(status.needs_pull())
+}
+
+pub fn rebase_onto_parent(
+    cli: &CliOutput,
+    branch: &str,
+    parent: &str,
+    use_rebase: bool,
+    force_push: bool
+) -> Result<()> {
+    cli.step_start(&format!(
+        "Syncing '{}' with '{}' ({})",
+        branch,
+        parent,
+        if use_rebase { "rebase" } else { "merge" }
+    ));
+
+    fetch_remote()?;
+    
+    let original_branch = get_current()?;
+    let needs_switch_back = original_branch != branch;
+    
+    if needs_switch_back {
+        switch(branch, false)?;
+    }
+    
+    let branch_state = branch_status(branch)?;
+    if branch_state.needs_pull() {
+        pull()?;
+    }
+
+    ensure_parent_updated(parent)?;
+
+    if use_rebase {
+        rebase(parent, false, true)?;
+    } else {
+        merge(parent)?;
+    }
+
+    if branch_state.needs_push() || use_rebase || force_push {
+        let force = use_rebase || force_push;
+        push(branch, force)?;
+    }
+    
+    if needs_switch_back {
+        switch(&original_branch, false)?;
+    }
+
+    cli.step_success(&format!("Synced '{}'", branch), None);
+    Ok(())
+}
+
+fn ensure_parent_updated(parent: &str) -> Result<()> {
+    let current = get_current()?;
+    
+    switch(parent, false)?;
+    pull()?;
+    
+    if current != parent {
+        switch(&current, false)?;
+    }
+    
+    Ok(())
 }
 
 fn handle_sync_interrupt(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<()> {
@@ -133,51 +292,6 @@ fn abort_sync(cli: &CliOutput, in_rebase: bool, in_merge: bool) -> Result<()> {
     Ok(())
 }
 
-fn handle_dirty_workspace(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<bool> {
-    if is_clean()? {
-        return Ok(false);
-    }
-
-    if is_rebase_in_progress()? {
-        bail!("Rebase in progress. Please complete it with 'sage sync --continue' or abort with 'sage sync --abort'");
-    }
-    
-    if is_merge_in_progress()? {
-        bail!("Merge in progress. Please complete it with 'sage sync --continue' or abort with 'sage sync --abort'");
-    }
-
-    if !opts.autostash {
-        bail!("Working directory is not clean. Please commit or stash your changes before syncing, or use --autostash.");
-    }
-
-    cli.step_start("Stashing local changes");
-    stash_push(Some("sage sync autostash"))?;
-    cli.step_success("Changes stashed", Some("will restore after sync"));
-    Ok(true)
-}
-
-fn restore_stash_if_needed(cli: &CliOutput, stashed: bool, result: &Result<()>) {
-    if !stashed {
-        return;
-    }
-
-    match result {
-        Ok(_) => {
-            cli.step_start("Restoring stashed changes");
-            match stash_pop() {
-                Ok(_) => cli.step_success("Stashed changes restored", None),
-                Err(e) => {
-                    cli.step_error("Failed to restore stashed changes", &e.to_string());
-                    cli.warning("Your changes are still stashed. Use 'git stash pop' to restore them manually");
-                }
-            }
-        }
-        Err(_) => {
-            cli.warning("Note: Your changes are still stashed. They will be restored after resolving conflicts");
-        }
-    }
-}
-
 fn handle_sync_result(cli: &CliOutput, result: Result<()>) -> Result<()> {
     match result {
         Ok(_) => Ok(()),
@@ -215,9 +329,39 @@ fn sync_stack(cli: &CliOutput, current_branch: &str, graph: &SageGraph, opts: &S
 
     let branches_to_sync = prepare_branches_for_sync(cli, branch_chain)?;
     
-    sync_each_branch_in_stack(cli, branches_to_sync, current_branch, graph, opts)?;
-    
-    return_to_original_branch(cli, current_branch)?;
+    for (i, branch) in branches_to_sync.iter().enumerate() {
+        if branch == current_branch {
+            continue;
+        }
+
+        cli.step_start(&format!(
+            "[{}/{}] Syncing '{}'",
+            i + 1,
+            branches_to_sync.len(),
+            branch
+        ));
+
+        let parent = if i == 0 {
+            get_default_branch()?
+        } else {
+            branches_to_sync[i - 1].clone()
+        };
+
+        let use_rebase = decide_sync_method(branch, graph, opts.rebase)?;
+
+        match rebase_onto_parent(cli, branch, &parent, use_rebase, opts.force_push) {
+            Ok(_) => {
+                cli.step_success(&format!("Synced '{}' with '{}'", branch, parent), None);
+            }
+            Err(e) => {
+                cli.step_error(&format!("Failed to sync '{}'", branch), &e.to_string());
+                if is_rebase_in_progress()? || is_merge_in_progress()? {
+                    cli.warning("Resolve conflicts and run 'sage sync --continue'");
+                }
+                return Err(e);
+            }
+        }
+    }
     
     sync_single_branch(cli, current_branch, graph, opts)
 }
@@ -243,112 +387,12 @@ fn prepare_branches_for_sync(cli: &CliOutput, branch_chain: Vec<String>) -> Resu
     
     if let Some(root) = branches_to_sync.first() {
         if root == &default_branch {
-            sync_default_branch(cli, &default_branch)?;
+            ensure_branch_updated(cli, &default_branch)?;
             branches_to_sync.remove(0);
         }
     }
     
     Ok(branches_to_sync)
-}
-
-fn sync_each_branch_in_stack(
-    cli: &CliOutput, 
-    branches_to_sync: Vec<String>, 
-    current_branch: &str,
-    graph: &SageGraph,
-    opts: &SyncBranchOpts
-) -> Result<()> {
-    let default_branch = get_default_branch()?;
-    
-    for (i, branch) in branches_to_sync.iter().enumerate() {
-        if branch == current_branch {
-            continue;
-        }
-
-        cli.step_start(&format!(
-            "[{}/{}] Syncing '{}'",
-            i + 1,
-            branches_to_sync.len(),
-            branch
-        ));
-
-        switch(branch, false)?;
-
-        let parent = if i == 0 {
-            default_branch.clone()
-        } else {
-            branches_to_sync[i - 1].clone()
-        };
-
-        let use_rebase = decide_sync_method(branch, graph, opts.rebase)?;
-
-        let branch_state = SyncState {
-            original_branch: branch.clone(),
-            parent_branch: parent.clone(),
-            needs_pull: status()?.needs_pull(),
-            needs_push: status()?.needs_push(),
-            rebase: use_rebase,
-        };
-
-        match perform_sync(cli, &branch_state, opts.force_push) {
-            Ok(_) => {
-                cli.step_success(&format!("Synced '{}' with '{}'", branch, parent), None);
-            }
-            Err(e) => {
-                cli.step_error(&format!("Failed to sync '{}'", branch), &e.to_string());
-                if is_rebase_in_progress()? || is_merge_in_progress()? {
-                    cli.warning("Resolve conflicts and run 'sage sync --continue'");
-                }
-                return Err(e);
-            }
-        }
-    }
-    
-    Ok(())
-}
-
-fn return_to_original_branch(cli: &CliOutput, original_branch: &str) -> Result<()> {
-    if get_current()? != original_branch {
-        cli.step_start(&format!("Returning to '{}'", original_branch));
-        switch(original_branch, false)?;
-        cli.step_success(&format!("Back on '{}'", original_branch), None);
-    }
-    Ok(())
-}
-
-fn sync_single_branch(
-    cli: &CliOutput, 
-    current_branch: &str, 
-    graph: &SageGraph, 
-    opts: &SyncBranchOpts
-) -> Result<()> {
-    let parent_branch = find_parent_branch(current_branch, &opts.parent)?;
-
-    if current_branch == parent_branch {
-        return sync_default_branch(cli, current_branch);
-    }
-
-    let use_rebase = decide_sync_method(current_branch, graph, opts.rebase)?;
-
-    let state = SyncState {
-        original_branch: current_branch.to_string(),
-        parent_branch: parent_branch.clone(),
-        needs_pull: status()?.needs_pull(),
-        needs_push: status()?.needs_push(),
-        rebase: use_rebase,
-    };
-
-    perform_sync(cli, &state, opts.force_push)
-}
-
-fn sync_default_branch(cli: &CliOutput, branch: &str) -> Result<()> {
-    cli.step_start(&format!("Syncing default branch '{}'", branch));
-
-    fetch_remote()?;
-    pull()?;
-
-    cli.step_success(&format!("Default branch '{}' synced", branch), None);
-    Ok(())
 }
 
 fn find_parent_branch(current_branch: &str, explicit_parent: &Option<String>) -> Result<String> {
@@ -388,37 +432,4 @@ fn decide_sync_method(branch: &str, graph: &SageGraph, force_rebase: bool) -> Re
     }
 
     Ok(true)
-}
-
-fn perform_sync(cli: &CliOutput, state: &SyncState, force_push: bool) -> Result<()> {
-    cli.step_start(&format!(
-        "Syncing '{}' with '{}' ({})",
-        state.original_branch,
-        state.parent_branch,
-        if state.rebase { "rebase" } else { "merge" }
-    ));
-
-    fetch_remote()?;
-
-    if state.needs_pull {
-        pull()?;
-    }
-
-    switch(&state.parent_branch, false)?;
-    pull()?;
-    switch(&state.original_branch, false)?;
-
-    if state.rebase {
-        rebase(&state.parent_branch, false, true)?;
-    } else {
-        merge(&state.parent_branch)?;
-    }
-
-    if state.needs_push || state.rebase || force_push {
-        let force = state.rebase || force_push;
-        push(&state.original_branch, force)?;
-    }
-
-    cli.step_success(&format!("Synced '{}'", state.original_branch), None);
-    Ok(())
 }
