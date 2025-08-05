@@ -1,11 +1,11 @@
 use anyhow::{Result, bail};
 use sage_git::{
     branch::{
-        get_current, get_default_branch, is_clean, is_merge_in_progress, merge, merge_abort, pull,
-        push, switch,
+        get_current, get_default_branch, has_diverged, is_clean, is_merge_in_progress,
+        is_shared_branch, merge, merge_abort, pull, push, switch,
     },
     commit::commit,
-    config::{is_up_to_date_with_upstream, should_branch_rebase},
+    config::should_branch_rebase,
     rebase::{is_rebase_in_progress, rebase, rebase_abort, rebase_continue},
     repo::{fetch_remote, has_conflicts},
     stash::{stash_pop, stash_push},
@@ -53,18 +53,29 @@ fn should_use_rebase(
         return Ok(rebase);
     }
 
+    // Always use rebase for stacked branches
     if graph.stack_of(branch).is_some() {
         return Ok(true);
     }
 
+    // Check if branch has diverged from upstream
+    if has_diverged(branch)? {
+        // Branch has diverged - use merge to preserve both histories
+        return Ok(false);
+    }
+
+    // Check if branch is shared (pushed and potentially used by others)
+    if is_shared_branch(branch)? {
+        // Shared branches should use merge to avoid rewriting public history
+        return Ok(false);
+    }
+
+    // Check git config preference if set
     if let Some(rebase) = should_branch_rebase(branch)? {
         return Ok(rebase);
     }
 
-    if is_up_to_date_with_upstream(branch)? {
-        return Ok(false);
-    }
-
+    // Default to rebase for clean, linear history on local branches
     Ok(true)
 }
 
@@ -186,11 +197,12 @@ pub fn sync_branch(cli: &CliOutput, opts: &SyncBranchOpts) -> Result<()> {
             let branch_state = SyncState {
                 original_branch: branch.clone(),
                 parent_branch: parent.clone(),
+                needs_pull: status()?.needs_pull(),
                 needs_push: status()?.needs_push(),
                 rebase: use_rebase,
             };
 
-            match sync_with_parent_internal(cli, &branch_state, opts.force_push, false) {
+            match sync_with_parent(cli, &branch_state, opts.force_push) {
                 Ok(_) => {
                     cli.step_success(&format!("Synced '{}' with '{}'", branch, parent), None);
                 }
@@ -378,38 +390,6 @@ fn determine_parent_branch(
     get_default_branch()
 }
 
-fn sync_with_parent_internal(
-    _cli: &CliOutput,
-    state: &SyncState,
-    force_push: bool,
-    _show_output: bool,
-) -> Result<()> {
-    fetch_remote()?;
-
-    // Pulling on this branch first.
-    if state.needs_pull {
-        pull()?;
-    }
-
-    switch(&state.parent_branch, false)?;
-    pull()?;
-
-    switch(&state.original_branch, false)?;
-
-    if state.rebase {
-        rebase(&state.parent_branch, false, true)?;
-    } else {
-        merge(&state.parent_branch)?;
-    }
-
-    if state.needs_push || state.rebase || force_push {
-        let force = state.rebase || force_push;
-        push(&state.original_branch, force)?;
-    }
-
-    Ok(())
-}
-
 fn sync_with_parent(cli: &CliOutput, state: &SyncState, force_push: bool) -> Result<()> {
     cli.step_start(&format!(
         "Syncing '{}' with '{}' ({})",
@@ -419,6 +399,12 @@ fn sync_with_parent(cli: &CliOutput, state: &SyncState, force_push: bool) -> Res
     ));
 
     fetch_remote()?;
+
+    // Before we switch, lets first check to see if we need to pull  on our current branch.
+    if state.needs_pull {
+        pull()?;
+    }
+
     switch(&state.parent_branch, false)?;
     pull()?;
     switch(&state.original_branch, false)?;
