@@ -26,6 +26,9 @@ pub async fn ask(prompt: &str) -> Result<String> {
                 .context("Failed to get OPENAI_API_KEY environment variable")?
         };
     }
+    println!("AI API URL: {api_url}");
+    println!("AI API KEY: {api_key}");
+    println!("AI MODEL: {ai_model}");
 
     // Build client
     let mut client = OpenAIClient::builder()

@@ -1,14 +1,17 @@
 use anyhow::{Result, anyhow};
 use colored::Colorize;
+use sage_events::EventData;
 use sage_git::{
     amend::{self, AmendOpts},
     branch::{get_current, is_clean, push, stage_all, unstage_all},
     commit::{self, commit_empty},
+    repo::get_repo_root,
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
 use sage_tui::basic::check;
+use std::path::Path;
 
-use crate::{CliOutput, commit::commit_message};
+use crate::{CliOutput, commit::commit_message, events::EventManager};
 
 #[derive(Debug, Default)]
 pub struct SaveOpts {
@@ -75,6 +78,19 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
         cli.step_success("Write empty commit", Some(&commit_id.dimmed()));
 
+        // Track the empty commit event
+        if let Ok(repo_root) = get_repo_root() {
+            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+                let current_branch = get_current()?;
+                let _ = event_manager.track(EventData::CommitCreated {
+                    commit_id: commit_id.clone(),
+                    message: "[empty commit]".to_string(),
+                    files_changed: vec![],
+                    branch: current_branch,
+                });
+            }
+        }
+
         push_changes(opts, cli)?;
         return Ok(());
     }
@@ -87,8 +103,42 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
                 || (!opts.message.is_empty() && !has_staged_changes()?), // Use no_edit if we're keeping the previous message
         };
         cli.step_start("Amending commit");
+
+        // Get the old commit ID before amending
+        let old_commit_id = if let Ok(output) = std::process::Command::new("git")
+            .args(&["rev-parse", "HEAD"])
+            .output()
+        {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        } else {
+            String::new()
+        };
+
         amend::amend(&amend_opts)?;
+
+        // Get the new commit ID after amending
+        let new_commit_id = if let Ok(output) = std::process::Command::new("git")
+            .args(&["rev-parse", "HEAD"])
+            .output()
+        {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        } else {
+            String::new()
+        };
+
         cli.step_success("Amended previous commit", None);
+
+        // Track the amend event
+        if let Ok(repo_root) = get_repo_root() {
+            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+                let current_branch = get_current()?;
+                let _ = event_manager.track(EventData::CommitAmended {
+                    old_commit: old_commit_id,
+                    new_commit: new_commit_id,
+                    branch: current_branch,
+                });
+            }
+        }
 
         push_changes(opts, cli)?;
         return Ok(());
@@ -123,6 +173,39 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
         }
     };
     cli.step_success("Write commit", Some(&commit_id.dimmed()));
+
+    // Track the commit event
+    if let Ok(repo_root) = get_repo_root() {
+        if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+            let current_branch = get_current()?;
+
+            // Get list of changed files
+            let files_changed = if let Ok(output) = std::process::Command::new("git")
+                .args(&[
+                    "diff-tree",
+                    "--no-commit-id",
+                    "--name-only",
+                    "-r",
+                    &commit_id,
+                ])
+                .output()
+            {
+                String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .map(|s| s.to_string())
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let _ = event_manager.track(EventData::CommitCreated {
+                commit_id: commit_id.clone(),
+                message: commit_message.clone(),
+                files_changed,
+                branch: current_branch,
+            });
+        }
+    }
 
     // Handle push if requested
     push_changes(opts, cli)?;
@@ -230,27 +313,27 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
 
 /// Determines the commit message to use for the commit.
 async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> {
-    if opts.message.is_empty() {
-        if opts.ai {
-            // Create a spinner for AI message generation
-            let spinner = cli.spinner("Generating AI commit message");
+    if opts.ai {
+        // Create a spinner for AI message generation
+        let spinner = cli.spinner("Generating AI commit message");
 
-            // Generate a commit message using AI
-            let message_result = commit_message().await;
+        // Generate a commit message using AI
+        let message_result = commit_message().await;
 
-            // Handle the result
-            match message_result {
-                Ok(message) => {
-                    spinner.finish_success("AI commit message", Some(&message.clone().dimmed()));
-                    return Ok(message);
-                }
-                Err(e) => {
-                    spinner
-                        .finish_error("AI commit message generation failed", &e.to_string().red());
-                    return Err(anyhow!("Failed to generate AI commit message: {}", e));
-                }
+        // Handle the result
+        match message_result {
+            Ok(message) => {
+                spinner.finish_success("AI commit message", Some(&message.clone().dimmed()));
+                return Ok(message);
             }
-        } else if opts.amend {
+            Err(e) => {
+                spinner.finish_error("AI commit message generation failed", &e.to_string().red());
+                return Err(anyhow!("Failed to generate AI commit message: {}", e));
+            }
+        }
+    }
+    if opts.message.is_empty() {
+        if opts.amend {
             // For amend, we can use an empty string as the previous message will be preserved
             cli.step_success("Using previous commit message", None);
             return Ok(String::new());

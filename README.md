@@ -42,24 +42,62 @@ just try-with stack,tui dash
 
 ---
 
-## Commands (core set)
+## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `work <branch>` | Smart create/checkout |
-| `save [-m\|--ai] [--all] <…>` | Stage → commit |
-| `sync [--continue\|--abort]` | Restack + push |
-| `share [--draft\|--ready]` | Create/update PR |
-| `dash [--watch]` | Repo dashboard |
-| `clean [--remote] [--dry-run]` | Prune branches/reflog |
-| `undo [id]` / `history` | Revert + log |
-| `resolve` | Launch mergetool |
-| `stats [--since <date>]` | Repo statistics |
-| `doctor [--fix]` | Env/toolchain check |
-| `config <op>` | Manage config |
-| `completion <shell>` | Shell completions |
+### Core Commands
 
-Enable feature flags for extra **stack**, **ai**, and **tui** commands.
+| Command | Aliases | Description | Flags |
+|---------|---------|-------------|-------|
+| `work [branch]` | `w` | Smart create/checkout a branch | `--parent`, `--fetch`, `--root`, `--push`, `--fuzzy` |
+| `save [message]` | `s` | Stage and commit changes | `--ai`, `--all`, `--paths`, `--amend`, `--push`, `--empty` |
+| `sync` | `ss` | Restack and push branches | `--continue`, `--abort` |
+| `share` | - | Create or update a PR | `--draft`, `--ready` |
+| `list` | - | List local branches | - |
+| `log` | - | Show previous commits | - |
+| `undo [id]` | - | Revert an item | - |
+| `history` | - | Alias for `undo --list` | - |
+
+### Configuration
+
+| Command | Aliases | Description | Flags |
+|---------|---------|-------------|-------|
+| `config list` | `c l` | List all configuration options | - |
+| `config get <key>` | `c g` | Get a configuration value | - |
+| `config set <key> <value>` | `c s` | Set a configuration value | `--local` |
+| `config unset <key>` | `c u` | Unset a configuration value | - |
+| `config edit` | `c e` | Open config in editor | - |
+
+### Feature-Gated Commands
+
+#### Stack Commands (requires `--features stack`)
+| Command | Description | Flags |
+|---------|-------------|-------|
+| `stack init <name>` | Initialize a new stack | - |
+| `stack branch <name>` | Create a branch in the stack | `--parent` |
+| `stack log` | Show stack structure | - |
+| `stack next` | Navigate to next branch | - |
+| `stack prev` | Navigate to previous branch | - |
+| `stack goto <branch>` | Jump to specific branch | - |
+| `stack restack` | Rebase the stack | `--continue`, `--abort`, `--onto`, `--autosquash` |
+| `stack submit` | Submit stack for review | `--ready` |
+| `stack update` | Update stack | - |
+| `stack status` | Show stack status | - |
+| `stack clean` | Clean up stack | - |
+
+#### Other Features
+- **TUI** (`--features tui`): `ui` - Terminal UI dashboard
+- **AI** (`--features ai`): `tips` - AI-powered tips (not yet implemented)
+
+### Not Yet Implemented
+
+The following commands are defined but not yet implemented:
+- `dash [--watch]` - Repo dashboard
+- `clean [--remote] [--dry-run]` - Prune branches and reflog
+- `resolve` - Launch mergetool
+- `stats [--since]` - Repo statistics
+- `doctor [--fix]` - Environment/toolchain health check
+- `completion <shell>` - Generate shell completions
+- `plugin` - Plugin management commands
 
 ---
 

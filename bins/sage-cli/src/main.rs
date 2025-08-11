@@ -232,6 +232,9 @@ pub enum StackCmd {
         #[arg(long)]
         parent: Option<String>,
     },
+    Adopt {
+        parent: String,
+    },
     Log,
     Next,
     Prev,
@@ -286,6 +289,7 @@ async fn main() -> Result<()> {
             StackCmd::Init { name } => cmd::stack_init(&name),
             StackCmd::Next => cmd::stack_navigate::down(),
             StackCmd::Prev => cmd::stack_navigate::up(),
+            StackCmd::Adopt { parent } => cmd::stack_adopt(&parent),
             _ => todo!(),
         },
 
@@ -294,13 +298,13 @@ async fn main() -> Result<()> {
 
         // Asynchronous commands
         Command::Save(args) => cmd::save(&args).await,
+        Command::Share(args) => cmd::share(&args),
 
         // Placeholder commands
-        Command::Share(args) => todo!("share {:?}", args),
         Command::Dash { watch } => todo!("dash watch={watch}"),
         Command::Clean { remote, dry_run } => todo!("clean r={remote} d={dry_run}"),
-        Command::Undo { id } => todo!("undo {:?}", id),
-        Command::History => todo!("history"),
+        Command::Undo { id } => cmd::undo(id),
+        Command::History => cmd::history(),
         Command::Resolve => todo!("resolve"),
         Command::Stats { since } => todo!("stats {:?}", since),
         Command::Doctor { fix } => todo!("doctor fix={fix}"),

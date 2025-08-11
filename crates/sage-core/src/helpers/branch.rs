@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, fmt, ops::Deref, str::FromStr};
 
 /// Wrapper around a branch name.
-#[derive(Clone, Eq, Ord, PartialOrd, Hash, Debug, Default)]
+#[derive(Clone, Eq, Ord, PartialOrd, Debug, Default)]
 pub struct BranchName(String);
 
 impl BranchName {

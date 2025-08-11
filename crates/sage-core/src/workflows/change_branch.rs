@@ -3,12 +3,14 @@ use colored::Colorize;
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use sage_git::{
     branch::{exists, get_current, get_default_branch, list_branches, push, switch},
-    repo::{fetch_remote, get_commiter},
+    repo::{fetch_remote, get_commiter, get_repo_root},
 };
 use sage_graph::SageGraph;
 use sage_tui::basic::select;
+use sage_events::EventData;
+use std::path::Path;
 
-use crate::{BranchName, CliOutput};
+use crate::{BranchName, CliOutput, events::EventManager};
 
 #[derive(Debug, Default)]
 pub struct ChangeBranchOpts {
@@ -72,6 +74,17 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     if name == get_default_branch()? {
         cli.step_start("Switching branch");
         switch(&name, false)?;
+        
+        // Track the branch switch event
+        if let Ok(repo_root) = get_repo_root() {
+            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+                let _ = event_manager.track(EventData::BranchSwitched {
+                    from: current_branch.clone(),
+                    to: name.to_string(),
+                });
+            }
+        }
+        
         // TODO: Probably need to determine if they want us to announce
         cli.step_success_with_emoji(&format!("Switch to {name}"), None, "🚀");
         return Ok(());
@@ -90,6 +103,17 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     if exists(&name)? {
         cli.warning("Branch exists - checking it out");
         switch(&name, false)?;
+        
+        // Track the branch switch event
+        if let Ok(repo_root) = get_repo_root() {
+            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+                let _ = event_manager.track(EventData::BranchSwitched {
+                    from: current_branch.clone(),
+                    to: name.to_string(),
+                });
+            }
+        }
+        
         return Ok(());
     }
 
@@ -125,6 +149,33 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     cli.step_start("Creating new branch");
     switch(&name, true)?;
     cli.step_success("Created new branch", Some(&name));
+    
+    // Track the branch creation event
+    if let Ok(repo_root) = get_repo_root() {
+        if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
+            let from_branch = if !opts.parent.is_empty() { 
+                opts.parent.clone() 
+            } else if opts.use_root {
+                get_default_branch()?
+            } else {
+                current_branch.clone()
+            };
+            
+            let commit_id = if let Ok(output) = std::process::Command::new("git")
+                .args(&["rev-parse", "HEAD"])
+                .output() {
+                String::from_utf8_lossy(&output.stdout).trim().to_string()
+            } else {
+                String::new()
+            };
+            
+            let _ = event_manager.track(EventData::BranchCreated {
+                name: name.to_string(),
+                from_branch,
+                commit_id,
+            });
+        }
+    }
 
     let (username, _) = get_commiter()?;
     let parent = if !opts.parent.is_empty() {
