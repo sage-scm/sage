@@ -16,6 +16,7 @@ serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 tracing = { version = "0.1", features = ["log"] }
 colored = "3.0"
+toml = "0.9"
 # ───────────────────────────────────────
 # Compilation profiles
 [profile.release]
