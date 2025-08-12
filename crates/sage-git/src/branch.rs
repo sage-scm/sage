@@ -96,16 +96,7 @@ pub fn unstage_all() -> Result<()> {
 
 /// Stage all changes in the repository
 pub fn stage_all() -> Result<()> {
-    let result = Command::new("git").args(["add", "--all"]).output()?;
-
-    if !result.status.success() {
-        return Err(anyhow!(
-            "Failed to stage all changes: {}",
-            String::from_utf8_lossy(&result.stderr)
-        ));
-    }
-
-    Ok(())
+    git_ok(["add", "--all"])
 }
 
 /// List all local branches
