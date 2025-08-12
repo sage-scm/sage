@@ -25,7 +25,9 @@ pub fn switch(name: &str, create: bool) -> Result<String> {
     let current_branch = get_current()?;
     let mut args = vec!["switch"];
 
-    if create { args.push("-c") }
+    if create {
+        args.push("-c")
+    }
     args.push(name);
 
     git_ok(&args)?;
