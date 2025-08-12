@@ -56,6 +56,9 @@ impl AiConfig {
         if !other.api_key.is_empty() {
             self.api_key = other.api_key.clone();
         }
+        if other.timeout != 10 {
+            self.timeout = other.timeout;
+        }
         if other.max_tokens != 4096 {
             self.max_tokens = other.max_tokens;
         }

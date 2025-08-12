@@ -18,7 +18,7 @@ pub fn config_get(key: &str) -> Result<()> {
         ["ai", "api_url"] => println!("{}", cfg.ai.api_url),
         ["ai", "api_key"] => println!("{}", cfg.ai.api_key),
         ["ai", "max_tokens"] => println!("{}", cfg.ai.max_tokens),
-        ["ai", "timeout"] => println!("{}", cfg.ai.max_tokens),
+        ["ai", "timeout"] => println!("{}", cfg.ai.timeout),
         ["pull_requests"] => println!("{:?}", cfg.pull_requests),
         ["pull_requests", "enabled"] => println!("{}", cfg.pull_requests.enabled),
         ["pull_requests", "default_base"] => println!("{}", cfg.pull_requests.default_base),
