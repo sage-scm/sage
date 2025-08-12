@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Result};
-use std::process::Command;
+use anyhow::Result;
+use crate::prelude::git_ok;
 
 pub struct AmendOpts {
     // The message to amend with
@@ -12,29 +12,20 @@ pub struct AmendOpts {
 
 // Amend the previous commit with the given message
 pub fn amend(opts: &AmendOpts) -> Result<()> {
-    let mut cmd = Command::new("git");
-
-    cmd.arg("commit");
-    cmd.arg("--amend");
+    let mut args = vec!["commit", "--amend"];
 
     if opts.empty {
-        cmd.arg("--allow-empty");
+        args.push("--allow-empty");
     }
 
     if opts.no_edit || opts.message.is_empty() {
-        cmd.arg("--no-edit");
+        args.push("--no-edit");
     }
 
     if !opts.message.is_empty() && !opts.empty {
-        cmd.arg("-m");
-        cmd.arg(&opts.message);
+        args.push("-m");
+        args.push(&opts.message);
     }
 
-    let output = cmd.output()?;
-
-    if !output.status.success() {
-        return Err(anyhow!("Failed to amend"));
-    }
-
-    Ok(())
+    git_ok(args)
 }
