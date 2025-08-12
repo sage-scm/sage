@@ -91,16 +91,7 @@ pub fn is_clean() -> Result<bool> {
 
 /// Unstage all changes in the repository
 pub fn unstage_all() -> Result<()> {
-    let result = Command::new("git").args(["reset", "HEAD"]).output()?;
-
-    if !result.status.success() {
-        return Err(anyhow!(
-            "Failed to unstage all changes: {}",
-            String::from_utf8_lossy(&result.stderr)
-        ));
-    }
-
-    Ok(())
+    git_ok(["restore", "--staged", "."])
 }
 
 /// Stage all changes in the repository
