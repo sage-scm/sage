@@ -11,14 +11,8 @@ pub fn get_current() -> Result<String> {
 
 /// Check if the branch exists locally.
 pub fn exists(branch: &str) -> Result<bool> {
-    let result = Command::new("git")
-        .arg("branch")
-        .arg("--list")
-        .arg(branch)
-        .output()?;
-
-    let stdout = String::from_utf8(result.stdout)?;
-    let branches: Vec<&str> = stdout
+    let output = git_output(["branch", "--list", branch])?;
+    let branches: Vec<&str> = output
         .lines()
         .map(|line| line.trim().trim_start_matches('*').trim())
         .collect();
