@@ -229,3 +229,10 @@ pub fn ahead_behind(base: &str, compare: &str) -> Result<(i32, i32)> {
 
     Ok((ahead, behind))
 }
+
+/// Check if there is a remote branch with the specified name.
+pub fn has_remote_branch(branch: &str) -> Result<bool> {
+    let remotes = git_output(["remote"])?;
+    Ok(remotes.lines().any(|r| r.trim() == branch))
+}
+
