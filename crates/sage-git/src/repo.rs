@@ -1,6 +1,8 @@
 use anyhow::{Result, anyhow, bail};
 use std::process::Command;
 
+use crate::prelude::{git_ok, git_output, git_success};
+
 /// Check if we're in a git repo.
 pub fn in_repo() -> Result<bool> {
     let result = Command::new("git")
@@ -14,13 +16,7 @@ pub fn in_repo() -> Result<bool> {
 
 /// Gets the root directory of the repo.
 pub fn get_repo_root() -> Result<String> {
-    let result = Command::new("git")
-        .arg("rev-parse")
-        .arg("--show-toplevel")
-        .output()?;
-
-    let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().to_string())
+    git_output(["rev-parse", "--show-toplevel"])
 }
 
 /// Fetches the latest from remote.
