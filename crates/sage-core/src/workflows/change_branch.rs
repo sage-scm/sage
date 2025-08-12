@@ -49,8 +49,8 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
         }
     } else if opts.name.is_empty() {
         // We need a name for the fuzzy search
-        let branches = list_branches()?;
-        let branch = select("Switch to branch".into(), branches)?;
+        let branch_options = list_branches()?;
+        let branch = select("Switch to branch".into(), branch_options.local)?;
         opts.name = BranchName::new(branch)?;
     }
 
@@ -74,7 +74,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     if name == get_default_branch()? {
         cli.step_start("Switching branch");
         switch(&name, false)?;
-        
+
         // Track the branch switch event
         if let Ok(repo_root) = get_repo_root() {
             if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
@@ -84,7 +84,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
                 });
             }
         }
-        
+
         // TODO: Probably need to determine if they want us to announce
         cli.step_success_with_emoji(&format!("Switch to {name}"), None, "🚀");
         return Ok(());
@@ -103,7 +103,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     if exists(&name)? {
         cli.warning("Branch exists - checking it out");
         switch(&name, false)?;
-        
+
         // Track the branch switch event
         if let Ok(repo_root) = get_repo_root() {
             if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
@@ -113,7 +113,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
                 });
             }
         }
-        
+
         return Ok(());
     }
 
@@ -149,26 +149,27 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     cli.step_start("Creating new branch");
     switch(&name, true)?;
     cli.step_success("Created new branch", Some(&name));
-    
+
     // Track the branch creation event
     if let Ok(repo_root) = get_repo_root() {
         if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-            let from_branch = if !opts.parent.is_empty() { 
-                opts.parent.clone() 
+            let from_branch = if !opts.parent.is_empty() {
+                opts.parent.clone()
             } else if opts.use_root {
                 get_default_branch()?
             } else {
                 current_branch.clone()
             };
-            
+
             let commit_id = if let Ok(output) = std::process::Command::new("git")
                 .args(&["rev-parse", "HEAD"])
-                .output() {
+                .output()
+            {
                 String::from_utf8_lossy(&output.stdout).trim().to_string()
             } else {
                 String::new()
             };
-            
+
             let _ = event_manager.track(EventData::BranchCreated {
                 name: name.to_string(),
                 from_branch,
@@ -225,14 +226,14 @@ fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
     let mut best_score = 0;
 
     // First check for exact match (case-insensitive)
-    for branch in &branches {
+    for branch in &branches.branches {
         if branch.eq_ignore_ascii_case(&opts.name) {
             return Ok(Some(branch.clone()));
         }
     }
 
     // If no exact match, perform fuzzy search
-    for branch in &branches {
+    for branch in &branches.branches {
         if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
             if score > best_score {
                 best_score = score;

@@ -109,7 +109,7 @@ pub fn stage_all() -> Result<()> {
 
 /// List all local branches
 #[derive(Debug, Default)]
-struct BranchList {
+pub struct BranchList {
     pub branches: Vec<String>,
     pub local: Vec<String>,
     pub remote: Vec<String>,
