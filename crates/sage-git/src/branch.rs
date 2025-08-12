@@ -64,11 +64,17 @@ pub fn is_default_branch() -> Result<bool> {
 /// Cache for the default branch name
 static DEFAULT_BRANCH: Lazy<Result<String>> = Lazy::new(|| {
     if let Ok(sym) = git_output(["symbolic-ref", "refs/remotes/origin/HEAD"]) {
-        if let Some(tail) = sym.rsplit('/').next() { return Ok(tail.to_string()); }
+        if let Some(tail) = sym.rsplit('/').next() {
+            return Ok(tail.to_string());
+        }
     }
     // Fallback to `main` then `master`, then the current branch
-    if git_success(["show-ref", "--verify", "refs/heads/main"]).unwrap_or(false) { return Ok("main".into()); }
-    if git_success(["show-ref", "--verify", "refs/heads/master"]).unwrap_or(false) { return Ok("master".into()); }
+    if git_success(["show-ref", "--verify", "refs/heads/main"]).unwrap_or(false) {
+        return Ok("main".into());
+    }
+    if git_success(["show-ref", "--verify", "refs/heads/master"]).unwrap_or(false) {
+        return Ok("master".into());
+    }
     get_current()
 });
 
