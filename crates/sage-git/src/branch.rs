@@ -108,24 +108,28 @@ pub fn stage_all() -> Result<()> {
 }
 
 /// List all local branches
-pub fn list_branches() -> Result<Vec<String>> {
-    let result = Command::new("git")
-        .args(["branch", "--format=%(refname:short)"])
-        .output()?;
+#[derive(Debug, Default)]
+struct BranchList {
+    branches: Vec<String>,
+    local: Vec<String>,
+    remote: Vec<String>,
+}
+pub fn list_branches() -> Result<BranchList> {
+    let output = git_output(["branch", "-a", "--format=%(refname:short)"])?;
+    let mut branches = BranchList::default();
+    for line in output.lines() {
+        // Skip the origin and HEAD definitions
+        if line.trim() == "origin" || line.trim() == "origin/HEAD" || line.trim() == "HEAD" {
+            continue;
+        }
+        branches.branches.push(line.trim().to_string());
 
-    if !result.status.success() {
-        return Err(anyhow!(
-            "Failed to list branches: {}",
-            String::from_utf8_lossy(&result.stderr)
-        ));
+        if line.starts_with("origin/") {
+            branches.remote.push(line.trim().strip_prefix("origin/").unwrap().to_string());
+        } else {
+            branches.local.push(line.trim().to_string());
+        }
     }
-
-    let stdout = String::from_utf8(result.stdout)?;
-    let branches = stdout
-        .lines()
-        .map(|line| line.trim().to_string())
-        .filter(|line| !line.is_empty())
-        .collect();
 
     Ok(branches)
 }
