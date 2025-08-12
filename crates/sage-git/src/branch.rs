@@ -16,28 +16,19 @@ pub fn exists(branch: &str) -> Result<bool> {
         .lines()
         .map(|line| line.trim().trim_start_matches('*').trim())
         .collect();
+
     Ok(branches.contains(&branch))
 }
 
 /// Switch to a branch, and optionally create it if it doesn't exist.
 pub fn switch(name: &str, create: bool) -> Result<String> {
     let current_branch = get_current()?;
-    let mut cmd = Command::new("git");
+    let mut args = vec!["switch"];
 
-    cmd.arg("switch");
-    if create {
-        cmd.arg("-c");
-    }
-    cmd.arg(name);
+    if create { args.push("-c") }
+    args.push(name);
 
-    let output = cmd.output()?;
-
-    if !output.status.success() {
-        return Err(anyhow!(
-            "Failed to switch branch: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    git_ok(&args)?;
 
     Ok(current_branch)
 }
