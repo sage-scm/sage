@@ -2,16 +2,11 @@ use anyhow::{Result, anyhow, bail};
 use once_cell::sync::Lazy;
 use std::process::Command;
 
+use crate::prelude::{git_ok, git_output};
+
 /// Get the current branch name.
 pub fn get_current() -> Result<String> {
-    let result = Command::new("git")
-        .arg("rev-parse")
-        .arg("--abbrev-ref")
-        .arg("HEAD")
-        .output()?;
-
-    let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().to_string())
+    git_output(["rev-parse", "--abbrev-ref", "HEAD"])
 }
 
 /// Check if the branch exists locally.
