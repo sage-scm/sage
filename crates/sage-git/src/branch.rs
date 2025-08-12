@@ -110,9 +110,9 @@ pub fn stage_all() -> Result<()> {
 /// List all local branches
 #[derive(Debug, Default)]
 struct BranchList {
-    branches: Vec<String>,
-    local: Vec<String>,
-    remote: Vec<String>,
+    pub branches: Vec<String>,
+    pub local: Vec<String>,
+    pub remote: Vec<String>,
 }
 pub fn list_branches() -> Result<BranchList> {
     let output = git_output(["branch", "-a", "--format=%(refname:short)"])?;
@@ -125,7 +125,9 @@ pub fn list_branches() -> Result<BranchList> {
         branches.branches.push(line.trim().to_string());
 
         if line.starts_with("origin/") {
-            branches.remote.push(line.trim().strip_prefix("origin/").unwrap().to_string());
+            branches
+                .remote
+                .push(line.trim().strip_prefix("origin/").unwrap().to_string());
         } else {
             branches.local.push(line.trim().to_string());
         }

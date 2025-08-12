@@ -8,9 +8,8 @@ pub fn list_branches(relative: bool) -> Result<()> {
     let branches = sage_git::branch::list_branches()?;
 
     println!("{}", "Branches:".sage().bold());
-    println!();
 
-    for branch in branches {
+    for branch in branches.branches {
         let is_current = branch == current_branch;
         let is_default = branch == default_branch;
         let compare_branch = if relative {
