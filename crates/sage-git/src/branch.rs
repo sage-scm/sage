@@ -35,20 +35,7 @@ pub fn switch(name: &str, create: bool) -> Result<String> {
 
 /// Sets the upstream branch for the current branch.
 pub fn set_upstream(name: &str) -> Result<()> {
-    let result = Command::new("git")
-        .arg("branch")
-        .arg("--set-upstream-to")
-        .arg(format!("origin/{name}"))
-        .output()?;
-
-    if !result.status.success() {
-        return Err(anyhow!(
-            "Failed to set upstream branch: {}",
-            String::from_utf8_lossy(&result.stderr)
-        ));
-    }
-
-    Ok(())
+    git_ok(&["branch", "--set-upstream-to", &format!("origin/{name}")])
 }
 
 /// Pushes the current branch to the remote.
