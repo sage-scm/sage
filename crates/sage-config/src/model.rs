@@ -64,6 +64,8 @@ pub struct AiConfig {
     pub api_key: String,
     /// Maximum tokens or request budget
     pub max_tokens: u32,
+    /// Timeout for AI requests
+    pub timeout: u64,
     /// Any additional, AI/LLM-specific settings
     pub extras: HashMap<String, toml::Value>,
 }

@@ -1,11 +1,14 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use toml::Value;
 
 fn parse_bool(value: &str) -> Result<bool> {
     match value.to_lowercase().as_str() {
         "true" | "yes" | "y" | "1" | "on" => Ok(true),
         "false" | "no" | "n" | "0" | "off" => Ok(false),
-        _ => bail!("Invalid boolean value: '{}'. Valid values: true, false, yes, no, y, n, 1, 0, on, off", value),
+        _ => bail!(
+            "Invalid boolean value: '{}'. Valid values: true, false, yes, no, y, n, 1, 0, on, off",
+            value
+        ),
     }
 }
 
@@ -36,6 +39,11 @@ pub fn config_set(key: &str, value: &str, local: bool) -> Result<()> {
         ["ai", "model"] => cfg.ai.model = value.to_string(),
         ["ai", "api_url"] => cfg.ai.api_url = value.to_string(),
         ["ai", "api_key"] => cfg.ai.api_key = value.to_string(),
+        ["ai", "timeout"] => {
+            cfg.ai.timeout = value
+                .parse()
+                .map_err(|_| anyhow::anyhow!("Invalid u64 value for ai.timeout"))?
+        }
         ["ai", "max_tokens"] => {
             cfg.ai.max_tokens = value
                 .parse()
@@ -49,8 +57,9 @@ pub fn config_set(key: &str, value: &str, local: bool) -> Result<()> {
         ["pull_requests", "provider"] => cfg.pull_requests.provider = value.to_string(),
         ["pull_requests", "access_token"] => cfg.pull_requests.access_token = value.to_string(),
         ["save", "ask_on_mixed_staging"] => {
-            cfg.save.ask_on_mixed_staging = parse_bool(value)
-                .map_err(|e| anyhow::anyhow!("Invalid value for save.ask_on_mixed_staging: {}", e))?
+            cfg.save.ask_on_mixed_staging = parse_bool(value).map_err(|e| {
+                anyhow::anyhow!("Invalid value for save.ask_on_mixed_staging: {}", e)
+            })?
         }
         ["extras", extra_key] => {
             cfg.extras

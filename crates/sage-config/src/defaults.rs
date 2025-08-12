@@ -44,6 +44,7 @@ impl Default for AiConfig {
             api_url: String::from("https://api.openai.com/v1/"),
             api_key: String::from(""),
             max_tokens: 4096,
+            timeout: 10,
             extras: HashMap::new(),
         }
     }

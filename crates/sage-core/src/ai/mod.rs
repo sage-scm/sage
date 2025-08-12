@@ -17,6 +17,7 @@ pub async fn ask(prompt: &str) -> Result<String> {
     let api_url = cfg.ai.api_url;
     let mut api_key = cfg.ai.api_key;
     let ai_model = cfg.ai.model;
+    let timeout = cfg.ai.timeout;
 
     if api_key.is_empty() {
         api_key = if api_url.contains("localhost") || api_url.contains("127.0.0.1") {
@@ -26,9 +27,6 @@ pub async fn ask(prompt: &str) -> Result<String> {
                 .context("Failed to get OPENAI_API_KEY environment variable")?
         };
     }
-    println!("AI API URL: {api_url}");
-    println!("AI API KEY: {api_key}");
-    println!("AI MODEL: {ai_model}");
 
     // Build client
     let mut client = OpenAIClient::builder()
@@ -52,7 +50,8 @@ pub async fn ask(prompt: &str) -> Result<String> {
             }],
         );
 
-        match tokio::time::timeout(Duration::from_secs(10), client.chat_completion(req)).await {
+        match tokio::time::timeout(Duration::from_secs(timeout), client.chat_completion(req)).await
+        {
             Ok(Ok(result)) => {
                 if result.choices.is_empty() {
                     return Err(anyhow!("No choices returned from API"));

@@ -67,6 +67,10 @@ pub fn config_list() -> Result<()> {
         ),
     );
     config_map.insert(
+        "ai.timeout",
+        format!("{}  # Timeout for AI requests", config.ai.timeout),
+    );
+    config_map.insert(
         "ai.api_key",
         format!(
             "{}  # API key for LLM provider authentication",
