@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow, bail};
 use once_cell::sync::Lazy;
 use std::process::Command;
 
-use crate::prelude::{git_ok, git_output};
+use crate::prelude::{git_ok, git_output, git_success};
 
 /// Get the current branch name.
 pub fn get_current() -> Result<String> {
@@ -61,45 +61,13 @@ pub fn is_default_branch() -> Result<bool> {
 
 /// Cache for the default branch name
 static DEFAULT_BRANCH: Lazy<Result<String>> = Lazy::new(|| {
-    // Try to get the default branch from the remote
-    let result = Command::new("git")
-        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
-        .output();
-
-    match result {
-        Ok(output) if output.status.success() => {
-            // Format is refs/remotes/origin/main or refs/remotes/origin/master
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let branch = stdout
-                .trim()
-                .strip_prefix("refs/remotes/origin/")
-                .unwrap_or("main")
-                .to_string();
-            Ok(branch)
-        }
-        _ => {
-            // Fallback: try to determine from common default branch names
-            for branch in ["main", "master", "develop"] {
-                let check = Command::new("git")
-                    .args(["rev-parse", "--verify", &format!("refs/heads/{}", branch)])
-                    .output();
-
-                if let Ok(output) = check {
-                    if output.status.success() {
-                        return Ok(branch.to_string());
-                    }
-                }
-            }
-
-            // Last resort: return the current branch
-            let result = Command::new("git")
-                .args(["rev-parse", "--abbrev-ref", "HEAD"])
-                .output()?;
-
-            let stdout = String::from_utf8(result.stdout)?;
-            Ok(stdout.trim().to_string())
-        }
+    if let Ok(sym) = git_output(["symbolic-ref", "refs/remotes/origin/HEAD"]) {
+        if let Some(tail) = sym.rsplit('/').next() { return Ok(tail.to_string()); }
     }
+    // Fallback to `main` then `master`, then the current branch
+    if git_success(["show-ref", "--verify", "refs/heads/main"]).unwrap_or(false) { return Ok("main".into()); }
+    if git_success(["show-ref", "--verify", "refs/heads/master"]).unwrap_or(false) { return Ok("master".into()); }
+    get_current()
 });
 
 /// Get the default branch name.
