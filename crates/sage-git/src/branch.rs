@@ -86,13 +86,7 @@ pub fn is_default(branch: &str) -> Result<bool> {
 
 /// Determine if the branch has any changes on it.
 pub fn is_clean() -> Result<bool> {
-    let result = Command::new("git")
-        .arg("status")
-        .arg("--porcelain")
-        .output()?;
-
-    let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().is_empty())
+    git_output(["status", "--porcelain"]).map(|stdout| stdout.trim().is_empty())
 }
 
 /// Unstage all changes in the repository
