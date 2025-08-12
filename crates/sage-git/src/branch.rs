@@ -137,22 +137,7 @@ pub fn list_branches() -> Result<BranchList> {
 /// Pull the current branch from the remote.
 pub fn pull() -> Result<()> {
     let current = get_current()?;
-
-    let res = Command::new("git")
-        .arg("pull")
-        .arg("origin")
-        .arg(current)
-        .arg("--ff-only")
-        .output()?;
-
-    if !res.status.success() {
-        bail!(
-            "Failed to pull branch: {}",
-            String::from_utf8_lossy(&res.stderr)
-        )
-    }
-
-    Ok(())
+    git_ok(["pull", "origin", &current, "--ff-only"])
 }
 
 /// Merge a specific branch into the current branch.
@@ -176,23 +161,21 @@ pub fn is_merge_in_progress() -> Result<bool> {
     let git_dir = Command::new("git")
         .args(&["rev-parse", "--git-dir"])
         .output()?;
-    
+
     if !git_dir.status.success() {
         return Ok(false);
     }
-    
+
     let git_dir_path = String::from_utf8_lossy(&git_dir.stdout).trim().to_string();
     let merge_head = Path::new(&git_dir_path).join("MERGE_HEAD");
-    
+
     Ok(merge_head.exists())
 }
 
 /// Abort an in-progress merge
 pub fn merge_abort() -> Result<()> {
-    let output = Command::new("git")
-        .args(&["merge", "--abort"])
-        .output()?;
-    
+    let output = Command::new("git").args(&["merge", "--abort"]).output()?;
+
     if output.status.success() {
         Ok(())
     } else {
@@ -204,9 +187,9 @@ pub fn merge_abort() -> Result<()> {
 /// Check if the branch has diverged from its upstream
 pub fn has_diverged(branch: &str) -> Result<bool> {
     use crate::status::branch_status;
-    
+
     let status = branch_status(branch)?;
-    
+
     // Has diverged if we have both local commits (ahead) and remote commits (behind)
     Ok(status.ahead_count > 0 && status.behind_count > 0)
 }
@@ -214,9 +197,9 @@ pub fn has_diverged(branch: &str) -> Result<bool> {
 /// Check if branch is shared (pushed to remote and potentially used by others)
 pub fn is_shared_branch(branch: &str) -> Result<bool> {
     use crate::status::branch_status;
-    
+
     let status = branch_status(branch)?;
-    
+
     // Branch is shared if it has an upstream branch
     // This means it exists on the remote and could be used by others
     Ok(status.upstream_branch.is_some())
