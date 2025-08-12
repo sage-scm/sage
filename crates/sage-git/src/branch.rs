@@ -174,14 +174,7 @@ pub fn is_merge_in_progress() -> Result<bool> {
 
 /// Abort an in-progress merge
 pub fn merge_abort() -> Result<()> {
-    let output = Command::new("git").args(&["merge", "--abort"]).output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("Failed to abort merge: {}", stderr.trim())
-    }
+    git_ok(["merge", "--abort"])
 }
 
 /// Check if the branch has diverged from its upstream
