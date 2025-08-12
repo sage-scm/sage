@@ -40,31 +40,16 @@ pub fn set_upstream(name: &str) -> Result<()> {
 
 /// Pushes the current branch to the remote.
 pub fn push(name: &str, force: bool) -> Result<()> {
-    // Create a git push command
-    let mut cmd = Command::new("git");
-    cmd.arg("push")
-        .arg("--set-upstream")
-        .arg("origin")
-        .arg(name);
+    let mut args = vec!["push", "--set-upstream", "origin", name];
 
     // Add force options based on the force flag
     if force {
-        cmd.arg("--force");
+        args.push("--force");
     } else {
-        cmd.arg("--force-with-lease");
+        args.push("--force-with-lease");
     }
 
-    // Execute the command
-    let result = cmd.output()?;
-
-    if result.status.success() {
-        Ok(())
-    } else {
-        Err(anyhow!(
-            "Failed to push branch: {}",
-            String::from_utf8_lossy(&result.stderr)
-        ))
-    }
+    git_ok(&args)
 }
 
 /// Check if the current branch is the default branch (main, master).
