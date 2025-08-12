@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use std::process::Command;
 
 /// Check if we're in a git repo.
@@ -204,11 +204,43 @@ pub fn has_conflicts() -> Result<bool> {
     let output = Command::new("git")
         .args(&["diff", "--name-only", "--diff-filter=U"])
         .output()?;
-    
+
     if !output.status.success() {
         return Err(anyhow!("Failed to check for conflicts"));
     }
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(!stdout.trim().is_empty())
+}
+
+/// Get repo name
+pub fn name() -> Option<String> {
+    let output = Command::new("git")
+        .args(&["config", "--get", "remote.origin.url"])
+        .output().expect("Could not call git");
+
+    let fallback = std::env::current_dir()
+        .ok()?
+        .file_name()?
+        .to_str()
+        .map(|s| s.to_string());
+
+    if !output.status.success() {
+        return fallback
+    }
+
+    let url = String::from_utf8_lossy(&output.stdout);
+
+    let name = url
+        .trim_end_matches(".git")
+        .rsplit('/')
+        .next()
+        .or_else(|| url.rsplit(':').next())
+        .unwrap_or("")
+        .to_string();
+    if !name.is_empty() {
+        return Some(name);
+    }
+
+    fallback
 }
