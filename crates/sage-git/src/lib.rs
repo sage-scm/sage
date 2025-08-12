@@ -1,3 +1,4 @@
+mod prelude;
 pub mod amend;
 pub mod branch;
 pub mod commit;
