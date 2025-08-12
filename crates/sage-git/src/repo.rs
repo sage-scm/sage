@@ -21,17 +21,7 @@ pub fn get_repo_root() -> Result<String> {
 
 /// Fetches the latest from remote.
 pub fn fetch_remote() -> Result<()> {
-    let result = Command::new("git")
-        .arg("fetch")
-        .arg("--all")
-        .arg("--prune")
-        .output()?;
-
-    if result.status.success() {
-        Ok(())
-    } else {
-        Err(anyhow!("Failed to fetch remote"))
-    }
+    git_ok(["fetch", "--all", "--prune"])
 }
 
 /// Get the diff between the current branch and the remote branch with enhanced context.
