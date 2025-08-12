@@ -236,3 +236,7 @@ pub fn has_remote_branch(branch: &str) -> Result<bool> {
     Ok(remotes.lines().any(|r| r.trim() == branch))
 }
 
+/// Check if the current branch is tracking a remote branch.
+pub fn current_upstream() -> Result<String> {
+    git_output(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+}
