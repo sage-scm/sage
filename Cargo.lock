@@ -2185,6 +2185,7 @@ dependencies = [
  "console",
  "dirs",
  "fuzzy-matcher",
+ "humantime",
  "indicatif",
  "octocrab",
  "openai-api-rs",
@@ -2270,6 +2271,8 @@ dependencies = [
  "crossterm 0.29.0",
  "inquire",
  "ratatui",
+ "sage-config",
+ "tempfile",
 ]
 
 [[package]]

@@ -240,3 +240,36 @@ pub fn has_remote_branch(branch: &str) -> Result<bool> {
 pub fn current_upstream() -> Result<String> {
     git_output(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
 }
+
+/// Get all the changes on the current branch
+pub fn discover_changes() -> Result<Vec<String>> {
+    // Use porcelain to list modified/renamed/deleted and untracked
+    let out = git_output(["status", "--porcelain", "-uall"])?;
+    let mut res = Vec::new();
+    for line in out.lines() {
+        let t = line.trim();
+        if t.is_empty() {
+            continue;
+        }
+        // lines like: " M path", "M path", "A  path", "?? path"
+        let path = t[2..].to_string();
+        res.push(path);
+    }
+    Ok(res)
+}
+
+/// List files matching a list of globs
+pub fn list_files_matching(globs: &Vec<String>) -> Result<Vec<String>> {
+    // Use git ls-files to respect .gitignore
+    let mut args: Vec<String> = vec![
+        "ls-files".into(),
+        "-m".into(),
+        "-o".into(),
+        "--exclude-standard".into(),
+    ];
+    args.extend(globs.iter().cloned());
+    let out = git_output(args)?;
+    let mut v: Vec<String> = out.lines().map(|s| s.to_string()).collect();
+    v.sort();
+    Ok(v)
+}

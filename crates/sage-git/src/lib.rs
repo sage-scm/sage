@@ -1,9 +1,9 @@
-mod prelude;
 pub mod amend;
 pub mod branch;
 pub mod commit;
 pub mod config;
 pub mod diff;
+pub mod prelude;
 pub mod rebase;
 pub mod repo;
 pub mod stash;

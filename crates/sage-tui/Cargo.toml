@@ -10,3 +10,5 @@ crossterm = "0.29.0"
 ratatui = "0.29.0"
 inquire = "0.7.5"
 anyhow = { workspace = true }
+sage-config = { path = "../sage-config" }
+tempfile = "3.6"

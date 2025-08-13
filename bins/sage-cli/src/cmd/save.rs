@@ -1,21 +1,21 @@
 use anyhow::Result;
-use sage_core::{CliOutput, SaveOpts};
 
 pub async fn save(args: &crate::SaveArgs) -> Result<()> {
-    let cli = CliOutput::new();
-    cli.header("save");
+    let ui = sage_core::Ui::new(false, false);
+    sage_core::get_repo_info(&ui)?;
 
-    let opts = SaveOpts {
-        message: args.message.clone().unwrap_or_default(),
-        all: args.all,
-        paths: args.paths.clone().unwrap_or_default(),
+    let args = sage_core::SaveArgs {
+        message: args.message.clone(),
+        include: args.paths.clone().unwrap_or_default(),
         ai: args.ai,
         amend: args.amend,
         push: args.push || args.amend,
         empty: args.empty,
+        json: false,
+        no_color: false,
     };
-    sage_core::save(&opts, &cli).await?;
 
-    cli.summary();
+    sage_core::save(&ui, &args).await?;
+
     Ok(())
 }
