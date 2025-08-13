@@ -9,41 +9,29 @@ pub fn commit_empty() -> Result<String> {
     // Create the empty commit
     git_success(["commit", "--allow-empty"])?;
 
-    // Get the short commit ID of the latest commit
-    if let Ok(id_output) = git_output(["rev-parse", "--short", "HEAD"]) {
-        return Ok(id_output.trim().to_string());
-    }
-
-    Err(anyhow!("Failed to get commit ID"))
+    Ok(last_commit_id()?)
 }
 
 // Create a commit with the given message and return the short commit ID
 pub fn commit(message: &str) -> Result<String> {
     // Create the commit
-    let output = Command::new("git")
-        .args(["commit", "-m", message])
-        .output()?;
+    git_success(["commit", "-m", message])?;
 
-    if !output.status.success() {
-        // Convert stderr to a string for a more detailed error message
-        let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(anyhow!("Failed to commit: {}", error_message));
-    }
+    Ok(last_commit_id()?)
+}
 
-    // Get the short commit ID of the latest commit
-    let id_output = Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .output()?;
+// Create a commit with the given message and return the short commit ID
+pub fn commit_with_file(message: &str, file: &str) -> Result<String> {
+    // Create the commit
+    git_success(["commit", "-m", message, file])?;
 
-    if !id_output.status.success() {
-        let error_message = String::from_utf8_lossy(&id_output.stderr)
-            .trim()
-            .to_string();
-        return Err(anyhow!("Failed to get commit ID: {}", error_message));
-    }
+    Ok(last_commit_id()?)
+}
 
-    // Convert the output to a string and trim whitespace
-    let commit_id = String::from_utf8(id_output.stdout)?.trim().to_string();
+/// Get the last commit id
+pub fn last_commit_id() -> Result<String> {
+    let id_output = git_output(["rev-parse", "--short", "HEAD"])?;
+    let commit_id = id_output.trim().to_string();
 
     Ok(commit_id)
 }
