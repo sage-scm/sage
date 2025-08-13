@@ -132,18 +132,8 @@ pub fn diff() -> Result<String> {
 
 /// Get commiter details
 pub fn get_commiter() -> Result<(String, String)> {
-    let name_cmd = Command::new("git")
-        .arg("config")
-        .arg("user.name")
-        .output()?;
-
-    let email_cmd = Command::new("git")
-        .arg("config")
-        .arg("user.email")
-        .output()?;
-
-    let name = String::from_utf8(name_cmd.stdout)?.trim().to_string();
-    let email = String::from_utf8(email_cmd.stdout)?.trim().to_string();
+    let name = git_output(["config", "user.name"])?;
+    let email = git_output(["config", "user.email"])?;
     Ok((name, email))
 }
 
@@ -203,7 +193,8 @@ pub fn has_conflicts() -> Result<bool> {
 pub fn name() -> Option<String> {
     let output = Command::new("git")
         .args(&["config", "--get", "remote.origin.url"])
-        .output().expect("Could not call git");
+        .output()
+        .expect("Could not call git");
 
     let fallback = std::env::current_dir()
         .ok()?
@@ -212,7 +203,7 @@ pub fn name() -> Option<String> {
         .map(|s| s.to_string());
 
     if !output.status.success() {
-        return fallback
+        return fallback;
     }
 
     let url = String::from_utf8_lossy(&output.stdout);
