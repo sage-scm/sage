@@ -139,85 +139,41 @@ pub fn get_commiter() -> Result<(String, String)> {
 
 /// get the owner and repo name from the remote URL
 pub fn owner_repo() -> Result<(String, String)> {
-    let result = Command::new("git")
-        .arg("remote")
-        .arg("get-url")
-        .arg("origin")
-        .output()?;
-
-    // The repo url could be SSH or it could be HTTPS
-    // We are going to handle both cases here.
-
-    let remote_url = String::from_utf8(result.stdout)?.trim().to_string();
-    if remote_url.starts_with("git@github.com:") {
-        let parts = remote_url
-            .trim_start_matches("git@github.com:")
-            .trim_end_matches(".git")
-            .split('/')
-            .collect::<Vec<_>>();
-
-        if parts.len() >= 2 {
-            return Ok((parts[0].to_string(), parts[1].to_string()));
-        }
+    let name = name().unwrap();
+    if let Some(owner_repo) = name.split('/').next() {
+        let (owner, repo) = owner_repo.split_once('/').unwrap();
+        Ok((owner.to_string(), repo.to_string()))
+    } else {
+        bail!("Could not parse owner and repo from remote URL");
     }
-
-    // If we are here... we have an HTTPS URL
-    let parts = remote_url
-        .trim_start_matches("https://github.com/")
-        .trim_end_matches(".git")
-        .split("/")
-        .collect::<Vec<_>>();
-
-    if parts.len() >= 2 {
-        return Ok((parts[0].to_string(), parts[1].to_string()));
-    }
-
-    unreachable!("Invalid remote URL");
 }
 
 /// Check if there are any unresolved conflicts in the repository
 pub fn has_conflicts() -> Result<bool> {
-    let output = Command::new("git")
-        .args(&["diff", "--name-only", "--diff-filter=U"])
-        .output()?;
-
-    if !output.status.success() {
-        return Err(anyhow!("Failed to check for conflicts"));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(!stdout.trim().is_empty())
+    let output = git_output(["diff", "--name-only", "--diff-filter=U"])?;
+    Ok(!output.trim().is_empty())
 }
 
 /// Get repo name
 pub fn name() -> Option<String> {
-    let output = Command::new("git")
-        .args(&["config", "--get", "remote.origin.url"])
-        .output()
-        .expect("Could not call git");
+    if let Ok(url) = git_output(["config", "--get", "remote.origin.url"]) {
+        let name = url
+            .trim_end_matches(".git")
+            .rsplit('/')
+            .next()
+            .or_else(|| url.rsplit(':').next())
+            .unwrap_or("")
+            .to_string();
 
-    let fallback = std::env::current_dir()
+        if !name.is_empty() {
+            return Some(name);
+        }
+    }
+
+    // fallback: current dir
+    std::env::current_dir()
         .ok()?
         .file_name()?
         .to_str()
-        .map(|s| s.to_string());
-
-    if !output.status.success() {
-        return fallback;
-    }
-
-    let url = String::from_utf8_lossy(&output.stdout);
-
-    let name = url
-        .trim_end_matches(".git")
-        .rsplit('/')
-        .next()
-        .or_else(|| url.rsplit(':').next())
-        .unwrap_or("")
-        .to_string();
-    if !name.is_empty() {
-        return Some(name);
-    }
-
-    fallback
+        .map(|s| s.to_string())
 }
