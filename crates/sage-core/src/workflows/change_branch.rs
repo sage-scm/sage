@@ -1,13 +1,13 @@
 use anyhow::{Result, bail};
 use colored::Colorize;
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use sage_events::EventData;
 use sage_git::{
     branch::{exists, get_current, get_default_branch, list_branches, push, switch},
     repo::{fetch_remote, get_commiter, get_repo_root},
 };
 use sage_graph::SageGraph;
 use sage_tui::basic::select;
-use sage_events::EventData;
 use std::path::Path;
 
 use crate::{BranchName, CliOutput, events::EventManager};
