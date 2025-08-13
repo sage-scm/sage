@@ -27,6 +27,7 @@ sage-events = { path = "../../crates/sage-events" }
 toml = { workspace = true }
 colored = { workspace = true }
 uuid = "1.6"
+humantime = { workspace = true }
 
 [features]
 default = []
