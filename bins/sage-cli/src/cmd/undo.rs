@@ -176,9 +176,7 @@ fn execute_undo_operation(op: UndoOperation) -> Result<()> {
                 .output()?;
         }
         UndoOperation::DeleteBranch { name } => {
-            Command::new("git")
-                .args(["branch", "-D", &name])
-                .output()?;
+            Command::new("git").args(["branch", "-D", &name]).output()?;
         }
         UndoOperation::SwitchBranch { to_branch } => {
             switch(&to_branch, false)?;

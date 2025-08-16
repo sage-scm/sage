@@ -50,14 +50,12 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EventMetadata {
     pub user: Option<String>,
     pub session_id: Option<String>,
     pub command: Option<String>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]

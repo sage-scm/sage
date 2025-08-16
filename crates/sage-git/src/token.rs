@@ -33,18 +33,16 @@ fn get_token_from_gh_cli() -> Option<String> {
     // Check if the gh CLI is installed and authenticated
     let result = Command::new("gh").arg("auth").arg("token").output();
 
-    match result {
-        Ok(output) => {
-            if output.status.success() {
-                // Convert the output to a string and trim whitespace
-                let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !token.is_empty() {
-                    return Some(token);
-                }
+    if let Ok(output) = result {
+        if output.status.success() {
+            // Convert the output to a string and trim whitespace
+            let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !token.is_empty() {
+                return Some(token);
             }
         }
-        Err(_) => {} // gh CLI not installed or other error
     }
+    // gh CLI not installed or other error
 
     None
 }

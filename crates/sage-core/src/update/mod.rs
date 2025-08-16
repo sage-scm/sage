@@ -15,13 +15,11 @@ use std::{
 const CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours;
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct UpdateCheck {
     last_check: i64,
     latest_version: Option<String>,
 }
-
 
 fn get_update_check_path() -> Result<PathBuf> {
     let mut path = dirs::config_dir()
@@ -160,10 +158,8 @@ fn show_update_notification(current: &str, latest: &str) {
             );
             println!(
                 "  • Manual download: {}",
-                format!(
-                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
-                )
-                .cyan()
+                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
+                    .cyan()
             );
         }
         InstallationMethod::Cargo => {
@@ -187,10 +183,8 @@ fn show_update_notification(current: &str, latest: &str) {
             println!("  • Homebrew: {}", "brew install sage-scm/sage/sage".cyan());
             println!(
                 "  • Manual download: {}",
-                format!(
-                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
-                )
-                .cyan()
+                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
+                    .cyan()
             );
         }
         InstallationMethod::Manual => {
@@ -212,10 +206,8 @@ fn show_update_notification(current: &str, latest: &str) {
             );
             println!(
                 "  • Manual download: {}",
-                format!(
-                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
-                )
-                .cyan()
+                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
+                    .cyan()
             );
         }
     }

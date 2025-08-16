@@ -1,8 +1,8 @@
 use anyhow::{Result, bail};
 use sage_git::{
     branch::{
-        get_current, get_default_branch, has_diverged, is_merge_in_progress,
-        is_shared_branch, merge_abort, pull, push,
+        get_current, get_default_branch, has_diverged, is_merge_in_progress, is_shared_branch,
+        merge_abort, pull, push,
     },
     commit::commit,
     config::should_branch_rebase,

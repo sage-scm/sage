@@ -242,9 +242,7 @@ impl UndoOperation {
                 to_commit,
                 mode,
             } => {
-                format!(
-                    "Reset branch '{branch}' to {to_commit} ({mode:?} mode)"
-                )
+                format!("Reset branch '{branch}' to {to_commit} ({mode:?} mode)")
             }
             UndoOperation::CreateBranch { name, at_commit } => {
                 format!("Create branch '{name}' at commit {at_commit}")
@@ -265,9 +263,7 @@ impl UndoOperation {
                 commit,
                 onto_branch,
             } => {
-                format!(
-                    "Cherry-pick commit {commit} onto branch '{onto_branch}'"
-                )
+                format!("Cherry-pick commit {commit} onto branch '{onto_branch}'")
             }
             UndoOperation::RevertCommit { commit } => {
                 format!("Revert commit {commit}")

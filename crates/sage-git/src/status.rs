@@ -831,11 +831,7 @@ fn get_branch_ahead_behind(branch: &str) -> Result<(usize, usize)> {
 
         // Count commits ahead (in branch but not in upstream)
         let ahead = Command::new("git")
-            .args([
-                "rev-list",
-                "--count",
-                &format!("{merge_base}..{branch}"),
-            ])
+            .args(["rev-list", "--count", &format!("{merge_base}..{branch}")])
             .output()?;
 
         // Count commits behind (in upstream but not in branch)
@@ -1049,14 +1045,12 @@ pub fn get_status_entries() -> Result<Vec<StatusEntry>> {
             StatusType::Untracked
         } else if chars.len() >= 2 {
             let index_status = chars[0];
-            let work_status = chars[1];
+            let _work_status = chars[1];
 
             if index_status != ' ' && index_status != '?' {
                 StatusType::Staged
-            } else if work_status != ' ' && work_status != '?' {
-                StatusType::Unstaged
             } else {
-                StatusType::Unstaged // Default fallback
+                StatusType::Unstaged // Default fallback for work_status != ' ' && work_status != '?' or any other case
             }
         } else {
             StatusType::Unstaged

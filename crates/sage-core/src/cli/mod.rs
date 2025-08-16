@@ -55,9 +55,7 @@ impl SpinnerStep {
         }
 
         self.pb.finish_and_clear();
-        if let Ok(term) = Term::stdout().clear_line() {
-            term;
-        }
+        let _ = Term::stdout().clear_line();
         let final_msg = if let Some(detail) = detail {
             format!(
                 "●   {} {} {}",
@@ -82,9 +80,7 @@ impl SpinnerStep {
         }
 
         self.pb.finish_and_clear();
-        if let Ok(term) = Term::stdout().clear_line() {
-            term;
-        }
+        let _ = Term::stdout().clear_line();
         let final_msg = if let Some(detail) = detail {
             format!(
                 "{}   {} {}",
@@ -104,9 +100,7 @@ impl SpinnerStep {
         }
 
         self.pb.finish_and_clear();
-        if let Ok(term) = Term::stdout().clear_line() {
-            term;
-        }
+        let _ = Term::stdout().clear_line();
         let final_msg = format!(
             "●   {} {} {}",
             message,
