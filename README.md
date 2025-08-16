@@ -25,6 +25,16 @@ Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as
 
 ## Quick start
 
+### Install via Homebrew (macOS/Linux)
+
+```bash
+# Add the tap and install Sage
+brew tap sage-scm/sage
+brew install sage
+```
+
+### Install from source
+
 ```bash
 # Install sage with all features
 just install
