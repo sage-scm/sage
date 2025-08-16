@@ -44,6 +44,6 @@ where
     let out = Command::new("git")
         .args(&args_vec)
         .output()
-        .with_context(|| format!("failed to spawn git {:?}", args_vec))?;
+        .with_context(|| format!("failed to spawn git {args_vec:?}"))?;
     Ok(out)
 }

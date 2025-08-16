@@ -162,7 +162,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
             };
 
             let commit_id = if let Ok(output) = std::process::Command::new("git")
-                .args(&["rev-parse", "HEAD"])
+                .args(["rev-parse", "HEAD"])
                 .output()
             {
                 String::from_utf8_lossy(&output.stdout).trim().to_string()
@@ -187,10 +187,10 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
 
     if in_stack {
         // We will add the branch to the stack.
-        if let Some(stack_name) = graph.stack_name_of(&parent).cloned() {
+        if let Some(stack_name) = graph.stack_name_of(parent).cloned() {
             graph.add_stack_child(
                 &stack_name,
-                &parent,
+                parent,
                 name.clone().into(),
                 Some(username.clone()),
             )?;
@@ -234,7 +234,7 @@ fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
 
     // If no exact match, perform fuzzy search
     for branch in &branches.branches {
-        if let Some(score) = matcher.fuzzy_match(&branch, &opts.name) {
+        if let Some(score) = matcher.fuzzy_match(branch, &opts.name) {
             if score > best_score {
                 best_score = score;
                 best_match = Some(branch.clone());

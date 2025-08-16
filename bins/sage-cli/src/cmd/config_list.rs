@@ -128,23 +128,23 @@ pub fn config_list(global_config: &crate::GlobalConfig) -> Result<()> {
 
     // Print all config values
     for (key, value) in config_map {
-        println!("{:.<40} {}", key, value);
+        println!("{key:.<40} {value}");
     }
 
     // Print extras if any
     if !config.extras.is_empty() {
         println!("\nAdditional custom settings:");
         for (key, value) in &config.extras {
-            println!("  {}\\n    {}", key, value);
+            println!("  {key}\\n    {value}");
         }
     }
 
     // Print extras from nested configs
     let print_extras = |prefix: &str, extras: &std::collections::HashMap<String, toml::Value>| {
         if !extras.is_empty() {
-            println!("\nAdditional {} settings:", prefix);
+            println!("\nAdditional {prefix} settings:");
             for (key, value) in extras {
-                println!("  {}.{}\\n    {}", prefix, key, value);
+                println!("  {prefix}.{key}\\n    {value}");
             }
         }
     };

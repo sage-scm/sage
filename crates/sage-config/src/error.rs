@@ -34,6 +34,6 @@ impl From<toml::ser::Error> for ConfigError {
 
 impl From<anyhow::Error> for ConfigError {
     fn from(e: anyhow::Error) -> Self {
-        ConfigError::Custom(format!("{:?}", e))
+        ConfigError::Custom(format!("{e:?}"))
     }
 }

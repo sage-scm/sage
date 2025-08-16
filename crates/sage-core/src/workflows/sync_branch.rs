@@ -1,14 +1,14 @@
 use anyhow::{Result, bail};
 use sage_git::{
     branch::{
-        get_current, get_default_branch, has_diverged, is_clean, is_merge_in_progress,
-        is_shared_branch, merge, merge_abort, pull, push, switch,
+        get_current, get_default_branch, has_diverged, is_merge_in_progress,
+        is_shared_branch, merge_abort, pull, push,
     },
     commit::commit,
     config::should_branch_rebase,
-    rebase::{is_rebase_in_progress, rebase, rebase_abort, rebase_continue},
+    rebase::{is_rebase_in_progress, rebase_abort, rebase_continue},
     repo::{fetch_remote, has_conflicts},
-    stash::{stash_pop, stash_push},
+    stash::stash_pop,
     status::branch_status,
 };
 use sage_graph::SageGraph;
@@ -85,14 +85,14 @@ fn sync_single_branch(
     let branch_state = branch_status(current_branch)?;
 
     if branch_state.needs_pull() && !branch_state.needs_push() {
-        cli.step_start(&format!("Pulling latest changes for '{}'", current_branch));
+        cli.step_start(&format!("Pulling latest changes for '{current_branch}'"));
         pull()?;
         cli.step_success("Branch updated from remote", None);
         return Ok(());
     }
 
     if !branch_state.needs_pull() && branch_state.needs_push() {
-        cli.step_start(&format!("Pushing changes for '{}'", current_branch));
+        cli.step_start(&format!("Pushing changes for '{current_branch}'"));
         push(current_branch, false)?;
         cli.step_success("Changes pushed to remote", None);
         return Ok(());
@@ -100,7 +100,7 @@ fn sync_single_branch(
 
     let parent_needs_update = branch_needs_update(&parent_branch)?;
     if !parent_needs_update && !branch_state.needs_pull() {
-        cli.step_success(&format!("'{}' is already up to date", current_branch), None);
+        cli.step_success(&format!("'{current_branch}' is already up to date"), None);
         return Ok(());
     }
 
@@ -116,7 +116,7 @@ fn sync_single_branch(
 }
 
 pub fn ensure_branch_updated(cli: &CliOutput, branch: &str) -> Result<()> {
-    cli.step_start(&format!("Updating '{}'", branch));
+    cli.step_start(&format!("Updating '{branch}'"));
 
     fetch_remote()?;
 
@@ -124,9 +124,9 @@ pub fn ensure_branch_updated(cli: &CliOutput, branch: &str) -> Result<()> {
 
     if status.needs_pull() {
         pull()?;
-        cli.step_success(&format!("'{}' updated from remote", branch), None);
+        cli.step_success(&format!("'{branch}' updated from remote"), None);
     } else {
-        cli.step_success(&format!("'{}' already up to date", branch), None);
+        cli.step_success(&format!("'{branch}' already up to date"), None);
     }
 
     Ok(())
@@ -187,7 +187,7 @@ fn complete_merge(cli: &CliOutput) -> Result<()> {
 
     let current_branch = get_current()?;
     let parent_branch = find_parent_branch(&current_branch, &None)?;
-    let merge_message = format!("merge: sync '{}' with '{}'", current_branch, parent_branch);
+    let merge_message = format!("merge: sync '{current_branch}' with '{parent_branch}'");
 
     commit(&merge_message)?;
 
@@ -287,10 +287,10 @@ fn sync_stack(
 
         match rebase_onto_parent(cli, branch, &parent, use_rebase, opts.force_push) {
             Ok(_) => {
-                cli.step_success(&format!("Synced '{}' with '{}'", branch, parent), None);
+                cli.step_success(&format!("Synced '{branch}' with '{parent}'"), None);
             }
             Err(e) => {
-                cli.step_error(&format!("Failed to sync '{}'", branch), &e.to_string());
+                cli.step_error(&format!("Failed to sync '{branch}'"), &e.to_string());
                 if is_rebase_in_progress()? || is_merge_in_progress()? {
                     cli.warning("Resolve conflicts and run 'sage sync --continue'");
                 }

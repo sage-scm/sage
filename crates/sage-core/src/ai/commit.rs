@@ -40,8 +40,7 @@ fn summarize_diff(diff: &str) -> String {
         .filter(|l| l.starts_with('+') || l.starts_with('-'))
         .count();
     format!(
-        "# Summar: Modified {} files, {} lines changed",
-        file_count, line_count
+        "# Summar: Modified {file_count} files, {line_count} lines changed"
     )
 }
 

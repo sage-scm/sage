@@ -4,7 +4,7 @@ use std::process::Command;
 /// Get a git config value
 pub fn get_config(key: &str) -> Result<Option<String>> {
     let output = Command::new("git")
-        .args(&["config", "--get", key])
+        .args(["config", "--get", key])
         .output()?;
 
     if output.status.success() {
@@ -19,7 +19,7 @@ pub fn get_config(key: &str) -> Result<Option<String>> {
 /// Check if branch should use rebase based on git config
 pub fn should_branch_rebase(branch: &str) -> Result<Option<bool>> {
     // Check branch-specific rebase setting
-    if let Some(value) = get_config(&format!("branch.{}.rebase", branch))? {
+    if let Some(value) = get_config(&format!("branch.{branch}.rebase"))? {
         return Ok(Some(value == "true"));
     }
 

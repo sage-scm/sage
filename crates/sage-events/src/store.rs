@@ -45,7 +45,7 @@ impl EventStore {
             .open(&self.path)?;
 
         let json = serde_json::to_string(event)?;
-        writeln!(file, "{}", json)?;
+        writeln!(file, "{json}")?;
 
         self.compact_if_needed()?;
 
@@ -144,7 +144,7 @@ impl EventStore {
             let mut file = File::create(&temp_path)?;
             for event in &events {
                 let json = serde_json::to_string(event)?;
-                writeln!(file, "{}", json)?;
+                writeln!(file, "{json}")?;
             }
             file.sync_all()?;
         }

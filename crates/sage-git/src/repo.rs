@@ -117,7 +117,7 @@ pub fn diff() -> Result<String> {
                             diff_content
                                 .push_str(&format!("\n--- /dev/null\n+++ b/{}\n", entry.path));
                             for line in file_content.lines() {
-                                diff_content.push_str(&format!("+{}\n", line));
+                                diff_content.push_str(&format!("+{line}\n"));
                             }
                         }
                     }
@@ -127,7 +127,7 @@ pub fn diff() -> Result<String> {
     }
 
     // Combine summary and diff content
-    Ok(format!("{}\n# Diff Content\n\n{}", summary, diff_content))
+    Ok(format!("{summary}\n# Diff Content\n\n{diff_content}"))
 }
 
 /// Get commiter details

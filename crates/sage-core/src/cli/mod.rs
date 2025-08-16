@@ -23,15 +23,15 @@ fn format_duration(duration: Duration) -> String {
         let minutes = total_secs / 60;
         let seconds = total_secs % 60;
         if seconds == 0 {
-            format!("{}m", minutes)
+            format!("{minutes}m")
         } else {
-            format!("{}m {}s", minutes, seconds)
+            format!("{minutes}m {seconds}s")
         }
     } else if total_secs >= 1 {
         let secs = duration.as_secs_f64();
-        format!("{:.3}s", secs)
+        format!("{secs:.3}s")
     } else {
-        format!("{}ms", total_ms)
+        format!("{total_ms}ms")
     }
 }
 
@@ -56,7 +56,7 @@ impl SpinnerStep {
 
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
-            let _ = term;
+            term;
         }
         let final_msg = if let Some(detail) = detail {
             format!(
@@ -68,7 +68,7 @@ impl SpinnerStep {
         } else {
             format!("●   {} {}", message, self.style_text("✔").green())
         };
-        println!("{}", final_msg);
+        println!("{final_msg}");
     }
 
     pub fn finish_success_with_emoji(
@@ -83,7 +83,7 @@ impl SpinnerStep {
 
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
-            let _ = term;
+            term;
         }
         let final_msg = if let Some(detail) = detail {
             format!(
@@ -93,9 +93,9 @@ impl SpinnerStep {
                 self.style_text(detail).dim()
             )
         } else {
-            format!("{}   {}", custom_emoji, message)
+            format!("{custom_emoji}   {message}")
         };
-        println!("{}", final_msg);
+        println!("{final_msg}");
     }
 
     pub fn finish_error(self, message: &str, error: &str) {
@@ -105,7 +105,7 @@ impl SpinnerStep {
 
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
-            let _ = term;
+            term;
         }
         let final_msg = format!(
             "●   {} {} {}",
@@ -113,7 +113,7 @@ impl SpinnerStep {
             self.style_text("✗").red(),
             self.style_text(error).red().dim()
         );
-        println!("{}", final_msg);
+        println!("{final_msg}");
     }
 
     pub fn update_message(&self, message: &str) {
@@ -157,7 +157,7 @@ impl CliOutput {
             self.style_text("sage").bold().cyan(),
             self.style_text(subcommand).dim()
         );
-        println!("{}\n", header);
+        println!("{header}\n");
     }
 
     pub fn spinner(&self, message: &str) -> SpinnerStep {
@@ -209,7 +209,7 @@ impl CliOutput {
 
         self.term.clear_line().unwrap_or(());
 
-        print!("\r●   {}", message);
+        print!("\r●   {message}");
 
         print!(" {}", self.style_text("✔").green());
 
@@ -227,7 +227,7 @@ impl CliOutput {
 
         self.term.clear_line().unwrap_or(());
 
-        print!("\r{}  {}", custom_emoji, message);
+        print!("\r{custom_emoji}  {message}");
 
         if let Some(detail) = detail {
             print!(" {}", self.style_text(detail).dim());

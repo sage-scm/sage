@@ -36,11 +36,11 @@ Bad examples (avoid):
 /// Prompt for generating pull request descriptions
 pub fn pr_description_prompt(title: &str, commit_log: &str) -> String {
     format!(
-        r#"You are writing a GitHub pull request description for a change with the title: "{}".
+        r#"You are writing a GitHub pull request description for a change with the title: "{title}".
 
         Here's information about the commits in this PR:
         ```
-        {}
+        {commit_log}
         ```
 
         Follow these guidelines for an effective PR description:
@@ -54,7 +54,6 @@ pub fn pr_description_prompt(title: &str, commit_log: &str) -> String {
         Format your description professionally, using proper Markdown formatting with headers and lists where appropriate.
         Be concise yet thorough - aim for clarity and completeness.
 
-        Your response should ONLY include the PR description text, no additional explanations or comments."#,
-        title, commit_log
+        Your response should ONLY include the PR description text, no additional explanations or comments."#
     )
 }

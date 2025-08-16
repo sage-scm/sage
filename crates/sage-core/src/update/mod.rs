@@ -16,19 +16,12 @@ const CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours;
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Serialize, Deserialize)]
+#[derive(Default)]
 struct UpdateCheck {
     last_check: i64,
     latest_version: Option<String>,
 }
 
-impl Default for UpdateCheck {
-    fn default() -> Self {
-        Self {
-            last_check: 0,
-            latest_version: None,
-        }
-    }
-}
 
 fn get_update_check_path() -> Result<PathBuf> {
     let mut path = dirs::config_dir()
@@ -161,16 +154,14 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  • Quick install: {}",
                 format!(
-                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
-                    repo_owner, repo_name
+                    "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
             println!(
                 "  • Manual download: {}",
                 format!(
-                    "https://github.com/{}/{}/releases/tag/v{}",
-                    repo_owner, repo_name, latest
+                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
                 )
                 .cyan()
             );
@@ -180,8 +171,7 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  {}",
                 format!(
-                    "cargo install --git https://github.com/{}/{} --tag v{} sage-cli --force",
-                    repo_owner, repo_name, latest
+                    "cargo install --git https://github.com/{repo_owner}/{repo_name} --tag v{latest} sage-cli --force"
                 )
                 .cyan()
             );
@@ -190,8 +180,7 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  • Quick install: {}",
                 format!(
-                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
-                    repo_owner, repo_name
+                    "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
@@ -199,8 +188,7 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  • Manual download: {}",
                 format!(
-                    "https://github.com/{}/{}/releases/tag/v{}",
-                    repo_owner, repo_name, latest
+                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
                 )
                 .cyan()
             );
@@ -210,8 +198,7 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  • Quick install: {}",
                 format!(
-                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
-                    repo_owner, repo_name
+                    "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
@@ -219,16 +206,14 @@ fn show_update_notification(current: &str, latest: &str) {
             println!(
                 "  • From source: {}",
                 format!(
-                    "cargo install --git https://github.com/{}/{} --tag v{} sage-cli",
-                    repo_owner, repo_name, latest
+                    "cargo install --git https://github.com/{repo_owner}/{repo_name} --tag v{latest} sage-cli"
                 )
                 .cyan()
             );
             println!(
                 "  • Manual download: {}",
                 format!(
-                    "https://github.com/{}/{}/releases/tag/v{}",
-                    repo_owner, repo_name, latest
+                    "https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}"
                 )
                 .cyan()
             );

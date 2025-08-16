@@ -182,15 +182,13 @@ struct StackView {
 
 impl Widget for &StackView {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        let items = vec![
-            "● main (default)                                   [merged ✅]",
+        let items = ["● main (default)                                   [merged ✅]",
             "├─ ◉ refactor-auth                                  [PR #82] [open ⏳]",
             "│  ├─ ◉ login-method-swap                           [PR #83] [draft 📝]",
             "│  │  ├─ ◉ remove-passwords                         [no PR] [untracked 🚫]",
             "│  │  └─ ◯ otp-migration                             [no PR] [dirty ✏️]",
             "│  └─ ◯ cleanup-unused                              [no PR] [committed ✅]",
-            "└─ ◯ docs-update                                     [PR #80] [merged ✅]",
-        ];
+            "└─ ◯ docs-update                                     [PR #80] [merged ✅]"];
 
         let list_items: Vec<ListItem> = items
             .iter()

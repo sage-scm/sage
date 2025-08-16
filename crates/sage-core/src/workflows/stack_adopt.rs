@@ -4,7 +4,7 @@ use colored::Colorize;
 use crate::{BranchName, CliOutput};
 
 pub fn stack_adopt(parent_name: BranchName, cli: &CliOutput) -> Result<()> {
-    let mut graph = sage_graph::SageGraph::load_or_default()?;
+    let graph = sage_graph::SageGraph::load_or_default()?;
 
     let current_branch = sage_git::branch::get_current()?;
 

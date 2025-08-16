@@ -198,12 +198,12 @@ editor = "vim"
             "vim".to_string(),
             "Local editor should override global"
         );
-        assert_eq!(
-            cfg.auto_update, false,
+        assert!(
+            !cfg.auto_update,
             "Global auto_update=false should be preserved"
         );
-        assert_eq!(
-            cfg.tui.line_numbers, false,
+        assert!(
+            !cfg.tui.line_numbers,
             "Global line_numbers=false should be preserved"
         );
     }

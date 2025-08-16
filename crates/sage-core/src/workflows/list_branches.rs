@@ -44,7 +44,7 @@ pub fn list_branches_with_output(relative: bool, cli: Option<&CliOutput>) -> Res
         let (ahead, behind) = if is_default {
             (0, 0)
         } else {
-            sage_git::branch::ahead_behind(&compare_branch, &branch)?
+            sage_git::branch::ahead_behind(compare_branch, &branch)?
         };
 
         branch_infos.push(BranchInfo {

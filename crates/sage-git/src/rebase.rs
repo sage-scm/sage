@@ -5,7 +5,7 @@ use std::process::Command;
 pub fn is_rebase_in_progress() -> Result<bool> {
     use std::path::Path;
     let git_dir = Command::new("git")
-        .args(&["rev-parse", "--git-dir"])
+        .args(["rev-parse", "--git-dir"])
         .output()?;
 
     if !git_dir.status.success() {
@@ -22,7 +22,7 @@ pub fn is_rebase_in_progress() -> Result<bool> {
 /// Continue an in-progress rebase
 pub fn rebase_continue() -> Result<()> {
     let output = Command::new("git")
-        .args(&["rebase", "--continue"])
+        .args(["rebase", "--continue"])
         .output()?;
 
     if output.status.success() {
@@ -35,7 +35,7 @@ pub fn rebase_continue() -> Result<()> {
 
 /// Abort an in-progress rebase
 pub fn rebase_abort() -> Result<()> {
-    let output = Command::new("git").args(&["rebase", "--abort"]).output()?;
+    let output = Command::new("git").args(["rebase", "--abort"]).output()?;
 
     if output.status.success() {
         Ok(())

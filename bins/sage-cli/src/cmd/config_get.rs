@@ -28,35 +28,35 @@ pub fn config_get(key: &str, _global_config: &crate::GlobalConfig) -> Result<()>
         ["save", "ask_on_mixed_staging"] => println!("{}", cfg.save.ask_on_mixed_staging),
         ["extras", extra_key] => {
             if let Some(val) = cfg.extras.get(*extra_key) {
-                println!("{}", val);
+                println!("{val}");
             } else {
-                eprintln!("Key not found: extras.{}", extra_key);
+                eprintln!("Key not found: extras.{extra_key}");
             }
         }
         ["ai", "extras", extra_key] => {
             if let Some(val) = cfg.ai.extras.get(*extra_key) {
-                println!("{}", val);
+                println!("{val}");
             } else {
-                eprintln!("Key not found: ai.extras.{}", extra_key);
+                eprintln!("Key not found: ai.extras.{extra_key}");
             }
         }
         ["tui", "extras", extra_key] => {
             if let Some(val) = cfg.tui.extras.get(*extra_key) {
-                println!("{}", val);
+                println!("{val}");
             } else {
-                eprintln!("Key not found: tui.extras.{}", extra_key);
+                eprintln!("Key not found: tui.extras.{extra_key}");
             }
         }
         ["pull_requests", "extras", extra_key] => {
             if let Some(val) = cfg.pull_requests.extras.get(*extra_key) {
-                println!("{}", val);
+                println!("{val}");
             } else {
-                eprintln!("Key not found: pull_requests.extras.{}", extra_key);
+                eprintln!("Key not found: pull_requests.extras.{extra_key}");
             }
         }
         _ => {
             eprintln!("✖ Key ‘does.not.exist’ not found.");
-            eprintln!("Unknown config key: {}", key);
+            eprintln!("Unknown config key: {key}");
         }
     }
     Ok(())

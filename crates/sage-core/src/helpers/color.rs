@@ -27,7 +27,7 @@ fn hex_to_rgb(hex: &str) -> Result<(u8, u8, u8)> {
     }
 
     for c in hex.chars() {
-        if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+        if !c.is_ascii_digit() && !('a'..='f').contains(&c) {
             Err(anyhow!("Invalid hex color: {}", hex))?;
         }
     }
@@ -35,8 +35,8 @@ fn hex_to_rgb(hex: &str) -> Result<(u8, u8, u8)> {
     if hex.len() == 3 {
         hex = format!(
             "{}{}{}{}{}{}",
-            &hex.chars().nth(0).unwrap(),
-            &hex.chars().nth(0).unwrap(),
+            &hex.chars().next().unwrap(),
+            &hex.chars().next().unwrap(),
             &hex.chars().nth(1).unwrap(),
             &hex.chars().nth(1).unwrap(),
             &hex.chars().nth(2).unwrap(),

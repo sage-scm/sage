@@ -27,7 +27,7 @@ pub fn stash_push(message: Option<&str>) -> Result<()> {
 
 /// Pop the last stash
 pub fn stash_pop() -> Result<()> {
-    let output = Command::new("git").args(&["stash", "pop"]).output()?;
+    let output = Command::new("git").args(["stash", "pop"]).output()?;
 
     if output.status.success() {
         Ok(())
@@ -48,7 +48,7 @@ pub fn stash_pop() -> Result<()> {
 
 /// Check if there are any stashes
 pub fn has_stash() -> Result<bool> {
-    let output = Command::new("git").args(&["stash", "list"]).output()?;
+    let output = Command::new("git").args(["stash", "list"]).output()?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);

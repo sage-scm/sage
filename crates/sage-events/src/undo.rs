@@ -87,7 +87,7 @@ impl UndoManager {
                 commit_id, branch, ..
             } => Ok(UndoOperation::ResetBranch {
                 branch: branch.clone(),
-                to_commit: format!("{}~1", commit_id),
+                to_commit: format!("{commit_id}~1"),
                 mode: ResetMode::Mixed,
             }),
             EventData::BranchCreated { name, .. } => {
@@ -156,7 +156,7 @@ impl UndoManager {
                 if *fast_forward {
                     Ok(UndoOperation::ResetBranch {
                         branch: target_branch.clone(),
-                        to_commit: format!("{}~1", merge_commit),
+                        to_commit: format!("{merge_commit}~1"),
                         mode: ResetMode::Hard,
                     })
                 } else {
@@ -175,16 +175,16 @@ impl UndoManager {
                 format!("Undo commit: {}", message.lines().next().unwrap_or(""))
             }
             EventData::BranchCreated { name, .. } => {
-                format!("Delete branch '{}'", name)
+                format!("Delete branch '{name}'")
             }
             EventData::BranchDeleted { name, .. } => {
-                format!("Recreate branch '{}'", name)
+                format!("Recreate branch '{name}'")
             }
             EventData::BranchSwitched { from, to } => {
-                format!("Switch back from '{}' to '{}'", to, from)
+                format!("Switch back from '{to}' to '{from}'")
             }
             EventData::BranchRenamed { old_name, new_name } => {
-                format!("Rename branch '{}' back to '{}'", new_name, old_name)
+                format!("Rename branch '{new_name}' back to '{old_name}'")
             }
             EventData::CommitAmended { .. } => {
                 "Restore original commit before amendment".to_string()
@@ -243,36 +243,34 @@ impl UndoOperation {
                 mode,
             } => {
                 format!(
-                    "Reset branch '{}' to {} ({:?} mode)",
-                    branch, to_commit, mode
+                    "Reset branch '{branch}' to {to_commit} ({mode:?} mode)"
                 )
             }
             UndoOperation::CreateBranch { name, at_commit } => {
-                format!("Create branch '{}' at commit {}", name, at_commit)
+                format!("Create branch '{name}' at commit {at_commit}")
             }
             UndoOperation::DeleteBranch { name } => {
-                format!("Delete branch '{}'", name)
+                format!("Delete branch '{name}'")
             }
             UndoOperation::SwitchBranch { to_branch } => {
-                format!("Switch to branch '{}'", to_branch)
+                format!("Switch to branch '{to_branch}'")
             }
             UndoOperation::RenameBranch { from, to } => {
-                format!("Rename branch '{}' to '{}'", from, to)
+                format!("Rename branch '{from}' to '{to}'")
             }
             UndoOperation::DropStash { stash_id } => {
-                format!("Drop stash '{}'", stash_id)
+                format!("Drop stash '{stash_id}'")
             }
             UndoOperation::CherryPick {
                 commit,
                 onto_branch,
             } => {
                 format!(
-                    "Cherry-pick commit {} onto branch '{}'",
-                    commit, onto_branch
+                    "Cherry-pick commit {commit} onto branch '{onto_branch}'"
                 )
             }
             UndoOperation::RevertCommit { commit } => {
-                format!("Revert commit {}", commit)
+                format!("Revert commit {commit}")
             }
         }
     }

@@ -1,7 +1,4 @@
-use std::{
-    io::{self, Write},
-    time::SystemTime,
-};
+use std::io::{self, Write};
 
 pub struct Ui {
     pub json_mode: bool,

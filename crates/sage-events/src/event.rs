@@ -6,6 +6,12 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EventId(pub Uuid);
 
+impl Default for EventId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EventId {
     pub fn new() -> Self {
         Self(Uuid::new_v4())
@@ -45,21 +51,13 @@ impl Event {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct EventMetadata {
     pub user: Option<String>,
     pub session_id: Option<String>,
     pub command: Option<String>,
 }
 
-impl Default for EventMetadata {
-    fn default() -> Self {
-        Self {
-            user: None,
-            session_id: None,
-            command: None,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]

@@ -49,7 +49,7 @@ pub fn rebase_onto_parent(
         switch(&original_branch, false)?;
     }
 
-    cli.step_success(&format!("Synced '{}'", branch), None);
+    cli.step_success(&format!("Synced '{branch}'"), None);
     Ok(())
 }
 

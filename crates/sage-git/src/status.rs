@@ -148,7 +148,7 @@ impl GitStatus {
                     "up to date".to_string()
                 };
 
-                lines.push(format!("Your branch is {} with '{}'", relation, upstream));
+                lines.push(format!("Your branch is {relation} with '{upstream}'"));
             } else if !self.current_branch.is_empty() {
                 lines.push("Your branch is not tracking a remote branch".to_string());
             }
@@ -340,15 +340,15 @@ impl GitStatus {
         let untracked_count = self.untracked.len();
 
         if staged_count > 0 {
-            parts.push(format!("{} staged", staged_count));
+            parts.push(format!("{staged_count} staged"));
         }
 
         if unstaged_count > 0 {
-            parts.push(format!("{} not staged", unstaged_count));
+            parts.push(format!("{unstaged_count} not staged"));
         }
 
         if untracked_count > 0 {
-            parts.push(format!("{} untracked", untracked_count));
+            parts.push(format!("{untracked_count} untracked"));
         }
 
         if parts.is_empty() {
@@ -376,15 +376,15 @@ impl GitStatus {
             status.push_str(" [");
 
             if staged > 0 {
-                status.push_str(&format!("+{}", staged));
+                status.push_str(&format!("+{staged}"));
             }
 
             if unstaged > 0 {
-                status.push_str(&format!("!{}", unstaged));
+                status.push_str(&format!("!{unstaged}"));
             }
 
             if untracked > 0 {
-                status.push_str(&format!("?{}", untracked));
+                status.push_str(&format!("?{untracked}"));
             }
 
             status.push(']');
@@ -690,7 +690,7 @@ impl GitStatus {
         let dir_path = if directory.ends_with('/') {
             directory.to_string()
         } else {
-            format!("{}/", directory)
+            format!("{directory}/")
         };
 
         let filter_vec = |files: &[String]| -> Vec<String> {
@@ -706,9 +706,9 @@ impl GitStatus {
                 .iter()
                 .filter(|(from, to)| {
                     from.starts_with(&dir_path)
-                        || from == &directory
+                        || from == directory
                         || to.starts_with(&dir_path)
-                        || to == &directory
+                        || to == directory
                 })
                 .cloned()
                 .collect()
@@ -834,7 +834,7 @@ fn get_branch_ahead_behind(branch: &str) -> Result<(usize, usize)> {
             .args([
                 "rev-list",
                 "--count",
-                &format!("{}..{}", merge_base, branch),
+                &format!("{merge_base}..{branch}"),
             ])
             .output()?;
 
@@ -875,7 +875,7 @@ fn get_upstream_branch(branch: &str) -> Result<Option<String>> {
         .args([
             "rev-parse",
             "--abbrev-ref",
-            &format!("{}@{{upstream}}", branch),
+            &format!("{branch}@{{upstream}}"),
         ])
         .output();
 
@@ -931,7 +931,7 @@ pub fn status() -> Result<GitStatus> {
 
         // Handle renamed/copied files which have format: XY oldname -> newname
         let (status_x, status_y) = (
-            status_chars.chars().nth(0).unwrap_or(' '),
+            status_chars.chars().next().unwrap_or(' '),
             status_chars.chars().nth(1).unwrap_or(' '),
         );
 

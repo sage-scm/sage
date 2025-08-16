@@ -106,7 +106,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
         // Get the old commit ID before amending
         let old_commit_id = if let Ok(output) = std::process::Command::new("git")
-            .args(&["rev-parse", "HEAD"])
+            .args(["rev-parse", "HEAD"])
             .output()
         {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
@@ -118,7 +118,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
         // Get the new commit ID after amending
         let new_commit_id = if let Ok(output) = std::process::Command::new("git")
-            .args(&["rev-parse", "HEAD"])
+            .args(["rev-parse", "HEAD"])
             .output()
         {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
@@ -164,7 +164,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             if clean_error.is_empty() {
                 cli.step_error(
                     "Failed to commit",
-                    &"No changes to commit (working directory is clean)",
+                    "No changes to commit (working directory is clean)",
                 );
             } else {
                 cli.step_error("Failed to commit", &clean_error.red());
@@ -181,7 +181,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
             // Get list of changed files
             let files_changed = if let Ok(output) = std::process::Command::new("git")
-                .args(&[
+                .args([
                     "diff-tree",
                     "--no-commit-id",
                     "--name-only",

@@ -167,17 +167,17 @@ fn execute_undo_operation(op: UndoOperation) -> Result<()> {
             };
 
             Command::new("git")
-                .args(&["reset", mode_arg, &to_commit])
+                .args(["reset", mode_arg, &to_commit])
                 .output()?;
         }
         UndoOperation::CreateBranch { name, at_commit } => {
             Command::new("git")
-                .args(&["branch", &name, &at_commit])
+                .args(["branch", &name, &at_commit])
                 .output()?;
         }
         UndoOperation::DeleteBranch { name } => {
             Command::new("git")
-                .args(&["branch", "-D", &name])
+                .args(["branch", "-D", &name])
                 .output()?;
         }
         UndoOperation::SwitchBranch { to_branch } => {
@@ -185,12 +185,12 @@ fn execute_undo_operation(op: UndoOperation) -> Result<()> {
         }
         UndoOperation::RenameBranch { from, to } => {
             Command::new("git")
-                .args(&["branch", "-m", &from, &to])
+                .args(["branch", "-m", &from, &to])
                 .output()?;
         }
         UndoOperation::DropStash { stash_id } => {
             Command::new("git")
-                .args(&["stash", "drop", &stash_id])
+                .args(["stash", "drop", &stash_id])
                 .output()?;
         }
         UndoOperation::CherryPick {
@@ -200,12 +200,12 @@ fn execute_undo_operation(op: UndoOperation) -> Result<()> {
             switch(&onto_branch, false)?;
 
             Command::new("git")
-                .args(&["cherry-pick", &commit])
+                .args(["cherry-pick", &commit])
                 .output()?;
         }
         UndoOperation::RevertCommit { commit } => {
             Command::new("git")
-                .args(&["revert", &commit, "--no-edit"])
+                .args(["revert", &commit, "--no-edit"])
                 .output()?;
         }
     }

@@ -33,5 +33,5 @@ pub fn diff_ai() -> Result<String> {
         "# Diff Content\n".to_string()
     };
 
-    Ok(format!("{}{diff}", summary))
+    Ok(format!("{summary}{diff}"))
 }
