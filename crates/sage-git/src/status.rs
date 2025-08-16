@@ -410,13 +410,13 @@ impl GitStatus {
     /// Truncate path if max_length is specified
     #[inline]
     fn maybe_truncate_path(&self, path: &str, max_length: Option<usize>) -> String {
-        if let Some(max) = max_length {
-            if path.len() > max {
-                let mut truncated = String::with_capacity(max + 3);
-                truncated.push_str("...");
-                truncated.push_str(&path[path.len().saturating_sub(max - 3)..]);
-                return truncated;
-            }
+        if let Some(max) = max_length
+            && path.len() > max
+        {
+            let mut truncated = String::with_capacity(max + 3);
+            truncated.push_str("...");
+            truncated.push_str(&path[path.len().saturating_sub(max - 3)..]);
+            return truncated;
         }
         path.to_string()
     }
