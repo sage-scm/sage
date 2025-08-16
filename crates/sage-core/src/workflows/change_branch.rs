@@ -76,13 +76,13 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
         switch(&name, false)?;
 
         // Track the branch switch event
-        if let Ok(repo_root) = get_repo_root() {
-            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-                let _ = event_manager.track(EventData::BranchSwitched {
-                    from: current_branch.clone(),
-                    to: name.to_string(),
-                });
-            }
+        if let Ok(repo_root) = get_repo_root()
+            && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+        {
+            let _ = event_manager.track(EventData::BranchSwitched {
+                from: current_branch.clone(),
+                to: name.to_string(),
+            });
         }
 
         // TODO: Probably need to determine if they want us to announce
@@ -105,13 +105,13 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
         switch(&name, false)?;
 
         // Track the branch switch event
-        if let Ok(repo_root) = get_repo_root() {
-            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-                let _ = event_manager.track(EventData::BranchSwitched {
-                    from: current_branch.clone(),
-                    to: name.to_string(),
-                });
-            }
+        if let Ok(repo_root) = get_repo_root()
+            && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+        {
+            let _ = event_manager.track(EventData::BranchSwitched {
+                from: current_branch.clone(),
+                to: name.to_string(),
+            });
         }
 
         return Ok(());
@@ -151,31 +151,31 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     cli.step_success("Created new branch", Some(&name));
 
     // Track the branch creation event
-    if let Ok(repo_root) = get_repo_root() {
-        if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-            let from_branch = if !opts.parent.is_empty() {
-                opts.parent.clone()
-            } else if opts.use_root {
-                get_default_branch()?
-            } else {
-                current_branch.clone()
-            };
+    if let Ok(repo_root) = get_repo_root()
+        && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+    {
+        let from_branch = if !opts.parent.is_empty() {
+            opts.parent.clone()
+        } else if opts.use_root {
+            get_default_branch()?
+        } else {
+            current_branch.clone()
+        };
 
-            let commit_id = if let Ok(output) = std::process::Command::new("git")
-                .args(["rev-parse", "HEAD"])
-                .output()
-            {
-                String::from_utf8_lossy(&output.stdout).trim().to_string()
-            } else {
-                String::new()
-            };
+        let commit_id = if let Ok(output) = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .output()
+        {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        } else {
+            String::new()
+        };
 
-            let _ = event_manager.track(EventData::BranchCreated {
-                name: name.to_string(),
-                from_branch,
-                commit_id,
-            });
-        }
+        let _ = event_manager.track(EventData::BranchCreated {
+            name: name.to_string(),
+            from_branch,
+            commit_id,
+        });
     }
 
     let (username, _) = get_commiter()?;
@@ -234,11 +234,11 @@ fn fuzzy_find_branch(opts: &ChangeBranchOpts) -> Result<Option<String>> {
 
     // If no exact match, perform fuzzy search
     for branch in &branches.branches {
-        if let Some(score) = matcher.fuzzy_match(branch, &opts.name) {
-            if score > best_score {
-                best_score = score;
-                best_match = Some(branch.clone());
-            }
+        if let Some(score) = matcher.fuzzy_match(branch, &opts.name)
+            && score > best_score
+        {
+            best_score = score;
+            best_match = Some(branch.clone());
         }
     }
 

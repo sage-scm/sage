@@ -95,19 +95,18 @@ fn detect_installation_method() -> InstallationMethod {
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "sage-scm/sage/sage"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            return InstallationMethod::Homebrew;
-        }
+        return InstallationMethod::Homebrew;
     }
 
     // Check if binary is in a Homebrew path
-    if let Ok(which_output) = std::process::Command::new("which").arg("sg").output() {
-        if which_output.status.success() {
-            let path = String::from_utf8_lossy(&which_output.stdout);
-            if path.contains("/opt/homebrew/") || path.contains("/usr/local/Cellar/") {
-                return InstallationMethod::Homebrew;
-            }
+    if let Ok(which_output) = std::process::Command::new("which").arg("sg").output()
+        && which_output.status.success()
+    {
+        let path = String::from_utf8_lossy(&which_output.stdout);
+        if path.contains("/opt/homebrew/") || path.contains("/usr/local/Cellar/") {
+            return InstallationMethod::Homebrew;
         }
     }
 
@@ -115,12 +114,11 @@ fn detect_installation_method() -> InstallationMethod {
     if let Ok(output) = std::process::Command::new("cargo")
         .args(["install", "--list"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let list = String::from_utf8_lossy(&output.stdout);
-            if list.contains("sage-cli") {
-                return InstallationMethod::Cargo;
-            }
+        let list = String::from_utf8_lossy(&output.stdout);
+        if list.contains("sage-cli") {
+            return InstallationMethod::Cargo;
         }
     }
 

@@ -79,16 +79,16 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
         cli.step_success("Write empty commit", Some(&commit_id.dimmed()));
 
         // Track the empty commit event
-        if let Ok(repo_root) = get_repo_root() {
-            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-                let current_branch = get_current()?;
-                let _ = event_manager.track(EventData::CommitCreated {
-                    commit_id: commit_id.clone(),
-                    message: "[empty commit]".to_string(),
-                    files_changed: vec![],
-                    branch: current_branch,
-                });
-            }
+        if let Ok(repo_root) = get_repo_root()
+            && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+        {
+            let current_branch = get_current()?;
+            let _ = event_manager.track(EventData::CommitCreated {
+                commit_id: commit_id.clone(),
+                message: "[empty commit]".to_string(),
+                files_changed: vec![],
+                branch: current_branch,
+            });
         }
 
         push_changes(opts, cli)?;
@@ -129,15 +129,15 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
         cli.step_success("Amended previous commit", None);
 
         // Track the amend event
-        if let Ok(repo_root) = get_repo_root() {
-            if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-                let current_branch = get_current()?;
-                let _ = event_manager.track(EventData::CommitAmended {
-                    old_commit: old_commit_id,
-                    new_commit: new_commit_id,
-                    branch: current_branch,
-                });
-            }
+        if let Ok(repo_root) = get_repo_root()
+            && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+        {
+            let current_branch = get_current()?;
+            let _ = event_manager.track(EventData::CommitAmended {
+                old_commit: old_commit_id,
+                new_commit: new_commit_id,
+                branch: current_branch,
+            });
         }
 
         push_changes(opts, cli)?;
@@ -175,36 +175,36 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     cli.step_success("Write commit", Some(&commit_id.dimmed()));
 
     // Track the commit event
-    if let Ok(repo_root) = get_repo_root() {
-        if let Ok(event_manager) = EventManager::new(Path::new(&repo_root)) {
-            let current_branch = get_current()?;
+    if let Ok(repo_root) = get_repo_root()
+        && let Ok(event_manager) = EventManager::new(Path::new(&repo_root))
+    {
+        let current_branch = get_current()?;
 
-            // Get list of changed files
-            let files_changed = if let Ok(output) = std::process::Command::new("git")
-                .args([
-                    "diff-tree",
-                    "--no-commit-id",
-                    "--name-only",
-                    "-r",
-                    &commit_id,
-                ])
-                .output()
-            {
-                String::from_utf8_lossy(&output.stdout)
-                    .lines()
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                vec![]
-            };
+        // Get list of changed files
+        let files_changed = if let Ok(output) = std::process::Command::new("git")
+            .args([
+                "diff-tree",
+                "--no-commit-id",
+                "--name-only",
+                "-r",
+                &commit_id,
+            ])
+            .output()
+        {
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .map(|s| s.to_string())
+                .collect()
+        } else {
+            vec![]
+        };
 
-            let _ = event_manager.track(EventData::CommitCreated {
-                commit_id: commit_id.clone(),
-                message: commit_message.clone(),
-                files_changed,
-                branch: current_branch,
-            });
-        }
+        let _ = event_manager.track(EventData::CommitCreated {
+            commit_id: commit_id.clone(),
+            message: commit_message.clone(),
+            files_changed,
+            branch: current_branch,
+        });
     }
 
     // Handle push if requested

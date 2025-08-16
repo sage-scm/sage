@@ -321,11 +321,11 @@ fn prepare_branches_for_sync(cli: &CliOutput, branch_chain: Vec<String>) -> Resu
     let mut branches_to_sync: Vec<String> = branch_chain.into_iter().rev().collect();
     let default_branch = get_default_branch()?;
 
-    if let Some(root) = branches_to_sync.first() {
-        if root == &default_branch {
-            ensure_branch_updated(cli, &default_branch)?;
-            branches_to_sync.remove(0);
-        }
+    if let Some(root) = branches_to_sync.first()
+        && root == &default_branch
+    {
+        ensure_branch_updated(cli, &default_branch)?;
+        branches_to_sync.remove(0);
     }
 
     Ok(branches_to_sync)
@@ -337,10 +337,10 @@ fn find_parent_branch(current_branch: &str, explicit_parent: &Option<String>) ->
     }
 
     let graph = SageGraph::load_or_default()?;
-    if graph.tracks(current_branch) {
-        if let Some(branch_info) = graph.info(current_branch) {
-            return Ok(branch_info.parent.to_string());
-        }
+    if graph.tracks(current_branch)
+        && let Some(branch_info) = graph.info(current_branch)
+    {
+        return Ok(branch_info.parent.to_string());
     }
 
     get_default_branch()
