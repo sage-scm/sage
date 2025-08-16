@@ -133,26 +133,26 @@ dev:
     @echo -e "${GREEN}Running development build...${NC}"
     ./build.sh
 
-# Try a sage command without installing (cargo run)
+# Try a sg command without installing (cargo run)
 try +args:
-    @echo -e "${CYAN}Running: sage {{args}}${NC}"
-    cargo run --bin sage-cli --all-features -- {{args}}
+    @echo -e "${CYAN}Running: sg {{args}}${NC}"
+    cargo run --bin sg --all-features -- {{args}}
 
 # Try with specific features
 try-with features +args:
-    cargo run --bin sage-cli --features {{features}} -- {{args}}
+    cargo run --bin sg --features {{features}} -- {{args}}
 
-# Open sage TUI dashboard (requires installation)
+# Open sg TUI dashboard (requires installation)
 tui:
-    sage tui
+    sg tui
 
-# Run sage with debug logging
+# Run sg with debug logging
 debug +args:
-    RUST_LOG=sage=debug sage {{args}}
+    RUST_LOG=sage=debug sg {{args}}
 
-# Run sage with trace logging
+# Run sg with trace logging
 trace +args:
-    RUST_LOG=sage=trace sage {{args}}
+    RUST_LOG=sage=trace sg {{args}}
 
 # ────────────────────────────────────────────────────────────────
 # 📚 Documentation
@@ -196,7 +196,7 @@ pre-release: ci
 # Full release build and install
 ship: pre-release release install-release
     @echo -e "${GREEN}🚀 Sage released successfully!${NC}"
-    sage --version
+    sg --version
 
 # ────────────────────────────────────────────────────────────────
 # 🔧 Maintenance
@@ -233,7 +233,7 @@ stats:
     @cargo tree --no-dedupe | grep -v "└" | wc -l
     @echo ""
     @echo "Binary size (if built):"
-    @ls -lh target/release/sage 2>/dev/null || echo "Not built yet"
+    @ls -lh target/release/sg 2>/dev/null || echo "Not built yet"
 
 # ────────────────────────────────────────────────────────────────
 # 🐕 Dogfooding (Using Sage to develop Sage)
@@ -241,31 +241,31 @@ stats:
 
 # Start working on a new feature
 work feature:
-    sage work {{feature}}
+    sg work {{feature}}
 
 # Save current work
 save message:
-    sage save "{{message}}"
+    sg save "{{message}}"
 
 # Save with AI-generated message
 save-ai:
-    sage save
+    sg save
 
 # Sync current branch
 sync:
-    sage sync
+    sg sync
 
 # Share changes (create PR)
 share:
-    sage share
+    sg share
 
 # Show current stack
 stack:
-    sage stack
+    sg stack
 
 # Show repository dashboard
 dashboard:
-    sage tui
+    sg tui
 
 # ────────────────────────────────────────────────────────────────
 # 🧰 Utilities
@@ -283,9 +283,9 @@ tree-pkg package:
 find-dep pattern:
     cargo tree | grep -i {{pattern}}
 
-# Print current sage version
+# Print current sg version
 version:
-    @sage --version 2>/dev/null || echo "Sage not installed yet"
+    @sg --version 2>/dev/null || echo "Sage not installed yet"
 
 # Show feature list
 features:
@@ -300,6 +300,6 @@ features:
 browse:
     @open https://github.com/$( git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' ) 2>/dev/null || echo "Not a GitHub repo"
 
-# Show recent git history with sage
+# Show recent git history with sg
 history:
-    sage log --graph --oneline -n 20
+    sg log --graph --oneline -n 20

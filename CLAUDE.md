@@ -47,7 +47,7 @@ sage/
 
 ### Key Architectural Patterns
 
-1. **Workflow-Based Design**: Core operations are organized as workflows in `crates/sage-core/src/workflows/`. Each workflow handles a complete user action (save, sync, work, etc.).
+1. **Workflow-Based Design**: Core operations are organized as workflows in `crates/sage-core/src/workflows/`. Each workflow handles a complete user action (save, sync, work, etc.). The CLI is installed as `sg` to avoid conflicts with SageMath.
 
 2. **Layered Architecture**:
    - CLI layer: Command parsing with Clap, user interaction

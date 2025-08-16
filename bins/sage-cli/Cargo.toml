@@ -10,7 +10,7 @@ keywords = ["git", "workflow", "cli", "developer-tools"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
-name = "sage"
+name = "sg"
 path = "src/main.rs"
 
 [dependencies]

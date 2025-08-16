@@ -6,7 +6,7 @@
 
 > Burning away Git complexity
 
-Sage wraps everyday Git pain points behind a single, intuitive CLI (and an optional sync server for shared stacks). It keeps branch stacks tidy, automates the boring bits, and gives you a slick TUI when you feel fancy – **no magic, no yak shaving, just clean commits**.
+Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as `sg`) and an optional sync server for shared stacks. It keeps branch stacks tidy, automates the boring bits, and gives you a slick TUI when you feel fancy – **no magic, no yak shaving, just clean commits**.
 
 ---
 
@@ -107,20 +107,20 @@ To configure Sage to use your locally running Ollama API for AI-powered commit m
 
 ```bash
 # Set the API endpoint (default Ollama port is 11434)
-sage config set ai.api_url http://localhost:11434
+sg config set ai.api_url http://localhost:11434
 
 # Set your preferred model (e.g., llama2, codellama, mistral)
-sage config set ai.model gemma3n:latest
+sg config set ai.model gemma3n:latest
 
 # Verify your configuration
-sage config get ai
+sg config get ai
 ```
 
 Now you can use AI features with your local Ollama instance:
 
 ```bash
 # Generate commit message using local Ollama
-sage save --ai
+sg save --ai
 ```
 
 ---
@@ -130,7 +130,7 @@ sage save --ai
 ```
 sage/
 ├── bins/
-│   ├── sage-cli/     # 🌿 main binary
+│   ├── sage-cli/     # 🌿 main binary (installs as `sg`)
 │   └── sage-server/  # stack‑sharing sync service (optional)
 ├── crates/
 │   ├── sage-core/    # domain logic
@@ -169,7 +169,7 @@ For more development commands, run `just help`.
 
 ## Dog‑fooding
 
-We believe in using our own medicine. Throughout development **Sage manages its own repository**—every branch, save, sync, and PR is executed with the CLI you see taking shape here. Expect real‑world polish to land fast because we feel the pain first.
+We believe in using our own medicine. Throughout development **Sage manages its own repository**—every branch, save, sync, and PR is executed with the `sg` CLI you see taking shape here. Expect real‑world polish to land fast because we feel the pain first.
 
 ---
 

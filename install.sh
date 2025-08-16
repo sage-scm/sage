@@ -97,8 +97,8 @@ eval $INSTALL_CMD
 # Check if installation was successful
 if [ $? -eq 0 ]; then
     echo -e "\n${GREEN}✅ Sage CLI installed successfully!${NC}"
-    echo -e "You can now use the ${GREEN}sage${NC} command from anywhere."
-    echo -e "\nTry running: ${YELLOW}sage --help${NC}"
+    echo -e "You can now use the ${GREEN}sg${NC} command from anywhere."
+    echo -e "\nTry running: ${YELLOW}sg --help${NC}"
 else
     echo -e "\n${RED}❌ Installation failed.${NC}"
     exit 1
