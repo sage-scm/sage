@@ -4,10 +4,31 @@ use sage_core::check_for_updates;
 
 mod cmd;
 
+/// Global CLI configuration passed to all commands
+#[derive(Debug, Clone)]
+pub struct GlobalConfig {
+    pub json: bool,
+    pub no_color: bool,
+}
+
+impl GlobalConfig {
+    pub fn new(json: bool, no_color: bool) -> Self {
+        Self { json, no_color }
+    }
+}
+
 /// 🌿 Sage -- Burning away git complexities
 #[derive(Parser)]
 #[command(author, version, about = "🌿 Sage — A Git workflow tool for managing branches and commits", long_about = None)]
 pub struct Cli {
+    /// Output results in JSON format
+    #[arg(long, global = true)]
+    json: bool,
+
+    /// Disable colored output
+    #[arg(long, global = true)]
+    no_color: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -270,41 +291,43 @@ async fn main() -> Result<()> {
     }
 
     let cli = Cli::parse();
+    let global_config = GlobalConfig::new(cli.json, cli.no_color);
+    
     match cli.command {
         // Synchronous commands
-        Command::Work(args) => cmd::work(&args),
-        Command::Sync(args) => cmd::sync(&args),
-        Command::List { relative } => cmd::list(relative),
+        Command::Work(args) => cmd::work(&args, &global_config),
+        Command::Sync(args) => cmd::sync(&args, &global_config),
+        Command::List { relative } => cmd::list(relative, &global_config),
         Command::Config { op } => match op {
-            ConfigCmd::List => cmd::config_list(),
-            ConfigCmd::Get { key } => cmd::config_get(&key),
-            ConfigCmd::Set { key, value, local } => cmd::config_set(&key, &value, local),
-            ConfigCmd::Unset { key } => cmd::config_unset(&key),
-            ConfigCmd::Edit => cmd::config_edit(),
+            ConfigCmd::List => cmd::config_list(&global_config),
+            ConfigCmd::Get { key } => cmd::config_get(&key, &global_config),
+            ConfigCmd::Set { key, value, local } => cmd::config_set(&key, &value, local, &global_config),
+            ConfigCmd::Unset { key } => cmd::config_unset(&key, &global_config),
+            ConfigCmd::Edit => cmd::config_edit(&global_config),
         },
-        Command::Log => cmd::log(),
+        Command::Log => cmd::log(&global_config),
 
         #[cfg(feature = "stack")]
         Command::Stack { op } => match op {
-            StackCmd::Init { name } => cmd::stack_init(&name),
-            StackCmd::Next => cmd::stack_navigate::down(),
-            StackCmd::Prev => cmd::stack_navigate::up(),
-            StackCmd::Adopt { parent } => cmd::stack_adopt(&parent),
+            StackCmd::Init { name } => cmd::stack_init(&name, &global_config),
+            StackCmd::Next => cmd::stack_navigate::down(&global_config),
+            StackCmd::Prev => cmd::stack_navigate::up(&global_config),
+            StackCmd::Adopt { parent } => cmd::stack_adopt(&parent, &global_config),
             _ => todo!(),
         },
 
         #[cfg(feature = "tui")]
-        Command::Ui => cmd::ui(),
+        Command::Ui => cmd::ui(&global_config),
 
         // Asynchronous commands
-        Command::Save(args) => cmd::save(&args).await,
-        Command::Share(args) => cmd::share(&args),
+        Command::Save(args) => cmd::save(&args, &global_config).await,
+        Command::Share(args) => cmd::share(&args, &global_config),
 
         // Placeholder commands
         Command::Dash { watch } => todo!("dash watch={watch}"),
         Command::Clean { remote, dry_run } => todo!("clean r={remote} d={dry_run}"),
-        Command::Undo { id } => cmd::undo(id),
-        Command::History => cmd::history(),
+        Command::Undo { id } => cmd::undo(id, &global_config),
+        Command::History => cmd::history(&global_config),
         Command::Resolve => todo!("resolve"),
         Command::Stats { since } => todo!("stats {:?}", since),
         Command::Doctor { fix } => todo!("doctor fix={fix}"),

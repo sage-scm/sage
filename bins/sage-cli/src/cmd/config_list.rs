@@ -3,8 +3,9 @@ use sage_config::ConfigManager;
 use sage_core::CliOutput;
 use std::collections::BTreeMap;
 
-pub fn config_list() -> Result<()> {
-    let cli = CliOutput::new();
+pub fn config_list(global_config: &crate::GlobalConfig) -> Result<()> {
+    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
+    let cli = CliOutput::new(cli_config);
     cli.header("config list");
 
     let manager = ConfigManager::new()?;

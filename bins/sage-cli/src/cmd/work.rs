@@ -1,8 +1,9 @@
 use anyhow::Result;
 use sage_core::{change_branch, BranchName, ChangeBranchOpts, CliOutput};
 
-pub fn work(args: &crate::WorkArgs) -> Result<()> {
-    let cli = CliOutput::new();
+pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Result<()> {
+    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
+    let cli = CliOutput::new(cli_config);
     cli.header("work");
 
     let branch_name = BranchName::new(args.branch.clone().unwrap_or_default())?;

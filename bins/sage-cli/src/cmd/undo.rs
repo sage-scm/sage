@@ -8,8 +8,9 @@ use sage_git::{
 };
 use std::path::Path;
 
-pub fn undo(id: Option<String>) -> Result<()> {
-    let cli = CliOutput::new();
+pub fn undo(id: Option<String>, global_config: &crate::GlobalConfig) -> Result<()> {
+    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
+    let cli = CliOutput::new(cli_config);
     let repo_root = get_repo_root()?;
     let event_manager = EventManager::new(Path::new(&repo_root))?;
 
@@ -54,8 +55,9 @@ pub fn undo(id: Option<String>) -> Result<()> {
     Ok(())
 }
 
-pub fn history() -> Result<()> {
-    let _cli = CliOutput::new();
+pub fn history(global_config: &crate::GlobalConfig) -> Result<()> {
+    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
+    let _cli = CliOutput::new(cli_config);
     let repo_root = get_repo_root()?;
     let event_manager = EventManager::new(Path::new(&repo_root))?;
 

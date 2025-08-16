@@ -2,8 +2,9 @@ use anyhow::Result;
 use sage_core::{CliOutput, SyncBranchOpts, workflows::sync_branch};
 
 /// Synchronize the current branch with the remote.
-pub fn sync(args: &crate::SyncArgs) -> Result<()> {
-    let cli = CliOutput::new();
+pub fn sync(args: &crate::SyncArgs, global_config: &crate::GlobalConfig) -> Result<()> {
+    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
+    let cli = CliOutput::new(cli_config);
     cli.header("sync");
 
     // sync_branch(&cli, &SyncBranchOpts::default())?;

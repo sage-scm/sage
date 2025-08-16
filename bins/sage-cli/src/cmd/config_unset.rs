@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 
-pub fn config_unset(key: &str) -> Result<()> {
+pub fn config_unset(key: &str, _global_config: &crate::GlobalConfig) -> Result<()> {
     let manager = sage_config::ConfigManager::new()?;
     let mut cfg = manager.load()?;
     let parts: Vec<&str> = key.split('.').collect();

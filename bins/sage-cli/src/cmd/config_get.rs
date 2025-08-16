@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-pub fn config_get(key: &str) -> Result<()> {
+pub fn config_get(key: &str, _global_config: &crate::GlobalConfig) -> Result<()> {
     let manager = sage_config::ConfigManager::new()?;
     let cfg = manager.load()?;
 

@@ -3,7 +3,7 @@ use anyhow::Result;
 #[cfg(feature = "tui")]
 use sage_tui::display;
 
-pub fn ui() -> Result<()> {
+pub fn ui(_global_config: &crate::GlobalConfig) -> Result<()> {
     #[cfg(feature = "tui")]
     {
         display::SageUI::default().run()
