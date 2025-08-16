@@ -1,0 +1,256 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no release created)'
+        required: false
+        default: false
+        type: boolean
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  DEBUG: ${{ github.event.inputs.debug || 'false' }}
+
+permissions:
+  contents: write
+  actions: read
+  packages: read
+
+jobs:
+  analyze:
+    name: Analyze Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      should_release: ${{ steps.analysis.outputs.should_release }}
+      next_version: ${{ steps.analysis.outputs.next_version }}
+      version_type: ${{ steps.analysis.outputs.version_type }}
+      release_notes: ${{ steps.release_notes.outputs.release_notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest release
+        id: latest_release
+        run: ./scripts/get-latest-release.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
+
+      - name: Validate commit messages
+        id: validation
+        run: |
+          if [ "${{ steps.latest_release.outputs.is_first_release }}" = "true" ]; then
+            # For first release, validate last 10 commits or all if less than 10
+            COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+            if [ "$COMMIT_COUNT" -gt 10 ]; then
+              ./scripts/validate-commits.sh "HEAD~10..HEAD" false
+            else
+              ./scripts/validate-commits.sh "HEAD~$COMMIT_COUNT..HEAD" false 2>/dev/null || ./scripts/validate-commits.sh "" false
+            fi
+          else
+            if git rev-parse "v${{ steps.latest_release.outputs.latest_version }}" >/dev/null 2>&1; then
+              ./scripts/validate-commits.sh "v${{ steps.latest_release.outputs.latest_version }}..HEAD" false
+            else
+              # Fallback if tag doesn't exist
+              ./scripts/validate-commits.sh "HEAD~10..HEAD" false
+            fi
+          fi
+        continue-on-error: false
+
+      - name: Analyze conventional commits
+        id: analysis
+        run: ./scripts/analyze-commits.sh "${{ steps.latest_release.outputs.latest_version }}" "${{ steps.latest_release.outputs.is_first_release }}"
+        continue-on-error: false
+
+      - name: Generate release notes
+        id: release_notes
+        if: steps.analysis.outputs.should_release == 'true'
+        run: |
+          ./scripts/generate-release-notes.sh \
+            "${{ steps.analysis.outputs.next_version }}" \
+            "${{ steps.analysis.outputs.version_type }}" \
+            "${{ steps.analysis.outputs.current_version }}" \
+            "${{ steps.analysis.outputs.breaking_count }}" \
+            "${{ steps.analysis.outputs.feat_count }}" \
+            "${{ steps.analysis.outputs.fix_count }}" \
+            "${{ steps.analysis.outputs.other_count }}"
+
+      - name: Update changelog
+        id: changelog
+        if: steps.analysis.outputs.should_release == 'true'
+        run: |
+          ./scripts/update-changelog.sh \
+            "${{ steps.analysis.outputs.next_version }}" \
+            "${{ steps.analysis.outputs.version_type }}" \
+            "${{ steps.analysis.outputs.current_version }}" \
+            "${{ steps.analysis.outputs.breaking_count }}" \
+            "${{ steps.analysis.outputs.feat_count }}" \
+            "${{ steps.analysis.outputs.fix_count }}" \
+            "${{ steps.analysis.outputs.other_count }}"
+
+      - name: Commit changelog
+        if: steps.analysis.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for v${{ steps.analysis.outputs.next_version }}" || exit 0
+          git push
+
+  release:
+    name: Create Release
+    needs: analyze
+    if: needs.analyze.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Run pre-release checks
+        run: just pre-release
+
+      - name: Create release (dry-run)
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          echo "DRY RUN: Would create release v${{ needs.analyze.outputs.next_version }}"
+          echo "Release notes:"
+          echo "${{ needs.analyze.outputs.release_notes }}"
+
+      - name: Create GitHub release
+        if: github.event.inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.analyze.outputs.next_version }}
+          name: Sage v${{ needs.analyze.outputs.next_version }}
+          body: ${{ needs.analyze.outputs.release_notes }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        retry:
+          max_attempts: 3
+          retry_wait_seconds: 30
+
+  build-assets:
+    name: Build Release Assets
+    needs: [analyze, release]
+    if: needs.analyze.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      version: v${{ needs.analyze.outputs.next_version }}
+    secrets: inherit
+
+  attach-assets:
+    name: Attach Assets to Release
+    needs: [analyze, release, build-assets]
+    if: needs.analyze.outputs.should_release == 'true' && github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Attach assets to release
+        run: |
+          # Find all asset files and upload with retry logic
+          set -e
+          
+          # Function to upload with retry
+          upload_with_retry() {
+            local file="$1"
+            local max_attempts=3
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Uploading $file (attempt $attempt/$max_attempts)"
+              if gh release upload v${{ needs.analyze.outputs.next_version }} "$file" --clobber; then
+                echo "✓ Successfully uploaded $file"
+                return 0
+              else
+                echo "✗ Failed to upload $file (attempt $attempt)"
+                if [ $attempt -lt $max_attempts ]; then
+                  sleep $((attempt * 5))
+                fi
+                attempt=$((attempt + 1))
+              fi
+            done
+            
+            echo "ERROR: Failed to upload $file after $max_attempts attempts"
+            return 1
+          }
+          
+          # Upload all assets
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) | while read -r file; do
+            upload_with_retry "$file"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify-failure:
+    name: Notify on Failure
+    needs: [analyze, release, build-assets, attach-assets]
+    if: failure() && needs.analyze.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Automated Release Failed - v${{ needs.analyze.outputs.next_version || 'unknown' }}`;
+            const body = `
+            ## Release Failure Report
+            
+            **Version:** v${{ needs.analyze.outputs.next_version || 'unknown' }}
+            **Workflow:** ${{ github.workflow }}
+            **Run ID:** ${{ github.run_id }}
+            **Commit:** ${{ github.sha }}
+            
+            ### Failed Jobs
+            - Analyze: ${{ needs.analyze.result }}
+            - Release: ${{ needs.release.result }}
+            - Build Assets: ${{ needs.build-assets.result }}
+            - Attach Assets: ${{ needs.attach-assets.result }}
+            
+            ### Next Steps
+            1. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed logs
+            2. Fix any issues identified
+            3. Re-run the workflow or create a manual release
+            
+            This issue was automatically created by the release workflow.
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'release', 'automated']
+            });

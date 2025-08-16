@@ -23,17 +23,31 @@ Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as
 
 ---
 
-## Quick start
+## Installation
 
-### Install via Homebrew (macOS/Linux)
+### Quick Install (Recommended)
 
 ```bash
-# Add the tap and install Sage
-brew tap sage-scm/sage
-brew install sage
+curl -fsSL https://raw.githubusercontent.com/sage-scm/sage/main/install.sh | sh
 ```
 
-### Install from source
+This script automatically:
+- Detects your platform (Linux/macOS/Windows)
+- Downloads the appropriate binary
+- Verifies checksums for security
+- Installs to `/usr/local/bin` (or `~/.local/bin` if needed)
+
+### Manual Download
+
+Download pre-built binaries from [GitHub Releases](https://github.com/sage-scm/sage/releases):
+
+- **Linux**: `sage-linux-amd64.tar.gz` (glibc) or `sage-linux-amd64-musl.tar.gz` (musl)
+- **macOS**: `sage-macos-amd64.tar.gz` (Intel) or `sage-macos-arm64.tar.gz` (Apple Silicon)  
+- **Windows**: `sage-windows-amd64.zip`
+
+All downloads include SHA256 checksums for verification.
+
+### Install from Source
 
 ```bash
 # Install sage with all features
@@ -45,6 +59,16 @@ just install-only --stack --ai
 # Try commands without installing
 just try work my-feature
 just try-with stack,tui dash
+```
+
+### Package Managers
+
+```bash
+# Homebrew (coming soon)
+brew install sage-org/tap/sage
+
+# Cargo
+cargo install --git https://github.com/sage-scm/sage sage-cli
 ```
 
 > **Note**: `--features stack` turns on advanced stacked‑diff commands,
@@ -185,10 +209,35 @@ We believe in using our own medicine. Throughout development **Sage manages its 
 
 ## Contributing
 
-1. Fork & clone
-2. `just watch` – auto-rebuild on changes
-3. `just ci` – ensures code passes all checks
-4. Submit a PR 🚀
+We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
+
+### Quick Start
+
+1. Fork & clone the repository
+2. Follow [conventional commit](https://www.conventionalcommits.org/) format for all commits
+3. `just watch` – auto-rebuild on changes
+4. `just ci` – ensures code passes all checks
+5. Submit a PR 🚀
+
+### Commit Format
+
+Use conventional commits for automatic versioning:
+
+```bash
+feat: add new feature        # Minor version bump
+fix: resolve bug            # Patch version bump  
+feat!: breaking change      # Major version bump
+docs: update README         # No version bump
+```
+
+### Releases
+
+Sage uses automated releases based on conventional commits:
+- **Major** (breaking changes): `feat!:`, `fix!:`, `BREAKING CHANGE:`
+- **Minor** (new features): `feat:`
+- **Patch** (bug fixes): `fix:`, `perf:`
+
+See [Release Workflow](docs/RELEASE_WORKFLOW.md) for details.
 
 ---
 ---
