@@ -103,6 +103,7 @@ jobs:
         
       - name: Install cross (for cross-compilation)
         if: matrix.use_cross
+        shell: bash
         run: cargo install cross --git https://github.com/cross-rs/cross
         
       - name: Cache cargo dependencies
@@ -144,7 +145,10 @@ jobs:
           fi
           
           # Generate SHA256 checksum
-          if command -v sha256sum >/dev/null 2>&1; then
+          if [[ "${{ matrix.target }}" == *"windows"* ]] && command -v powershell >/dev/null 2>&1; then
+            # Use PowerShell on Windows (Git Bash has PowerShell available)
+            powershell -Command "(Get-FileHash -Algorithm SHA256 '$ARCHIVE_NAME').Hash.ToLower() + '  ' + '$ARCHIVE_NAME'" > "$ARCHIVE_NAME.sha256"
+          elif command -v sha256sum >/dev/null 2>&1; then
             sha256sum "$ARCHIVE_NAME" > "$ARCHIVE_NAME.sha256"
           elif command -v shasum >/dev/null 2>&1; then
             shasum -a 256 "$ARCHIVE_NAME" > "$ARCHIVE_NAME.sha256"
@@ -152,8 +156,8 @@ jobs:
             echo "Warning: No SHA256 utility found"
           fi
           
-          # Move files to root
-          mv "$ARCHIVE_NAME"* ../../../
+          # Move files to root (portable path)
+          mv "$ARCHIVE_NAME"* "${{ github.workspace }}/"
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
