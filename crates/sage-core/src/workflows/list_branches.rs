@@ -1,4 +1,4 @@
-use crate::{ColorizeExt, CliOutput};
+use crate::{CliOutput, ColorizeExt};
 use anyhow::Result;
 use colored::Colorize;
 use serde::Serialize;
@@ -64,7 +64,7 @@ pub fn list_branches_with_output(relative: bool, cli: Option<&CliOutput>) -> Res
             branches: branch_infos.clone(),
         };
         cli.json_output(&output)?;
-        
+
         // If JSON mode, don't print the formatted output
         if cli.is_json_mode() {
             return Ok(());

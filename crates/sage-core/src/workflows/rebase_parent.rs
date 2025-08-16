@@ -1,15 +1,15 @@
+use crate::CliOutput;
 use sage_git::branch::{get_current, merge, pull, push, switch};
 use sage_git::rebase::rebase;
 use sage_git::repo::fetch_remote;
 use sage_git::status::branch_status;
-use crate::CliOutput;
 
 pub fn rebase_onto_parent(
     cli: &CliOutput,
     branch: &str,
     parent: &str,
     use_rebase: bool,
-    force_push: bool
+    force_push: bool,
 ) -> anyhow::Result<()> {
     cli.step_start(&format!(
         "Syncing '{}' with '{}' ({})",

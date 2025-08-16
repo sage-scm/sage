@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use colored::ColoredString;
 use colored::Colorize;
 

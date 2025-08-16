@@ -193,9 +193,19 @@ editor = "vim"
 
         // Load config: global auto_update = false should be preserved
         let cfg = manager.load().unwrap();
-        assert_eq!(cfg.editor, "vim".to_string(), "Local editor should override global");
-        assert_eq!(cfg.auto_update, false, "Global auto_update=false should be preserved");
-        assert_eq!(cfg.tui.line_numbers, false, "Global line_numbers=false should be preserved");
+        assert_eq!(
+            cfg.editor,
+            "vim".to_string(),
+            "Local editor should override global"
+        );
+        assert_eq!(
+            cfg.auto_update, false,
+            "Global auto_update=false should be preserved"
+        );
+        assert_eq!(
+            cfg.tui.line_numbers, false,
+            "Global line_numbers=false should be preserved"
+        );
     }
 
     #[test]
@@ -224,6 +234,9 @@ api_url = "wow"
 
         // Load config: global ai.api_url should be "wow"
         let cfg = manager.load().unwrap();
-        assert_eq!(cfg.ai.api_url, "wow", "Global ai.api_url should be preserved when no local config exists");
+        assert_eq!(
+            cfg.ai.api_url, "wow",
+            "Global ai.api_url should be preserved when no local config exists"
+        );
     }
 }

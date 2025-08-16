@@ -1,4 +1,4 @@
-use console::{style, Term};
+use console::{Term, style};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::{Duration, Instant};
 
@@ -53,7 +53,7 @@ impl SpinnerStep {
         if self.config.json {
             return;
         }
-        
+
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
             let _ = term;
@@ -80,13 +80,18 @@ impl SpinnerStep {
         if self.config.json {
             return;
         }
-        
+
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
             let _ = term;
         }
         let final_msg = if let Some(detail) = detail {
-            format!("{}   {} {}", custom_emoji, message, self.style_text(detail).dim())
+            format!(
+                "{}   {} {}",
+                custom_emoji,
+                message,
+                self.style_text(detail).dim()
+            )
         } else {
             format!("{}   {}", custom_emoji, message)
         };
@@ -97,7 +102,7 @@ impl SpinnerStep {
         if self.config.json {
             return;
         }
-        
+
         self.pb.finish_and_clear();
         if let Ok(term) = Term::stdout().clear_line() {
             let _ = term;
@@ -115,7 +120,8 @@ impl SpinnerStep {
         if self.config.json {
             return;
         }
-        self.pb.set_message(format!("{}", self.style_text(message).dim()));
+        self.pb
+            .set_message(format!("{}", self.style_text(message).dim()));
     }
 }
 
@@ -156,19 +162,19 @@ impl CliOutput {
 
     pub fn spinner(&self, message: &str) -> SpinnerStep {
         if self.config.json {
-            return SpinnerStep { 
+            return SpinnerStep {
                 pb: ProgressBar::hidden(),
                 config: self.config.clone(),
             };
         }
-        
+
         let pb = ProgressBar::new_spinner();
         let template = if self.config.no_color {
             "{spinner} {msg}"
         } else {
             "{spinner:.yellow} {msg}"
         };
-        
+
         pb.set_style(
             ProgressStyle::default_spinner()
                 .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
@@ -178,7 +184,7 @@ impl CliOutput {
         pb.set_message(format!("{}", self.style_text(message).dim()));
         pb.enable_steady_tick(Duration::from_millis(100));
 
-        SpinnerStep { 
+        SpinnerStep {
             pb,
             config: self.config.clone(),
         }
@@ -188,7 +194,11 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        print!("{}   {}", self.style_text("●").yellow(), self.style_text(message).dim());
+        print!(
+            "{}   {}",
+            self.style_text("●").yellow(),
+            self.style_text(message).dim()
+        );
         let _ = self.term.flush();
     }
 
@@ -196,7 +206,7 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        
+
         self.term.clear_line().unwrap_or(());
 
         print!("\r●   {}", message);
@@ -214,7 +224,7 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        
+
         self.term.clear_line().unwrap_or(());
 
         print!("\r{}  {}", custom_emoji, message);
@@ -229,7 +239,11 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        println!("{}   {}\n", self.style_text("⚠️").yellow(), self.style_text(message).yellow());
+        println!(
+            "{}   {}\n",
+            self.style_text("⚠️").yellow(),
+            self.style_text(message).yellow()
+        );
     }
 
     pub fn step_update(&self, message: &str) {
@@ -237,7 +251,11 @@ impl CliOutput {
             return;
         }
         self.term.clear_line().unwrap_or(());
-        print!("\r{}   {}", self.style_text("●").yellow(), self.style_text(message).dim());
+        print!(
+            "\r{}   {}",
+            self.style_text("●").yellow(),
+            self.style_text(message).dim()
+        );
         let _ = self.term.flush();
     }
 
@@ -258,7 +276,7 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        
+
         let elapsed = self.start_time.elapsed();
         let duration_str = format_duration(elapsed);
         println!(
@@ -272,17 +290,22 @@ impl CliOutput {
         if self.config.json {
             return;
         }
-        
+
         let width = 60;
         println!("\n┌{}┐", "─".repeat(width - 2));
         println!(
             "│ {} │",
-            self.style_text(&format!("{:^width$}", title, width = width - 4)).bold()
+            self.style_text(&format!("{:^width$}", title, width = width - 4))
+                .bold()
         );
         println!("├{}┤", "─".repeat(width - 2));
 
         for (label, value) in items {
-            println!("│ {:<20} {} │", self.style_text(label).dim(), self.style_text(value).green());
+            println!(
+                "│ {:<20} {} │",
+                self.style_text(label).dim(),
+                self.style_text(value).green()
+            );
         }
 
         println!("└{}┘", "─".repeat(width - 2));

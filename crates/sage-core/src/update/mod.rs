@@ -64,11 +64,11 @@ fn should_check_for_updates() -> Result<bool> {
 
 async fn get_latest_version() -> Result<Option<String>> {
     let octo = Octocrab::builder().build()?;
-    
+
     // Get repository info from environment or use default
     let repo_owner = option_env!("SAGE_REPO_OWNER").unwrap_or("sage-scm");
     let repo_name = option_env!("SAGE_REPO_NAME").unwrap_or("sage");
-    
+
     let releases = octo
         .repos(repo_owner, repo_name)
         .releases()
@@ -83,7 +83,7 @@ async fn get_latest_version() -> Result<Option<String>> {
         if release.prerelease || release.draft {
             return Ok(None);
         }
-        
+
         // Remove 'v' prefix if present
         let version = release.tag_name.trim_start_matches('v').to_string();
         Ok(Some(version))
@@ -109,7 +109,7 @@ fn detect_installation_method() -> InstallationMethod {
             return InstallationMethod::Homebrew;
         }
     }
-    
+
     // Check if binary is in a Homebrew path
     if let Ok(which_output) = std::process::Command::new("which").arg("sg").output() {
         if which_output.status.success() {
@@ -119,7 +119,7 @@ fn detect_installation_method() -> InstallationMethod {
             }
         }
     }
-    
+
     // Check if installed via Cargo
     if let Ok(output) = std::process::Command::new("cargo")
         .args(["install", "--list"])
@@ -132,7 +132,7 @@ fn detect_installation_method() -> InstallationMethod {
             }
         }
     }
-    
+
     InstallationMethod::Manual
 }
 
@@ -140,7 +140,7 @@ fn show_update_notification(current: &str, latest: &str) {
     let repo_owner = option_env!("SAGE_REPO_OWNER").unwrap_or("sage-scm");
     let repo_name = option_env!("SAGE_REPO_NAME").unwrap_or("sage");
     let installation_method = detect_installation_method();
-    
+
     println!(
         "\n{}",
         "✨ A new version of Sage is available!".sage().bold()
@@ -148,34 +148,93 @@ fn show_update_notification(current: &str, latest: &str) {
     println!("Current version: {}", current.yellow());
     println!("Latest version: {}", latest.green());
     println!();
-    
+
     match installation_method {
         InstallationMethod::Homebrew => {
             println!("To update via Homebrew:");
-            println!("  {}", "brew update && brew upgrade sage-scm/sage/sage".cyan());
+            println!(
+                "  {}",
+                "brew update && brew upgrade sage-scm/sage/sage".cyan()
+            );
             println!();
             println!("Alternative update methods:");
-            println!("  • Quick install: {}", format!("curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh", repo_owner, repo_name).cyan());
-            println!("  • Manual download: {}", format!("https://github.com/{}/{}/releases/tag/v{}", repo_owner, repo_name, latest).cyan());
+            println!(
+                "  • Quick install: {}",
+                format!(
+                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
+                    repo_owner, repo_name
+                )
+                .cyan()
+            );
+            println!(
+                "  • Manual download: {}",
+                format!(
+                    "https://github.com/{}/{}/releases/tag/v{}",
+                    repo_owner, repo_name, latest
+                )
+                .cyan()
+            );
         }
         InstallationMethod::Cargo => {
             println!("To update via Cargo:");
-            println!("  {}", format!("cargo install --git https://github.com/{}/{} --tag v{} sage-cli --force", repo_owner, repo_name, latest).cyan());
+            println!(
+                "  {}",
+                format!(
+                    "cargo install --git https://github.com/{}/{} --tag v{} sage-cli --force",
+                    repo_owner, repo_name, latest
+                )
+                .cyan()
+            );
             println!();
             println!("Alternative update methods:");
-            println!("  • Quick install: {}", format!("curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh", repo_owner, repo_name).cyan());
+            println!(
+                "  • Quick install: {}",
+                format!(
+                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
+                    repo_owner, repo_name
+                )
+                .cyan()
+            );
             println!("  • Homebrew: {}", "brew install sage-scm/sage/sage".cyan());
-            println!("  • Manual download: {}", format!("https://github.com/{}/{}/releases/tag/v{}", repo_owner, repo_name, latest).cyan());
+            println!(
+                "  • Manual download: {}",
+                format!(
+                    "https://github.com/{}/{}/releases/tag/v{}",
+                    repo_owner, repo_name, latest
+                )
+                .cyan()
+            );
         }
         InstallationMethod::Manual => {
             println!("To update:");
-            println!("  • Quick install: {}", format!("curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh", repo_owner, repo_name).cyan());
+            println!(
+                "  • Quick install: {}",
+                format!(
+                    "curl -fsSL https://raw.githubusercontent.com/{}/{}/main/install.sh | sh",
+                    repo_owner, repo_name
+                )
+                .cyan()
+            );
             println!("  • Homebrew: {}", "brew install sage-scm/sage/sage".cyan());
-            println!("  • From source: {}", format!("cargo install --git https://github.com/{}/{} --tag v{} sage-cli", repo_owner, repo_name, latest).cyan());
-            println!("  • Manual download: {}", format!("https://github.com/{}/{}/releases/tag/v{}", repo_owner, repo_name, latest).cyan());
+            println!(
+                "  • From source: {}",
+                format!(
+                    "cargo install --git https://github.com/{}/{} --tag v{} sage-cli",
+                    repo_owner, repo_name, latest
+                )
+                .cyan()
+            );
+            println!(
+                "  • Manual download: {}",
+                format!(
+                    "https://github.com/{}/{}/releases/tag/v{}",
+                    repo_owner, repo_name, latest
+                )
+                .cyan()
+            );
         }
     }
-    
+
     println!();
 }
 

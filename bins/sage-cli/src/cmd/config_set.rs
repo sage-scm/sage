@@ -12,7 +12,12 @@ fn parse_bool(value: &str) -> Result<bool> {
     }
 }
 
-pub fn config_set(key: &str, value: &str, local: bool, _global_config: &crate::GlobalConfig) -> Result<()> {
+pub fn config_set(
+    key: &str,
+    value: &str,
+    local: bool,
+    _global_config: &crate::GlobalConfig,
+) -> Result<()> {
     let manager = sage_config::ConfigManager::new()?;
     let mut cfg = manager.load()?;
 

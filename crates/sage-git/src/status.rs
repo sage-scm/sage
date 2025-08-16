@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::process::Command;
@@ -899,7 +899,7 @@ fn has_stash() -> Result<bool> {
 pub fn status() -> Result<GitStatus> {
     let current_branch = get_current()?;
     let mut status = branch_status(&current_branch)?;
-    
+
     // Parse the actual file status
     let result = Command::new("git")
         .args(["status", "--porcelain", "-z"])
@@ -913,7 +913,7 @@ pub fn status() -> Result<GitStatus> {
     }
 
     let stdout = String::from_utf8(result.stdout)?;
-    
+
     // Split by null terminator for proper handling of filenames with spaces
     for entry in stdout.split('\0') {
         if entry.is_empty() {
@@ -928,10 +928,12 @@ pub fn status() -> Result<GitStatus> {
 
         let status_chars = &entry[0..2];
         let path = entry[3..].to_string();
-        
+
         // Handle renamed/copied files which have format: XY oldname -> newname
-        let (status_x, status_y) = (status_chars.chars().nth(0).unwrap_or(' '), 
-                                     status_chars.chars().nth(1).unwrap_or(' '));
+        let (status_x, status_y) = (
+            status_chars.chars().nth(0).unwrap_or(' '),
+            status_chars.chars().nth(1).unwrap_or(' '),
+        );
 
         match (status_x, status_y) {
             // Untracked
@@ -1048,7 +1050,7 @@ pub fn get_status_entries() -> Result<Vec<StatusEntry>> {
         } else if chars.len() >= 2 {
             let index_status = chars[0];
             let work_status = chars[1];
-            
+
             if index_status != ' ' && index_status != '?' {
                 StatusType::Staged
             } else if work_status != ' ' && work_status != '?' {

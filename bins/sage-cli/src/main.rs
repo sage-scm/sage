@@ -292,7 +292,7 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let global_config = GlobalConfig::new(cli.json, cli.no_color);
-    
+
     match cli.command {
         // Synchronous commands
         Command::Work(args) => cmd::work(&args, &global_config),
@@ -301,7 +301,9 @@ async fn main() -> Result<()> {
         Command::Config { op } => match op {
             ConfigCmd::List => cmd::config_list(&global_config),
             ConfigCmd::Get { key } => cmd::config_get(&key, &global_config),
-            ConfigCmd::Set { key, value, local } => cmd::config_set(&key, &value, local, &global_config),
+            ConfigCmd::Set { key, value, local } => {
+                cmd::config_set(&key, &value, local, &global_config)
+            }
             ConfigCmd::Unset { key } => cmd::config_unset(&key, &global_config),
             ConfigCmd::Edit => cmd::config_edit(&global_config),
         },

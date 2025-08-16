@@ -1,6 +1,6 @@
 //! Core logic: stacks **+** loose branches.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use hashbrown::HashMap;
 use sage_git::branch::get_default_branch;
 use serde::{Deserialize, Serialize};

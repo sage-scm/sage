@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::prelude::git_ok;
+use anyhow::Result;
 
 pub struct AmendOpts {
     // The message to amend with

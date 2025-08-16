@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 pub fn config_unset(key: &str, _global_config: &crate::GlobalConfig) -> Result<()> {
     let manager = sage_config::ConfigManager::new()?;

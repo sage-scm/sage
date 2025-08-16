@@ -28,10 +28,10 @@ impl EventStore {
         if !git_dir.exists() || !git_dir.is_dir() {
             return Err(anyhow::anyhow!("Not in a git repository"));
         }
-        
+
         let sage_dir = git_dir.join("sage");
         fs::create_dir_all(&sage_dir)?;
-        
+
         Ok(Self {
             path: sage_dir.join("events.jsonl"),
             max_events: 10000,
@@ -43,12 +43,12 @@ impl EventStore {
             .create(true)
             .append(true)
             .open(&self.path)?;
-        
+
         let json = serde_json::to_string(event)?;
         writeln!(file, "{}", json)?;
-        
+
         self.compact_if_needed()?;
-        
+
         Ok(())
     }
 
@@ -66,7 +66,7 @@ impl EventStore {
             if line.trim().is_empty() {
                 continue;
             }
-            
+
             let event: Event = serde_json::from_str(&line)?;
             events.push(event);
         }
@@ -96,23 +96,23 @@ impl EventStore {
 
     pub fn get_since(&self, event_id: &EventId) -> Result<Vec<Event>, EventStoreError> {
         let events = self.read_all()?;
-        
+
         let position = events
             .iter()
             .position(|e| &e.id == event_id)
             .ok_or(EventStoreError::EventNotFound(event_id.clone()))?;
-        
+
         Ok(events[(position + 1)..].to_vec())
     }
 
     pub fn get_until(&self, event_id: &EventId) -> Result<Vec<Event>, EventStoreError> {
         let events = self.read_all()?;
-        
+
         let position = events
             .iter()
             .position(|e| &e.id == event_id)
             .ok_or(EventStoreError::EventNotFound(event_id.clone()))?;
-        
+
         Ok(events[..=position].to_vec())
     }
 
@@ -125,24 +125,21 @@ impl EventStore {
 
     fn compact_if_needed(&self) -> Result<(), EventStoreError> {
         let events = self.read_all()?;
-        
+
         if events.len() > self.max_events {
             let keep_count = self.max_events * 3 / 4;
             let skip_count = events.len() - keep_count;
-            let events_to_keep: Vec<_> = events
-                .into_iter()
-                .skip(skip_count)
-                .collect();
-            
+            let events_to_keep: Vec<_> = events.into_iter().skip(skip_count).collect();
+
             self.rewrite(events_to_keep)?;
         }
-        
+
         Ok(())
     }
 
     fn rewrite(&self, events: Vec<Event>) -> Result<(), EventStoreError> {
         let temp_path = self.path.with_extension("tmp");
-        
+
         {
             let mut file = File::create(&temp_path)?;
             for event in &events {
@@ -151,15 +148,15 @@ impl EventStore {
             }
             file.sync_all()?;
         }
-        
+
         fs::rename(&temp_path, &self.path)?;
-        
+
         Ok(())
     }
 
     pub fn get_branch_history(&self, branch_name: &str) -> Result<Vec<Event>, EventStoreError> {
         let events = self.read_all()?;
-        
+
         Ok(events
             .into_iter()
             .filter(|event| match &event.data {
@@ -179,7 +176,7 @@ impl EventStore {
     pub fn snapshot(&self) -> Result<EventSnapshot, EventStoreError> {
         let events = self.read_all()?;
         let latest_id = events.last().map(|e| e.id.clone());
-        
+
         Ok(EventSnapshot {
             event_count: events.len(),
             latest_event_id: latest_id,

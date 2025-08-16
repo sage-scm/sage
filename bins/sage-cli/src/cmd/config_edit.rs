@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::{env, process::Command};
 
 pub fn config_edit(_global_config: &crate::GlobalConfig) -> Result<()> {

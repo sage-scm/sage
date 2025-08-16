@@ -2,7 +2,10 @@ mod main_menu;
 
 use crate::display::main_menu::MainMenu;
 use anyhow::Result;
-use crossterm::{event::{self, Event, KeyCode, KeyEvent, KeyEventKind}, terminal::enable_raw_mode};
+use crossterm::{
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+    terminal::enable_raw_mode,
+};
 
 #[derive(Debug, Default)]
 pub enum Screen {

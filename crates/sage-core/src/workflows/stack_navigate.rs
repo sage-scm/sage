@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use sage_git::branch;
 use sage_tui::basic::select;
 

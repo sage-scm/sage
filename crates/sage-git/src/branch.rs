@@ -37,7 +37,7 @@ pub fn switch(name: &str, create: bool) -> Result<String> {
 
 /// Sets the upstream branch for the current branch.
 pub fn set_upstream(name: &str) -> Result<()> {
-    git_ok(&["branch", "--set-upstream-to", &format!("origin/{name}")])
+    git_ok(["branch", "--set-upstream-to", &format!("origin/{name}")])
 }
 
 /// Pushes the current branch to the remote.

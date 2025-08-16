@@ -1,7 +1,7 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, bail};
 use std::process::Command;
 
-use crate::prelude::{git_ok, git_output, git_success};
+use crate::prelude::{git_ok, git_output};
 
 /// Check if we're in a git repo.
 pub fn in_repo() -> Result<bool> {

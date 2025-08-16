@@ -37,4 +37,3 @@ impl From<anyhow::Error> for ConfigError {
         ConfigError::Custom(format!("{:?}", e))
     }
 }
-

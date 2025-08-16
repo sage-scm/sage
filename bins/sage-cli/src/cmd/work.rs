@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sage_core::{change_branch, BranchName, ChangeBranchOpts, CliOutput};
+use sage_core::{BranchName, ChangeBranchOpts, CliOutput, change_branch};
 
 pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Result<()> {
     let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);

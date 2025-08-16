@@ -22,8 +22,8 @@
 //! ```
 
 pub mod branch;
-pub mod persist;
 pub mod graph;
+pub mod persist;
 
 pub use branch::{BranchId, BranchInfo, BranchStatus};
 pub use graph::{SageGraph, Stack};

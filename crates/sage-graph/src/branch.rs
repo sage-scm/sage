@@ -22,24 +22,19 @@ pub enum BranchStatus {
 /// * `pr_number` lets the CLI skip an API round-trip when it already knows.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BranchInfo {
-    pub name:       BranchId,
-    pub parent:     BranchId,
-    pub created:    DateTime<Utc>,
-    pub hosted:     Option<DateTime<Utc>>,
-    pub author:     String,
-    pub status:     BranchStatus,
-    pub depth:      usize,
-    pub pr_number:  Option<u64>,
+    pub name: BranchId,
+    pub parent: BranchId,
+    pub created: DateTime<Utc>,
+    pub hosted: Option<DateTime<Utc>>,
+    pub author: String,
+    pub status: BranchStatus,
+    pub depth: usize,
+    pub pr_number: Option<u64>,
 }
 
 impl BranchInfo {
     /// Handy constructor used everywhere.
-    pub fn new(
-        name: BranchId,
-        parent: BranchId,
-        author: impl Into<String>,
-        depth: usize,
-    ) -> Self {
+    pub fn new(name: BranchId, parent: BranchId, author: impl Into<String>, depth: usize) -> Self {
         Self {
             name,
             parent,

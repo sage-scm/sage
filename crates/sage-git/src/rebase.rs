@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::process::Command;
 
 /// Check if a rebase is in progress
@@ -7,15 +7,15 @@ pub fn is_rebase_in_progress() -> Result<bool> {
     let git_dir = Command::new("git")
         .args(&["rev-parse", "--git-dir"])
         .output()?;
-    
+
     if !git_dir.status.success() {
         return Err(anyhow!("Failed to find git directory"));
     }
-    
+
     let git_dir_path = String::from_utf8_lossy(&git_dir.stdout).trim().to_string();
     let rebase_merge = Path::new(&git_dir_path).join("rebase-merge");
     let rebase_apply = Path::new(&git_dir_path).join("rebase-apply");
-    
+
     Ok(rebase_merge.exists() || rebase_apply.exists())
 }
 
@@ -24,7 +24,7 @@ pub fn rebase_continue() -> Result<()> {
     let output = Command::new("git")
         .args(&["rebase", "--continue"])
         .output()?;
-    
+
     if output.status.success() {
         Ok(())
     } else {
@@ -35,10 +35,8 @@ pub fn rebase_continue() -> Result<()> {
 
 /// Abort an in-progress rebase
 pub fn rebase_abort() -> Result<()> {
-    let output = Command::new("git")
-        .args(&["rebase", "--abort"])
-        .output()?;
-    
+    let output = Command::new("git").args(&["rebase", "--abort"]).output()?;
+
     if output.status.success() {
         Ok(())
     } else {

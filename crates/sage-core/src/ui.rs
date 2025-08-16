@@ -1,6 +1,6 @@
 use std::{
     io::{self, Write},
-    time::SystemTime
+    time::SystemTime,
 };
 
 pub struct Ui {
@@ -20,9 +20,12 @@ impl Ui {
     }
 
     pub fn header(&self, kvs: &[(&str, &str)]) {
-        if self.json_mode { return; }
-        let left = kvs.iter()
-            .map(|(k, v) | format!("{k}: {v}"))
+        if self.json_mode {
+            return;
+        }
+        let left = kvs
+            .iter()
+            .map(|(k, v)| format!("{k}: {v}"))
             .collect::<Vec<_>>()
             .join("  ");
         println!("{left}");
@@ -30,40 +33,54 @@ impl Ui {
     }
 
     pub fn section<T: AsRef<str>>(&self, title: T) {
-        if self.json_mode { return; }
+        if self.json_mode {
+            return;
+        }
         println!("{}", title.as_ref());
     }
 
     pub fn line<T: AsRef<str>>(&self, text: T) {
-        if self.json_mode { return; }
+        if self.json_mode {
+            return;
+        }
         println!("{}", text.as_ref());
     }
 
     pub fn bullet<T: AsRef<str>>(&self, text: T) {
-        if self.json_mode { return; }
+        if self.json_mode {
+            return;
+        }
         println!("  • {}", text.as_ref());
     }
 
     pub fn table(&self, headers: &[&str], rows: &[Vec<String>]) {
-        if self.json_mode { return; }
+        if self.json_mode {
+            return;
+        }
         let widths = compute_widths(self.width, headers, rows);
         // headers
         for (i, h) in headers.iter().enumerate() {
             print!("{:width$}", clip(h, widths[i]), width = widths[i]);
-            if i < headers.len() - 1 { print!("  "); }
+            if i < headers.len() - 1 {
+                print!("  ");
+            }
         }
         println!();
         // underline
         for (i, h) in headers.iter().enumerate() {
             print!("{:-<width$}", "", width = widths[i].min(h.len()).max(1));
-            if i < headers.len() - 1 { print!("  "); }
+            if i < headers.len() - 1 {
+                print!("  ");
+            }
         }
         println!();
         // rows
         for r in rows {
             for (i, cell) in r.iter().enumerate() {
                 print!("{:width$}", clip(cell, widths[i]), width = widths[i]);
-                if i < headers.len() - 1 { print!("  "); }
+                if i < headers.len() - 1 {
+                    print!("  ");
+                }
             }
             println!();
         }
@@ -87,13 +104,18 @@ impl Ui {
         let ans = buf.trim().to_lowercase();
         match ans.as_str() {
             "y" | "yes" => Ok(true),
-            "v" => { on_verbose(); self.confirm(prompt, on_verbose) },
+            "v" => {
+                on_verbose();
+                self.confirm(prompt, on_verbose)
+            }
             _ => Ok(false),
         }
     }
 
     pub fn undo_line(&self, undo_id: &str) {
-        if self.json_mode { return; }
+        if self.json_mode {
+            return;
+        }
         println!();
         println!("Undo");
         println!("  sage undo {undo_id}");
@@ -103,12 +125,16 @@ impl Ui {
 fn term_width() -> Option<usize> {
     #[cfg(any(unix, windows))]
     {
-        use terminal_size::{terminal_size, Width};
-        if let Some((Width(w), _)) = terminal_size() { return Some(w as usize); }
+        use terminal_size::{Width, terminal_size};
+        if let Some((Width(w), _)) = terminal_size() {
+            return Some(w as usize);
+        }
         None
     }
     #[cfg(not(any(unix, windows)))]
-    { None }
+    {
+        None
+    }
 }
 
 fn compute_widths(total: usize, headers: &[&str], rows: &[Vec<String>]) -> Vec<usize> {
@@ -134,7 +160,12 @@ fn compute_widths(total: usize, headers: &[&str], rows: &[Vec<String>]) -> Vec<u
     // ensure final width constraint
     sum = widths.iter().sum::<usize>() + (cols.saturating_sub(1)) * 2;
     while sum > total {
-        let i = widths.iter().enumerate().max_by_key(|(_, w)| **w).map(|(i, _)| i).unwrap();
+        let i = widths
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, w)| **w)
+            .map(|(i, _)| i)
+            .unwrap();
         widths[i] = widths[i].saturating_sub(1);
         sum -= 1;
     }
@@ -142,10 +173,14 @@ fn compute_widths(total: usize, headers: &[&str], rows: &[Vec<String>]) -> Vec<u
 }
 
 fn clip(s: &str, width: usize) -> String {
-    if s.chars().count() <= width { return s.to_string(); }
+    if s.chars().count() <= width {
+        return s.to_string();
+    }
     let mut out = String::new();
     for (i, ch) in s.chars().enumerate() {
-        if i + 1 >= width { break; }
+        if i + 1 >= width {
+            break;
+        }
         out.push(ch);
     }
     out.push('…');

@@ -1,5 +1,5 @@
+use anyhow::{Context, Result, bail};
 use std::process::Command;
-use anyhow::{bail, Context, Result};
 
 pub fn git_ok<I, S>(args: I) -> Result<()>
 where
@@ -41,6 +41,9 @@ where
     S: AsRef<str>,
 {
     let args_vec: Vec<String> = args.into_iter().map(|s| s.as_ref().to_string()).collect();
-    let out = Command::new("git").args(&args_vec).output().with_context(|| format!("failed to spawn git {:?}", args_vec))?;
+    let out = Command::new("git")
+        .args(&args_vec)
+        .output()
+        .with_context(|| format!("failed to spawn git {:?}", args_vec))?;
     Ok(out)
 }
