@@ -161,7 +161,7 @@ pub fn merge(branch: &str) -> Result<()> {
 pub fn is_merge_in_progress() -> Result<bool> {
     use std::path::Path;
     let git_dir = Command::new("git")
-        .args(&["rev-parse", "--git-dir"])
+        .args(["rev-parse", "--git-dir"])
         .output()?;
 
     if !git_dir.status.success() {
@@ -206,7 +206,7 @@ pub fn ahead_behind(base: &str, compare: &str) -> Result<(i32, i32)> {
         .arg("rev-list")
         .arg("--left-right")
         .arg("--count")
-        .arg(format!("{}...{}", base, compare))
+        .arg(format!("{base}...{compare}"))
         .output()?;
 
     if !res.status.success() {

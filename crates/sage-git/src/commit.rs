@@ -9,7 +9,7 @@ pub fn commit_empty() -> Result<String> {
     // Create the empty commit
     git_success(["commit", "--allow-empty"])?;
 
-    Ok(last_commit_id()?)
+    last_commit_id()
 }
 
 // Create a commit with the given message and return the short commit ID
@@ -17,7 +17,7 @@ pub fn commit(message: &str) -> Result<String> {
     // Create the commit
     git_success(["commit", "-m", message])?;
 
-    Ok(last_commit_id()?)
+    last_commit_id()
 }
 
 // Create a commit with the given message and return the short commit ID
@@ -25,7 +25,7 @@ pub fn commit_with_file(message: &str, file: &str) -> Result<String> {
     // Create the commit
     git_success(["commit", "-m", message, file])?;
 
-    Ok(last_commit_id()?)
+    last_commit_id()
 }
 
 /// Get the last commit id
@@ -96,7 +96,7 @@ pub fn log(branch: &str, limit: usize, stats: bool, all: bool) -> Result<Vec<Str
     cmd.arg("--pretty=format:%H%x00%an%x00%at%x00%s");
 
     if limit > 0 && !all {
-        cmd.arg(format!("-n {}", limit));
+        cmd.arg(format!("-n {limit}"));
     }
 
     if stats {
