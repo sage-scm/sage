@@ -117,6 +117,7 @@ jobs:
           key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           
       - name: Build release
+        shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross build --release --target ${{ matrix.target }} --bin sg
@@ -125,6 +126,7 @@ jobs:
           fi
           
       - name: Package binary and generate checksums
+        shell: bash
         run: |
           cd target/${{ matrix.target }}/release
           
