@@ -72,15 +72,15 @@ jobs:
             target: aarch64-unknown-linux-musl
             asset_name: sg-linux-arm64-musl
             use_cross: true
-          # macOS targets
+          # macOS targets (do not use cross)
           - os: macos-latest
             target: x86_64-apple-darwin
             asset_name: sg-macos-amd64
-            use_cross: true
+            use_cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: sg-macos-arm64
-            use_cross: true
+            use_cross: false
           # Windows targets
           - os: windows-latest
             target: x86_64-pc-windows-msvc
