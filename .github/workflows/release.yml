@@ -20,7 +20,7 @@ on:
 jobs:
   prepare:
     name: Prepare Release
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -56,19 +56,19 @@ jobs:
       matrix:
         include:
           # Linux targets
-          - os: ubuntu-latest
+          - os: blacksmith-4vcpu-ubuntu-2404
             target: x86_64-unknown-linux-gnu
             asset_name: sg-linux-amd64
             use_cross: false
-          - os: ubuntu-latest
+          - os: blacksmith-4vcpu-ubuntu-2404
             target: x86_64-unknown-linux-musl
             asset_name: sg-linux-amd64-musl
             use_cross: true
-          - os: ubuntu-latest
+          - os: blacksmith-4vcpu-ubuntu-2404
             target: aarch64-unknown-linux-gnu
             asset_name: sg-linux-arm64
             use_cross: true
-          - os: ubuntu-latest
+          - os: blacksmith-4vcpu-ubuntu-2404
             target: aarch64-unknown-linux-musl
             asset_name: sg-linux-arm64-musl
             use_cross: true
