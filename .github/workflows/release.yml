@@ -153,8 +153,8 @@ jobs:
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             BINARY_NAME="sg.exe"
             ARCHIVE_NAME="${{ matrix.asset_name }}.zip"
-            # Create zip for Windows
-            zip "$ARCHIVE_NAME" "$BINARY_NAME"
+            # Create zip for Windows using 7z (pre-installed on GitHub Actions)
+            7z a "$ARCHIVE_NAME" "$BINARY_NAME"
           else
             BINARY_NAME="sg"
             ARCHIVE_NAME="${{ matrix.asset_name }}.tar.gz"
