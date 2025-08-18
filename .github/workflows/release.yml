@@ -59,37 +59,31 @@ jobs:
           - os: blacksmith-4vcpu-ubuntu-2404
             target: x86_64-unknown-linux-gnu
             asset_name: sg-linux-amd64
-            use_cross: true
           - os: blacksmith-4vcpu-ubuntu-2404
             target: x86_64-unknown-linux-musl
             asset_name: sg-linux-amd64-musl
-            use_cross: true
           - os: blacksmith-4vcpu-ubuntu-2404
             target: aarch64-unknown-linux-gnu
             asset_name: sg-linux-arm64
-            use_cross: true
+            linker: aarch64-linux-gnu-gcc
           - os: blacksmith-4vcpu-ubuntu-2404
             target: aarch64-unknown-linux-musl
             asset_name: sg-linux-arm64-musl
-            use_cross: true
-          # macOS targets (do not use cross)
+            linker: aarch64-linux-gnu-gcc
+          # macOS targets
           - os: macos-latest
             target: x86_64-apple-darwin
             asset_name: sg-macos-amd64
-            use_cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: sg-macos-arm64
-            use_cross: false
-          # Windows targets (native build, no cross needed)
+          # Windows targets
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset_name: sg-windows-amd64
-            use_cross: false
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             asset_name: sg-windows-arm64
-            use_cross: false
     steps:
       - uses: actions/checkout@v4
       
@@ -101,13 +95,11 @@ jobs:
       - name: Install just
         uses: taiki-e/install-action@just
         
-      - name: Install cross (Linux only)
-        if: matrix.use_cross && runner.os == 'Linux'
-        shell: bash
+      - name: Install AArch64 Toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-musl'
         run: |
-          # Install cross from binary release for speed and reliability
-          curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          sudo mv cross /usr/local/bin/
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
         
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -125,12 +117,16 @@ jobs:
         env:
           # Use vendored OpenSSL to avoid cross-compilation issues
           OPENSSL_STATIC: 1
+          # Set cross-compiler for AArch64 targets
+          CC: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || matrix.target == 'aarch64-unknown-linux-musl' && 'aarch64-linux-gnu-gcc' || '' }}
         run: |
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            # Cross handles dependencies with our Cross.toml config
-            cross build --release --target ${{ matrix.target }} --bin sg
+          # Build with appropriate flags
+          if [ -n "${{ matrix.linker }}" ]; then
+            RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
+              cargo build --release --target ${{ matrix.target }} --bin sg
           else
-            cargo build --release --target ${{ matrix.target }} --bin sg
+            RUSTFLAGS="--codegen target-feature=+crt-static" \
+              cargo build --release --target ${{ matrix.target }} --bin sg
           fi
           
       - name: Package binary and generate checksums
