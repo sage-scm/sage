@@ -144,8 +144,12 @@ jobs:
                 ;;
             esac
             
-            # Build with appropriate flags (without AI feature to avoid OpenSSL on Windows)
-            if [ -n "${{ matrix.linker }}" ]; then
+            # Build with appropriate flags
+            # For Windows, use default features since OpenSSL is now excluded on Windows
+            # For others, disable default features to avoid AI feature
+            if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+              cargo build --release --target ${{ matrix.target }} --bin sg
+            elif [ -n "${{ matrix.linker }}" ]; then
               RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
                 cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
             else
