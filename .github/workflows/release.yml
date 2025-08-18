@@ -73,7 +73,6 @@ jobs:
           - os: blacksmith-4vcpu-ubuntu-2404
             target: aarch64-unknown-linux-musl
             asset_name: sg-linux-arm64-musl
-            linker: aarch64-linux-gnu-gcc
           # macOS targets
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -105,11 +104,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
           
-      - name: Install AArch64 Toolchain
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-musl'
+      - name: Install AArch64 GNU Toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          
+      - name: Install cross for musl targets
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          cargo install cross --locked
         
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -125,27 +129,29 @@ jobs:
       - name: Build release
         shell: bash
         run: |
-          # Set compiler based on target
-          case "${{ matrix.target }}" in
-            x86_64-unknown-linux-musl)
-              export CC=musl-gcc
-              ;;
-            aarch64-unknown-linux-gnu)
-              export CC=aarch64-linux-gnu-gcc
-              ;;
-            aarch64-unknown-linux-musl)
-              export CC=aarch64-linux-gnu-gcc
-              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-              ;;
-          esac
-          
-          # Build with appropriate flags (without AI feature to avoid OpenSSL on Windows)
-          if [ -n "${{ matrix.linker }}" ]; then
-            RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
-              cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
+          # Use cross for aarch64-musl, regular cargo for others
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]]; then
+            # Use cross for proper musl cross-compilation
+            cross build --release --target ${{ matrix.target }} --bin sg --no-default-features
           else
-            RUSTFLAGS="--codegen target-feature=+crt-static" \
-              cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
+            # Set compiler based on target
+            case "${{ matrix.target }}" in
+              x86_64-unknown-linux-musl)
+                export CC=musl-gcc
+                ;;
+              aarch64-unknown-linux-gnu)
+                export CC=aarch64-linux-gnu-gcc
+                ;;
+            esac
+            
+            # Build with appropriate flags (without AI feature to avoid OpenSSL on Windows)
+            if [ -n "${{ matrix.linker }}" ]; then
+              RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
+                cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
+            else
+              RUSTFLAGS="--codegen target-feature=+crt-static" \
+                cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
+            fi
           fi
           
       - name: Package binary and generate checksums
