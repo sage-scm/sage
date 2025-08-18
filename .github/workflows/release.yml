@@ -81,15 +81,15 @@ jobs:
             target: aarch64-apple-darwin
             asset_name: sg-macos-arm64
             use_cross: false
-          # Windows targets
+          # Windows targets (native build, no cross needed)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset_name: sg-windows-amd64
-            use_cross: true
+            use_cross: false
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             asset_name: sg-windows-arm64
-            use_cross: true
+            use_cross: false
     steps:
       - uses: actions/checkout@v4
       
@@ -101,8 +101,8 @@ jobs:
       - name: Install just
         uses: taiki-e/install-action@just
         
-      - name: Install cross (for cross-compilation)
-        if: matrix.use_cross
+      - name: Install cross (Linux only)
+        if: matrix.use_cross && runner.os == 'Linux'
         shell: bash
         run: |
           # Install cross from binary release for speed and reliability
