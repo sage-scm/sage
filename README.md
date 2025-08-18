@@ -50,6 +50,10 @@ All downloads include SHA256 checksums for verification.
 ### Install from Source
 
 ```bash
+# Clone the repository
+git clone https://github.com/sage-scm/sage
+cd sage
+
 # Install sage
 just install
 
@@ -207,10 +211,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for
 ### Quick Start
 
 1. Fork & clone the repository
-2. Follow [conventional commit](https://www.conventionalcommits.org/) format for all commits
-3. `just watch` – auto-rebuild on changes
-4. `just ci` – ensures code passes all checks
-5. Submit a PR 🚀
+2. Set up Git hooks to ensure code quality:
+   ```bash
+   ./setup-hooks.sh
+   ```
+   This installs pre-commit hooks that automatically run `cargo fmt` and `cargo clippy` before each commit.
+3. Follow [conventional commit](https://www.conventionalcommits.org/) format for all commits
+4. `just watch` – auto-rebuild on changes
+5. `just ci` – ensures code passes all checks
+6. Submit a PR 🚀
 
 ### Commit Format
 

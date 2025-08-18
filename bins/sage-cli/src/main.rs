@@ -70,7 +70,9 @@ enum Command {
     },
 
     /// Revert an item
-    Undo { id: Option<String> },
+    Undo {
+        id: Option<String>,
+    },
 
     /// Alias for `undo --list`
     History,
@@ -104,7 +106,9 @@ enum Command {
     },
 
     /// Generate shell completions
-    Completion { shell: String },
+    Completion {
+        shell: String,
+    },
 
     // ─────────────────────────────── Plugin manager ──────────────────────────
     Plugin {
