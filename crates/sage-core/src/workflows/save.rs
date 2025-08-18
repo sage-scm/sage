@@ -11,9 +11,9 @@ use sage_git::{
 use sage_tui::basic::check;
 use std::path::Path;
 
-use crate::{CliOutput, events::EventManager};
 #[cfg(feature = "ai")]
 use crate::commit::commit_message;
+use crate::{CliOutput, events::EventManager};
 
 #[derive(Debug, Default)]
 pub struct SaveOpts {
@@ -335,12 +335,14 @@ async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> 
             }
         }
     }
-    
+
     #[cfg(not(feature = "ai"))]
     if opts.ai {
-        return Err(anyhow!("AI features are not enabled. Build with --features ai to enable AI commit messages."));
+        return Err(anyhow!(
+            "AI features are not enabled. Build with --features ai to enable AI commit messages."
+        ));
     }
-    
+
     if opts.message.is_empty() {
         if opts.amend {
             // For amend, we can use an empty string as the previous message will be preserved
