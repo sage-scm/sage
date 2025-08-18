@@ -95,11 +95,17 @@ jobs:
       - name: Install just
         uses: taiki-e/install-action@just
         
+      - name: Install musl tools for x86_64
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          
       - name: Install AArch64 Toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-musl'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
         
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -117,9 +123,21 @@ jobs:
         env:
           # Use vendored OpenSSL to avoid cross-compilation issues
           OPENSSL_STATIC: 1
-          # Set cross-compiler for AArch64 targets
-          CC: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || matrix.target == 'aarch64-unknown-linux-musl' && 'aarch64-linux-gnu-gcc' || '' }}
         run: |
+          # Set compiler based on target
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-musl)
+              export CC=musl-gcc
+              ;;
+            aarch64-unknown-linux-gnu)
+              export CC=aarch64-linux-gnu-gcc
+              ;;
+            aarch64-unknown-linux-musl)
+              export CC=aarch64-linux-gnu-gcc
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
+              ;;
+          esac
+          
           # Build with appropriate flags
           if [ -n "${{ matrix.linker }}" ]; then
             RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
