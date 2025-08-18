@@ -222,4 +222,126 @@ jobs:
             ./artifacts/**/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: [prepare, release]
+    runs-on: ubuntu-latest
+    # Only run for stable releases (not prereleases)
+    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sg-macos-*
+          path: ./artifacts
+      
+      - name: Calculate SHA256 for macOS builds
+        id: sha256
+        run: |
+          # Get SHA256 for Intel Mac
+          AMD64_SHA=$(cat ./artifacts/sg-macos-amd64/sg-macos-amd64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "amd64_sha256=$AMD64_SHA" >> $GITHUB_OUTPUT
+          
+          # Get SHA256 for Apple Silicon
+          ARM64_SHA=$(cat ./artifacts/sg-macos-arm64/sg-macos-arm64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "arm64_sha256=$ARM64_SHA" >> $GITHUB_OUTPUT
+      
+      - name: Generate Homebrew Formula
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
+          
+          cat > sage.rb << EOF
+          class Sage < Formula
+            desc "🌿 Sage — A Git workflow tool for managing branches and commits"
+            homepage "https://github.com/sage-scm/sage"
+            version "${VERSION_NO_V}"
+            license "MIT"
+          
+            on_macos do
+              if Hardware::CPU.intel?
+                url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-macos-amd64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.amd64_sha256 }}"
+              else
+                url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-macos-arm64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.arm64_sha256 }}"
+              end
+            end
+          
+            on_linux do
+              if Hardware::CPU.intel?
+                url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-linux-amd64.tar.gz"
+                sha256 :no_check  # Linux SHA would need to be added here
+              else
+                url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-linux-arm64.tar.gz"
+                sha256 :no_check  # Linux SHA would need to be added here
+              end
+            end
+          
+            def install
+              bin.install "sg"
+            end
+          
+            test do
+              system "#{bin}/sg", "--version"
+            end
+          end
+          EOF
+          
+          echo "Homebrew formula generated:"
+          cat sage.rb
+      
+      - name: Create/Update Homebrew Tap PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Try to create a PR to the Homebrew tap if it exists
+          if gh repo view sage-scm/homebrew-sage &>/dev/null; then
+            echo "Homebrew tap repository found. Creating update PR..."
+            
+            # Clone the tap repository
+            git clone https://github.com/sage-scm/homebrew-sage.git homebrew-tap
+            cd homebrew-tap
+            
+            # Create a new branch for the update
+            VERSION="${{ needs.prepare.outputs.version }}"
+            git checkout -b "update-sage-${VERSION}"
+            
+            # Update the formula
+            mkdir -p Formula
+            cp ../sage.rb Formula/sage.rb
+            
+            # Commit and push
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add Formula/sage.rb
+            git commit -m "Update Sage to ${VERSION}"
+            git push origin "update-sage-${VERSION}"
+            
+            # Create PR
+            gh pr create \
+              --repo sage-scm/homebrew-sage \
+              --title "Update Sage to ${VERSION}" \
+              --body "Automated update of Sage formula to version ${VERSION}" \
+              --base main \
+              --head "update-sage-${VERSION}"
+            
+            echo "::notice title=Homebrew Formula Updated::A PR has been created to update the Homebrew formula."
+          else
+            echo "::warning title=Homebrew Tap Not Found::The repository sage-scm/homebrew-sage does not exist or is not accessible."
+            echo "::notice title=Manual Setup Required::To enable Homebrew installation:"
+            echo "1. Create repository: sage-scm/homebrew-sage"
+            echo "2. Add Formula/sage.rb with the generated content (see artifacts)"
+            echo "3. Users can then install with: brew tap sage-scm/sage && brew install sage"
+            echo "4. Optionally, create a HOMEBREW_TAP_TOKEN secret with write access to the tap repo for automatic updates"
+          fi
+      
+      - name: Upload Formula as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: sage.rb
 
