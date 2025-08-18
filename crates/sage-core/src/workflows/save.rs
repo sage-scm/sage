@@ -11,7 +11,6 @@ use sage_git::{
 use sage_tui::basic::check;
 use std::path::Path;
 
-#[cfg(feature = "ai")]
 use crate::commit::commit_message;
 use crate::{CliOutput, events::EventManager};
 
@@ -315,7 +314,6 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
 
 /// Determines the commit message to use for the commit.
 async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> {
-    #[cfg(feature = "ai")]
     if opts.ai {
         // Create a spinner for AI message generation
         let spinner = cli.spinner("Generating AI commit message");
@@ -334,13 +332,6 @@ async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> 
                 return Err(anyhow!("Failed to generate AI commit message: {}", e));
             }
         }
-    }
-
-    #[cfg(not(feature = "ai"))]
-    if opts.ai {
-        return Err(anyhow!(
-            "AI features are not enabled. Build with --features ai to enable AI commit messages."
-        ));
     }
 
     if opts.message.is_empty() {

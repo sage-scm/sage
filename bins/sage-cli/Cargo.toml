@@ -21,16 +21,10 @@ tokio = { version = "1.36.0", features = ["full"] }
 sage-core = { path = "../../crates/sage-core" }
 sage-git = { path = "../../crates/sage-git" }
 sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
-sage-tui = { path = "../../crates/sage-tui", optional = true }
+sage-tui = { path = "../../crates/sage-tui" }
 sage-config = { path = "../../crates/sage-config" }
 sage-events = { path = "../../crates/sage-events" }
 toml = { workspace = true }
 colored = { workspace = true }
 uuid = "1.6"
 humantime = { workspace = true }
-
-[features]
-default = []
-stack = []
-ai = ["sage-core/ai"]
-tui = ["dep:sage-tui"]

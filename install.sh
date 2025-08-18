@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # Sage Installation Script
+# Downloads and installs pre-built binaries from GitHub releases
 # Secure installation with checksum verification and platform detection
-# Usage: curl -fsSL https://raw.githubusercontent.com/owner/sage/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/sage-scm/sage/main/install.sh | sh
 
 # Configuration
 REPO="sage-scm/sage"
@@ -123,7 +124,6 @@ detect_platform() {
         binary_ext=".exe"
     fi
     
-    log_info "Detected platform: $platform"
     echo "$platform|$archive_ext|$binary_ext"
 }
 
@@ -199,12 +199,12 @@ download_and_verify() {
     # Verify checksum if available
     if [ -f "$checksum_file" ]; then
         if command -v sha256sum >/dev/null 2>&1; then
-            if ! echo "$(cat "$checksum_file")" | sha256sum -c - >/dev/null 2>&1; then
+            if ! (cd "$(dirname "$output_file")" && echo "$(cat "$checksum_file")" | sha256sum -c - >/dev/null 2>&1); then
                 log_error "Checksum verification failed"
                 exit 1
             fi
         elif command -v shasum >/dev/null 2>&1; then
-            if ! shasum -a 256 -c "$checksum_file" >/dev/null 2>&1; then
+            if ! (cd "$(dirname "$output_file")" && shasum -a 256 -c "$checksum_file" >/dev/null 2>&1); then
                 log_error "Checksum verification failed"
                 exit 1
             fi
@@ -307,6 +307,7 @@ main() {
     local platform_info
     platform_info=$(detect_platform)
     IFS='|' read -r platform archive_ext binary_ext <<< "$platform_info"
+    log_info "Detected platform: $platform"
     
     # Get version
     local version

@@ -19,7 +19,7 @@ Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as
 * 🪄 **Stack aware** – restack, navigate, submit for review in seconds
 * 🔌 **Plugin hooks** – extend every lifecycle stage with your own Rust or
   shell plugins
-* 🖥️ **TUI** – full‑screen dashboard (enable with `--features tui`)
+* 🖥️ **TUI** – full‑screen dashboard
 
 ---
 
@@ -50,15 +50,11 @@ All downloads include SHA256 checksums for verification.
 ### Install from Source
 
 ```bash
-# Install sage with all features
+# Install sage
 just install
-
-# Or install with specific features
-just install-only --stack --ai
 
 # Try commands without installing
 just try work my-feature
-just try-with stack,tui dash
 ```
 
 ### Package Managers
@@ -71,8 +67,7 @@ brew install sage-org/tap/sage
 cargo install --git https://github.com/sage-scm/sage sage-cli
 ```
 
-> **Note**: `--features stack` turns on advanced stacked‑diff commands,
-> `--features ai` enables AI commit message generation.
+> **Note**: All features including stacked‑diff commands and AI commit message generation are enabled by default.
 
 ---
 
@@ -101,9 +96,7 @@ cargo install --git https://github.com/sage-scm/sage sage-cli
 | `config unset <key>` | `c u` | Unset a configuration value | - |
 | `config edit` | `c e` | Open config in editor | - |
 
-### Feature-Gated Commands
-
-#### Stack Commands (requires `--features stack`)
+### Stack Commands
 | Command | Description | Flags |
 |---------|-------------|-------|
 | `stack init <name>` | Initialize a new stack | - |
@@ -118,9 +111,9 @@ cargo install --git https://github.com/sage-scm/sage sage-cli
 | `stack status` | Show stack status | - |
 | `stack clean` | Clean up stack | - |
 
-#### Other Features
-- **TUI** (`--features tui`): `ui` - Terminal UI dashboard
-- **AI** (`--features ai`): `tips` - AI-powered tips (not yet implemented)
+#### Other Commands
+- **TUI**: `ui` - Terminal UI dashboard
+- **AI**: `tips` - AI-powered tips (not yet implemented)
 
 ### Not Yet Implemented
 
@@ -150,7 +143,7 @@ sg config set ai.model gemma3n:latest
 sg config get ai
 ```
 
-Now you can use AI features with your local Ollama instance:
+Now you can use the AI features with your local Ollama instance:
 
 ```bash
 # Generate commit message using local Ollama
@@ -244,7 +237,7 @@ See [Release Workflow](docs/RELEASE_WORKFLOW.md) for details.
 
 ## Disclaimer
 
-Sage is **early‑stage and evolving rapidly**. The commands, feature flags, and server behaviour described above are aspirational; not everything is implemented (yet) and details may change without notice. Use at your own risk, and expect breaking changes while we burn away the rough edges.
+Sage is **early‑stage and evolving rapidly**. The commands and server behaviour described above are aspirational; not everything is implemented (yet) and details may change without notice. Use at your own risk, and expect breaking changes while we burn away the rough edges.
 
 ## License
 

@@ -1,4 +1,3 @@
-#[cfg(feature = "ai")]
 pub mod ai;
 pub mod cli;
 pub mod events;
@@ -9,7 +8,6 @@ pub mod workflows;
 
 pub mod ui;
 
-#[cfg(feature = "ai")]
 pub use ai::*;
 pub use cli::*;
 pub use gh::*;

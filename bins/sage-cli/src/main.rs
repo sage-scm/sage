@@ -113,18 +113,15 @@ enum Command {
     },
 
     // ───────────────────────────── Stack namespace ───────────────────────────
-    #[cfg(feature = "stack")]
     Stack {
         #[command(subcommand)]
         op: StackCmd,
     },
 
     // ──────────────────────────────── AI extras ──────────────────────────────
-    #[cfg(feature = "ai")]
     Tips,
 
     // ──────────────────────────────── TUI mode ───────────────────────────────
-    #[cfg(feature = "tui")]
     Ui,
 }
 
@@ -242,7 +239,6 @@ pub enum PluginCmd {
     Run { hook: String },
 }
 
-#[cfg(feature = "stack")]
 #[derive(Debug, Subcommand)]
 pub enum StackCmd {
     Init {
@@ -309,7 +305,6 @@ async fn main() -> Result<()> {
         },
         Command::Log => cmd::log(&global_config),
 
-        #[cfg(feature = "stack")]
         Command::Stack { op } => match op {
             StackCmd::Init { name } => cmd::stack_init(&name, &global_config),
             StackCmd::Next => cmd::stack_navigate::down(&global_config),
@@ -318,7 +313,6 @@ async fn main() -> Result<()> {
             _ => todo!(),
         },
 
-        #[cfg(feature = "tui")]
         Command::Ui => cmd::ui(&global_config),
 
         // Asynchronous commands
@@ -335,7 +329,6 @@ async fn main() -> Result<()> {
         Command::Doctor { fix } => todo!("doctor fix={fix}"),
         Command::Completion { shell } => todo!("completion {shell}"),
         Command::Plugin { cmd } => todo!("plugin {:?}", cmd),
-        #[cfg(feature = "ai")]
         Command::Tips => todo!("tips"),
     }
 }

@@ -14,7 +14,7 @@ sage-graph = { path = "../sage-graph" }
 sage-tui = { path = "../sage-tui" }
 serde_json = "1.0.140"
 uuid = "1.16.0"
-openai-api-rs = { version = "6.0.4", optional = true }
+openai-api-rs = { version = "6.0.4" }
 indicatif = "0.18"
 fuzzy-matcher = "0.3.7"
 octocrab = { version = "0.44", default-features = false, features = ["rustls", "default-client"] }
@@ -27,8 +27,4 @@ dirs = "6.0.0"
 reqwest = { version = "0.12.22", default-features = false, features = ["rustls-tls", "json"] }
 tokio = "1.47"
 terminal_size = "0.4.2"
-openssl = { version = "0.10", features = ["vendored"], optional = true }
-
-[features]
-default = []
-ai = ["dep:openai-api-rs", "dep:openssl"]
+openssl = { version = "0.10", features = ["vendored"] }

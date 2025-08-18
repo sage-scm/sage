@@ -1,1 +1,1 @@
-watchexec -re rs ./install.sh --all
+watchexec -re rs ./install-local.sh

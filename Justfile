@@ -24,11 +24,11 @@ export NC := '\033[0m' # No Color
     just --list --unsorted
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}Tips:${NC}"
-    echo "  • Run 'just' to build and install with all features"
+    echo "  • Run 'just' to build and install sage"
     echo "  • Use 'just watch' for auto-rebuild during development"
     echo "  • Try 'just try <command>' to test without installing"
 
-# Default: build and install with all features
+# Default: build and install
 @default: install
 
 # ────────────────────────────────────────────────────────────────
@@ -38,42 +38,32 @@ export NC := '\033[0m' # No Color
 # Quick check - verify code compiles
 check:
     @echo -e "${CYAN}Checking code...${NC}"
-    cargo check --workspace --all-features
+    cargo check --workspace
 
-# Build with default features (debug)
+# Build workspace
 build:
     @echo -e "${CYAN}Building sage...${NC}"
     cargo build --workspace
 
-# Build with specific features
-build-with +features:
-    @echo -e "${CYAN}Building with features: {{features}}${NC}"
-    cargo build --workspace --features {{features}}
-
 # Build optimized release version
 release:
     @echo -e "${CYAN}Building release version...${NC}"
-    cargo build --workspace --release --all-features
+    cargo build --workspace --release
 
-# Install sage with all features
+# Install sage locally from source
 install: check
-    @echo -e "${GREEN}Installing sage with all features...${NC}"
-    ./install.sh --all
+    @echo -e "${GREEN}Installing sage from source...${NC}"
+    ./install-local.sh
 
-# Install optimized version
+# Install optimized version from source
 install-release:
-    @echo -e "${GREEN}Installing release build...${NC}"
-    ./install.sh --all --release
-
-# Install with specific features only
-install-only +features:
-    @echo -e "${GREEN}Installing with: {{features}}${NC}"
-    ./install.sh {{features}}
+    @echo -e "${GREEN}Installing release build from source...${NC}"
+    ./install-local.sh --release
 
 # Quick reinstall (skip checks)
 reinstall:
     @echo -e "${GREEN}Quick reinstall...${NC}"
-    cargo install --path ./bins/sage-cli --force --all-features
+    cargo install --path ./bins/sage-cli --force
 
 # ────────────────────────────────────────────────────────────────
 # 🧪 Testing & Quality
@@ -82,19 +72,19 @@ reinstall:
 # Run all tests
 test:
     @echo -e "${CYAN}Running tests...${NC}"
-    cargo test --workspace --all-features
+    cargo test --workspace
 
 # Run tests and capture output
 test-verbose:
-    cargo test --workspace --all-features -- --nocapture
+    cargo test --workspace -- --nocapture
 
 # Run a specific test
 test-one pattern:
-    cargo test --workspace --all-features {{pattern}}
+    cargo test --workspace {{pattern}}
 
 # Run tests continuously on file changes
 test-watch:
-    cargo watch -x "test --workspace --all-features"
+    cargo watch -x "test --workspace"
 
 # Run benchmarks (including ignored ones)
 bench:
@@ -104,20 +94,20 @@ bench:
 # Check code quality with clippy
 lint:
     @echo -e "${CYAN}Running clippy...${NC}"
-    cargo clippy --workspace --all-features -- -D warnings
+    cargo clippy --workspace -- -D warnings
 
 # Fix lint issues automatically
 lint-fix:
-    cargo clippy --workspace --all-features --fix -- -D warnings
+    cargo clippy --workspace --fix -- -D warnings
 
 # Format code
 fmt:
     @echo -e "${CYAN}Formatting code...${NC}"
-    cargo fmt --all
+    cargo fmt
 
 # Check if code is formatted
 fmt-check:
-    cargo fmt --all -- --check
+    cargo fmt -- --check
 
 # ────────────────────────────────────────────────────────────────
 # 🛠️ Development Workflow
@@ -126,7 +116,7 @@ fmt-check:
 # Watch files and rebuild automatically
 watch:
     @echo -e "${GREEN}Watching for changes...${NC}"
-    ./watch.sh
+    watchexec -re rs ./install-local.sh
 
 # Full development build (check + install)
 dev:
@@ -136,15 +126,11 @@ dev:
 # Try a sg command without installing (cargo run)
 try +args:
     @echo -e "${CYAN}Running: sg {{args}}${NC}"
-    cargo run --bin sg --all-features -- {{args}}
-
-# Try with specific features
-try-with features +args:
-    cargo run --bin sg --features {{features}} -- {{args}}
+    cargo run --bin sg -- {{args}}
 
 # Open sg TUI dashboard (requires installation)
 tui:
-    sg tui
+    sg ui
 
 # Run sg with debug logging
 debug +args:
@@ -161,15 +147,15 @@ trace +args:
 # Generate and open documentation
 docs:
     @echo -e "${CYAN}Generating documentation...${NC}"
-    cargo doc --workspace --all-features --no-deps --open
+    cargo doc --workspace --no-deps --open
 
 # Generate docs for all dependencies too
 docs-all:
-    cargo doc --workspace --all-features --open
+    cargo doc --workspace --open
 
 # Check for documentation issues
 doc-check:
-    cargo doc --workspace --all-features --no-deps
+    cargo doc --workspace --no-deps
     @echo -e "${GREEN}Documentation builds successfully!${NC}"
 
 # Serve docs locally with live reload
@@ -265,7 +251,7 @@ stack:
 
 # Show repository dashboard
 dashboard:
-    sg tui
+    sg ui
 
 # ────────────────────────────────────────────────────────────────
 # 🧰 Utilities
@@ -287,14 +273,12 @@ find-dep pattern:
 version:
     @sg --version 2>/dev/null || echo "Sage not installed yet"
 
-# Show feature list
+# Show built-in features
 features:
-    @echo -e "${CYAN}Available features:${NC}"
-    @echo "  • stack  - Advanced stacked-diff operations"
-    @echo "  • ai     - AI-powered commit messages (Ollama)"
-    @echo "  • tui    - Terminal UI dashboard"
-    @echo ""
-    @echo -e "${YELLOW}Currently enabled in default build: all${NC}"
+    @echo -e "${CYAN}Built-in features (always enabled):${NC}"
+    @echo "  • Advanced stacked-diff operations"
+    @echo "  • AI-powered commit messages (Ollama)"
+    @echo "  • Terminal UI dashboard"
 
 # Open repository in browser
 browse:

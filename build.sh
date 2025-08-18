@@ -1,2 +1,3 @@
-clear cargo check
-./install.sh --all
+clear
+cargo check
+./install-local.sh

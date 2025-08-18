@@ -10,22 +10,19 @@ Sage is a Git workflow tool written in Rust that simplifies complex Git operatio
 
 ### Building and Development
 - **Build**: `cargo build` (debug mode) or `cargo build --release`
-- **Install locally**: `./install.sh [--stack] [--ai] [--tui] [--all] [--release]`
-  - `--stack`: Enable stacked-diff commands
-  - `--ai`: Enable AI commit message generation
-  - `--tui`: Enable terminal UI mode
-  - `--all`: Enable all features
-  - `--release`: Build optimized binary
+- **Install locally from source**: `./install-local.sh [--release]`
+  - `--release`: Build optimized binary (optional)
+- **Install from GitHub releases**: `curl -fsSL https://raw.githubusercontent.com/sage-scm/sage/main/install.sh | sh`
 - **Development watch mode**: `./watch.sh` - Auto-rebuilds on Rust file changes
-- **Run tests**: `cargo test --all`
+- **Run tests**: `cargo test --workspace`
 - **Run specific test**: `cargo test <test_name>`
 - **Run without installing**: `cargo run --bin sage-cli -- <command>`
 
-### Feature Flags
-The project uses Cargo features to enable/disable functionality:
-- `stack`: Advanced stacked-diff operations
-- `ai`: AI-powered commit messages (supports local Ollama)
-- `tui`: Terminal UI dashboard
+### Built-in Features
+All features are now enabled by default:
+- Advanced stacked-diff operations
+- AI-powered commit messages (supports local Ollama)
+- Terminal UI dashboard
 
 ## Architecture
 
@@ -40,7 +37,7 @@ sage/
 │   ├── sage-git/     # Git operations (wraps git2)
 │   ├── sage-config/  # Configuration management
 │   ├── sage-tui/     # Terminal UI components
-│   ├── sage-graph/   # Branch graph for stack features
+│   ├── sage-graph/   # Branch graph for stack operations
 │   ├── sage-plugin/  # Plugin SDK
 │   └── sage-utils/   # Shared utilities
 ```
@@ -74,7 +71,7 @@ Located in `crates/sage-core/src/workflows/`, these contain the main business lo
 - `sync.rs`: Restacking and pushing branches
 - `work.rs`: Creating/switching branches
 - `share.rs`: PR creation/updates
-- Stack-related workflows when `stack` feature is enabled
+- Stack-related workflows
 
 ### Git Operations
 The `sage-git` crate provides a safe wrapper around git2 operations, handling common patterns like:
