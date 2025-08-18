@@ -1,7 +1,4 @@
 # Cargo configuration for cross-platform builds
 
-[env]
-OPENSSL_STATIC = "1"
-
 [net]
 git-fetch-with-cli = true

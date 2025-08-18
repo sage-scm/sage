@@ -120,9 +120,6 @@ jobs:
           
       - name: Build release
         shell: bash
-        env:
-          # Use vendored OpenSSL to avoid cross-compilation issues
-          OPENSSL_STATIC: 1
         run: |
           # Set compiler based on target
           case "${{ matrix.target }}" in
@@ -138,13 +135,13 @@ jobs:
               ;;
           esac
           
-          # Build with appropriate flags
+          # Build with appropriate flags (without AI feature to avoid OpenSSL on Windows)
           if [ -n "${{ matrix.linker }}" ]; then
             RUSTFLAGS="--codegen target-feature=+crt-static --codegen linker=${{ matrix.linker }}" \
-              cargo build --release --target ${{ matrix.target }} --bin sg
+              cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
           else
             RUSTFLAGS="--codegen target-feature=+crt-static" \
-              cargo build --release --target ${{ matrix.target }} --bin sg
+              cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
           fi
           
       - name: Package binary and generate checksums
