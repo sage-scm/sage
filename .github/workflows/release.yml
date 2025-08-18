@@ -104,7 +104,10 @@ jobs:
       - name: Install cross (for cross-compilation)
         if: matrix.use_cross
         shell: bash
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: |
+          # Install cross from binary release for speed and reliability
+          curl -L https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv cross /usr/local/bin/
         
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -119,8 +122,12 @@ jobs:
           
       - name: Build release
         shell: bash
+        env:
+          # Use vendored OpenSSL to avoid cross-compilation issues
+          OPENSSL_STATIC: 1
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
+            # Cross handles dependencies with our Cross.toml config
             cross build --release --target ${{ matrix.target }} --bin sg
           else
             cargo build --release --target ${{ matrix.target }} --bin sg
