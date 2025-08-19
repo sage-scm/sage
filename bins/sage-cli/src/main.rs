@@ -60,6 +60,7 @@ enum Command {
 
     /// Show previous commits
     Log {
+        #[clap(value_parser)]
         limit: Option<i64>,
     },
 

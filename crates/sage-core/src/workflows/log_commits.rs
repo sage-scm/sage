@@ -4,9 +4,7 @@ use colored::Colorize;
 use sage_git::{branch::get_current, commit::commits};
 
 pub fn log_commits(limit: Option<usize>) -> Result<()> {
-    let cleaned_limit = if limit.is_some() { limit.unwrap() } else { 0 };
-
-    let mut logs = commits(cleaned_limit)?;
+    let mut logs = commits(limit.unwrap_or(0))?;
 
     let current_branch = get_current()?;
 

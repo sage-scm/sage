@@ -87,7 +87,11 @@ pub struct Commit {
 }
 
 pub fn commits(limit: usize) -> GitResult<Vec<Commit>> {
-    let log_result = log("", limit, false, true)?;
+    let log_result = if limit == 0 {
+        log("", 0, false, true)?
+    } else {
+        log("", limit, false, false)?
+    };
     let mut commits = Vec::new();
 
     for log_line in log_result {
