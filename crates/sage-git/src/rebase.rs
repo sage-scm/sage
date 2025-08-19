@@ -1,29 +1,24 @@
-use anyhow::{Result, anyhow};
-use std::process::Command;
+use crate::prelude::{Git, GitResult};
+use anyhow::anyhow;
 
-/// Check if a rebase is in progress
-pub fn is_rebase_in_progress() -> Result<bool> {
+pub fn is_rebase_in_progress() -> GitResult<bool> {
     use std::path::Path;
-    let git_dir = Command::new("git")
-        .args(["rev-parse", "--git-dir"])
-        .output()?;
 
-    if !git_dir.status.success() {
+    let output = Git::new("rev-parse").arg("--git-dir").raw_output()?;
+
+    if !output.status.success() {
         return Err(anyhow!("Failed to find git directory"));
     }
 
-    let git_dir_path = String::from_utf8_lossy(&git_dir.stdout).trim().to_string();
+    let git_dir_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let rebase_merge = Path::new(&git_dir_path).join("rebase-merge");
     let rebase_apply = Path::new(&git_dir_path).join("rebase-apply");
 
     Ok(rebase_merge.exists() || rebase_apply.exists())
 }
 
-/// Continue an in-progress rebase
-pub fn rebase_continue() -> Result<()> {
-    let output = Command::new("git")
-        .args(["rebase", "--continue"])
-        .output()?;
+pub fn rebase_continue() -> GitResult<()> {
+    let output = Git::new("rebase").arg("--continue").raw_output()?;
 
     if output.status.success() {
         Ok(())
@@ -33,9 +28,8 @@ pub fn rebase_continue() -> Result<()> {
     }
 }
 
-/// Abort an in-progress rebase
-pub fn rebase_abort() -> Result<()> {
-    let output = Command::new("git").args(["rebase", "--abort"]).output()?;
+pub fn rebase_abort() -> GitResult<()> {
+    let output = Git::new("rebase").arg("--abort").raw_output()?;
 
     if output.status.success() {
         Ok(())
@@ -45,37 +39,20 @@ pub fn rebase_abort() -> Result<()> {
     }
 }
 
-/// Rebase the current branch onto the specified target branch.
-///
-/// # Arguments
-/// * `target` - The branch to rebase onto
-/// * `interactive` - Whether to perform an interactive rebase
-/// * `autostash` - Whether to automatically stash and unstash changes if needed
-///
-/// # Returns
-/// * `Ok(())` if the rebase was successful
-/// * `Err` with an error message if the rebase failed
-pub fn rebase(target: &str, interactive: bool, autostash: bool) -> Result<()> {
-    let mut cmd = Command::new("git");
+pub fn rebase(target: &str, interactive: bool, autostash: bool) -> GitResult<()> {
+    let mut git = Git::new("rebase");
 
-    // Start building the rebase command
-    cmd.arg("rebase");
-
-    // Add interactive flag if requested
     if interactive {
-        cmd.arg("-i");
+        git = git.arg("-i");
     }
 
-    // Add autostash flag if requested
     if autostash {
-        cmd.arg("--autostash");
+        git = git.arg("--autostash");
     }
 
-    // Add the target branch
-    cmd.arg(target);
+    git = git.arg(target);
 
-    // Execute the command
-    let output = cmd.output()?;
+    let output = git.raw_output()?;
 
     if output.status.success() {
         Ok(())
@@ -97,7 +74,6 @@ pub fn rebase(target: &str, interactive: bool, autostash: bool) -> Result<()> {
         } else if stderr.contains("not a valid object") {
             Err(anyhow!("Invalid reference '{}'. {}", target, stderr.trim()))
         } else if stderr.contains("is up to date") {
-            // This is actually a success case - the branch is already up to date
             Ok(())
         } else if stderr.contains("your local changes would be overwritten") {
             Err(anyhow!(
@@ -105,7 +81,6 @@ pub fn rebase(target: &str, interactive: bool, autostash: bool) -> Result<()> {
                 stderr
             ))
         } else {
-            // Generic error for all other cases
             Err(anyhow!("Rebase failed: {}", stderr.trim()))
         }
     }

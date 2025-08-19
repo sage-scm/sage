@@ -9,7 +9,7 @@ pub fn commit_message_prompt(diff: &str) -> String {
 - Select ONE type: feat (new feature), fix (bug fix), docs (documentation), style (formatting), refactor (restructuring), test (tests), ci (CI/CD), or chore (maintenance).
 - Include a specific, concise scope in parentheses (e.g., module, file, feature) when relevant, avoiding vague terms.
 - Write a single, imperative-mood first line (30-50 characters, max 72) describing WHAT changed and WHY, clear for maintainers.
-- For breaking changes, append `!` to the type (e.g., `feat!`) or add a `BREAKING CHANGE:` footer after a blank line.
+- For breaking changes, append `!` after the scope/type (e.g., `feat(api)!:` or `feat!:`) AND add a `BREAKING CHANGE:` footer after a blank line describing the breaking change.
 - For generated files or unclear diffs, use `chore` with a specific description (e.g., `chore(gen): update auto-generated config`).
 - For multi-file diffs, summarize the core change succinctly.
 - Output only the commit message, no formatting or explanations.
@@ -17,13 +17,18 @@ pub fn commit_message_prompt(diff: &str) -> String {
 Good examples:
 - feat(api): add user authentication endpoint
 - fix(db): correct index for faster queries
-- feat!(auth): replace token system with JWT
+- feat(auth)!: replace token system with JWT
+- refactor(sage-git)!: migrate to Git wrapper API
+
+BREAKING CHANGE: sage-git public API now uses GitResult instead of Result; update callers accordingly
 - chore(gen): update auto-generated API bindings
 
 Bad examples (avoid):
 - chore: initial commit (except first repo commit)
 - feat: add stuff
 - fix: bug fixed
+- fix!(auth): breaking change (missing BREAKING CHANGE footer)
+- refactor!(sage-git): migrate API (too vague, needs BREAKING CHANGE footer)
 
 ---
 "#;

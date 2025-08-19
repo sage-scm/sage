@@ -1,39 +1,81 @@
-use anyhow::{Result, anyhow};
+use anyhow::bail;
 use chrono::{DateTime, Utc};
-use std::process::Command;
 
-use crate::prelude::{git_output, git_success};
+use crate::prelude::{Git, GitResult};
 
-// Commit an empty git commit and return the short commit ID
-pub fn commit_empty() -> Result<String> {
-    // Create the empty commit
-    git_success(["commit", "--allow-empty"])?;
+pub struct CommitResult {
+    pub commit_id: String,
+    pub hook_output: Option<String>,
+}
+
+pub fn commit_empty_with_output() -> GitResult<CommitResult> {
+    let output = Git::new("commit").arg("--allow-empty").raw_output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("Failed to create empty commit: {}", stderr.trim());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let hook_output = if !stdout.trim().is_empty() {
+        Some(stdout.trim().to_string())
+    } else {
+        None
+    };
+
+    let commit_id = last_commit_id()?;
+    Ok(CommitResult {
+        commit_id,
+        hook_output,
+    })
+}
+
+pub fn commit_empty() -> GitResult<String> {
+    let result = commit_empty_with_output()?;
+    Ok(result.commit_id)
+}
+
+pub fn commit_with_output(message: &str) -> GitResult<CommitResult> {
+    let output = Git::new("commit").args(["-m", message]).raw_output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("Failed to create commit: {}", stderr.trim());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let hook_output = if !stdout.trim().is_empty() {
+        Some(stdout.trim().to_string())
+    } else {
+        None
+    };
+
+    let commit_id = last_commit_id()?;
+    Ok(CommitResult {
+        commit_id,
+        hook_output,
+    })
+}
+
+pub fn commit(message: &str) -> GitResult<String> {
+    let result = commit_with_output(message)?;
+    Ok(result.commit_id)
+}
+
+pub fn commit_with_file(message: &str, file: &str) -> GitResult<String> {
+    Git::new("commit")
+        .args(["-m", message, file])
+        .context("Failed to create commit with file")
+        .run()?;
 
     last_commit_id()
 }
 
-// Create a commit with the given message and return the short commit ID
-pub fn commit(message: &str) -> Result<String> {
-    // Create the commit
-    git_success(["commit", "-m", message])?;
-
-    last_commit_id()
-}
-
-// Create a commit with the given message and return the short commit ID
-pub fn commit_with_file(message: &str, file: &str) -> Result<String> {
-    // Create the commit
-    git_success(["commit", "-m", message, file])?;
-
-    last_commit_id()
-}
-
-/// Get the last commit id
-pub fn last_commit_id() -> Result<String> {
-    let id_output = git_output(["rev-parse", "--short", "HEAD"])?;
-    let commit_id = id_output.trim().to_string();
-
-    Ok(commit_id)
+pub fn last_commit_id() -> GitResult<String> {
+    Git::new("rev-parse")
+        .args(["--short", "HEAD"])
+        .context("Failed to get last commit ID")
+        .output()
 }
 
 #[derive(Debug, Clone)]
@@ -44,9 +86,8 @@ pub struct Commit {
     pub author: String,
 }
 
-// Get the commits for the current branch
-pub fn commits() -> Result<Vec<Commit>> {
-    let log_result = log("", 0, false, true)?;
+pub fn commits(limit: usize) -> GitResult<Vec<Commit>> {
+    let log_result = log("", limit, false, true)?;
     let mut commits = Vec::new();
 
     for log_line in log_result {
@@ -90,30 +131,23 @@ pub fn commits() -> Result<Vec<Commit>> {
     Ok(commits)
 }
 
-pub fn log(branch: &str, limit: usize, stats: bool, all: bool) -> Result<Vec<String>> {
-    let mut cmd = Command::new("git");
-    cmd.arg("log");
-    cmd.arg("--pretty=format:%H%x00%an%x00%at%x00%s");
+pub fn log(branch: &str, limit: usize, stats: bool, all: bool) -> GitResult<Vec<String>> {
+    let mut git = Git::new("log").arg("--pretty=format:%H%x00%an%x00%at%x00%s");
 
     if limit > 0 && !all {
-        cmd.arg(format!("-n {limit}"));
+        git = git.arg(&format!("-n {limit}"));
     }
 
     if stats {
-        cmd.arg("--numstat");
+        git = git.arg("--numstat");
     }
 
     if !branch.is_empty() {
-        cmd.arg(branch);
+        git = git.arg(branch);
     }
 
-    let output = cmd.output()?;
+    let output = git.context("Failed to list commits").output()?;
 
-    if !output.status.success() {
-        return Err(anyhow!("Failed to list commits"));
-    }
-
-    let output = String::from_utf8(output.stdout)?;
     let commits: Vec<String> = output.split('\n').map(|s| s.to_string()).collect();
     Ok(commits)
 }

@@ -3,8 +3,10 @@ use anyhow::Result;
 use colored::Colorize;
 use sage_git::{branch::get_current, commit::commits};
 
-pub fn log_commits() -> Result<()> {
-    let mut logs = commits()?;
+pub fn log_commits(limit: Option<usize>) -> Result<()> {
+    let cleaned_limit = if limit.is_some() { limit.unwrap() } else { 0 };
+
+    let mut logs = commits(cleaned_limit)?;
 
     let current_branch = get_current()?;
 

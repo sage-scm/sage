@@ -1,9 +1,9 @@
-use anyhow::{Result, anyhow};
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use std::process::Command;
 
 use crate::branch::get_current;
+use crate::prelude::{Git, GitResult};
 
 /// Represents the type of status for a file
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -794,8 +794,7 @@ impl GitStatus {
     }
 }
 
-/// Get the status of a specific branch without switching to it
-pub fn branch_status(branch: &str) -> Result<GitStatus> {
+pub fn branch_status(branch: &str) -> GitResult<GitStatus> {
     // Get the branch status without switching
     let (ahead, behind) = get_branch_ahead_behind(branch)?;
     let has_stash = has_stash()?;
@@ -812,36 +811,30 @@ pub fn branch_status(branch: &str) -> Result<GitStatus> {
     })
 }
 
-/// Get the ahead and behind counts for a branch relative to its upstream
-fn get_branch_ahead_behind(branch: &str) -> Result<(usize, usize)> {
+fn get_branch_ahead_behind(branch: &str) -> GitResult<(usize, usize)> {
     // Get the upstream branch name
     let upstream = get_upstream_branch(branch)?;
 
     if let Some(upstream) = upstream {
-        // Get the merge base between the branch and its upstream
-        let merge_base = Command::new("git")
-            .args(["merge-base", branch, &upstream])
-            .output()?;
+        let merge_base_output = Git::new("merge-base")
+            .args([branch, &upstream])
+            .raw_output()?;
 
-        if !merge_base.status.success() {
+        if !merge_base_output.status.success() {
             return Ok((0, 0));
         }
 
-        let merge_base = String::from_utf8(merge_base.stdout)?.trim().to_string();
+        let merge_base = String::from_utf8(merge_base_output.stdout)?
+            .trim()
+            .to_string();
 
-        // Count commits ahead (in branch but not in upstream)
-        let ahead = Command::new("git")
-            .args(["rev-list", "--count", &format!("{merge_base}..{branch}")])
-            .output()?;
+        let ahead = Git::new("rev-list")
+            .args(["--count", &format!("{merge_base}..{branch}")])
+            .raw_output()?;
 
-        // Count commits behind (in upstream but not in branch)
-        let behind = Command::new("git")
-            .args([
-                "rev-list",
-                "--count",
-                &format!("{}..{}", merge_base, &upstream),
-            ])
-            .output()?;
+        let behind = Git::new("rev-list")
+            .args(["--count", &format!("{}..{}", merge_base, &upstream)])
+            .raw_output()?;
 
         let ahead_count = if ahead.status.success() {
             String::from_utf8(ahead.stdout)?.trim().parse().unwrap_or(0)
@@ -865,15 +858,10 @@ fn get_branch_ahead_behind(branch: &str) -> Result<(usize, usize)> {
     }
 }
 
-/// Get the upstream branch name for a given branch
-fn get_upstream_branch(branch: &str) -> Result<Option<String>> {
-    let output = Command::new("git")
-        .args([
-            "rev-parse",
-            "--abbrev-ref",
-            &format!("{branch}@{{upstream}}"),
-        ])
-        .output();
+fn get_upstream_branch(branch: &str) -> GitResult<Option<String>> {
+    let output = Git::new("rev-parse")
+        .args(["--abbrev-ref", &format!("{branch}@{{upstream}}")])
+        .raw_output();
 
     match output {
         Ok(output) if output.status.success() => {
@@ -884,22 +872,19 @@ fn get_upstream_branch(branch: &str) -> Result<Option<String>> {
     }
 }
 
-/// Check if there are any stashed changes
-fn has_stash() -> Result<bool> {
-    let output = Command::new("git").args(["stash", "list"]).output()?;
+fn has_stash() -> GitResult<bool> {
+    let output = Git::new("stash").arg("list").raw_output()?;
 
     Ok(!output.stdout.is_empty())
 }
 
-// Update the existing status function to use branch_status
-pub fn status() -> Result<GitStatus> {
+pub fn status() -> GitResult<GitStatus> {
     let current_branch = get_current()?;
     let mut status = branch_status(&current_branch)?;
 
-    // Parse the actual file status
-    let result = Command::new("git")
-        .args(["status", "--porcelain", "-z"])
-        .output()?;
+    let result = Git::new("status")
+        .args(["--porcelain", "-z"])
+        .raw_output()?;
 
     if !result.status.success() {
         return Err(anyhow!(
@@ -1007,12 +992,8 @@ pub fn status() -> Result<GitStatus> {
     Ok(status)
 }
 
-/// Get all status entries (staged, unstaged, untracked files)
-pub fn get_status_entries() -> Result<Vec<StatusEntry>> {
-    let result = Command::new("git")
-        .arg("status")
-        .arg("--porcelain")
-        .output()?;
+pub fn get_status_entries() -> GitResult<Vec<StatusEntry>> {
+    let result = Git::new("status").arg("--porcelain").raw_output()?;
 
     if !result.status.success() {
         return Err(anyhow!(
@@ -1066,34 +1047,28 @@ pub fn get_status_entries() -> Result<Vec<StatusEntry>> {
     Ok(entries)
 }
 
-/// Returns true if there are any changes (staged, unstaged, or untracked)
-pub fn has_changes() -> Result<bool> {
+pub fn has_changes() -> GitResult<bool> {
     Ok(status()?.has_changes())
 }
 
-/// Returns true if there are any staged changes
-pub fn has_staged_changes() -> Result<bool> {
+pub fn has_staged_changes() -> GitResult<bool> {
     Ok(status()?.has_staged_changes())
 }
 
-/// Returns true if there are any unstaged changes
-pub fn has_unstaged_changes() -> Result<bool> {
+pub fn has_unstaged_changes() -> GitResult<bool> {
     Ok(status()?.has_unstaged_changes())
 }
 
-/// Returns true if there are any untracked files
-pub fn has_untracked_files() -> Result<bool> {
+pub fn has_untracked_files() -> GitResult<bool> {
     Ok(status()?.has_untracked())
 }
 
-/// Returns true if there are both staged and unstaged changes
-pub fn has_mix_changes() -> Result<bool> {
+pub fn has_mix_changes() -> GitResult<bool> {
     let s = status()?;
     Ok(s.has_staged_changes() && s.has_unstaged_changes())
 }
 
-/// Returns a list of staged files
-pub fn get_staged_files() -> Result<Vec<String>> {
+pub fn get_staged_files() -> GitResult<Vec<String>> {
     let entries = get_status_entries()?;
     Ok(entries
         .into_iter()
@@ -1102,8 +1077,7 @@ pub fn get_staged_files() -> Result<Vec<String>> {
         .collect())
 }
 
-/// Returns a list of unstaged files
-pub fn get_unstaged_files() -> Result<Vec<String>> {
+pub fn get_unstaged_files() -> GitResult<Vec<String>> {
     let entries = get_status_entries()?;
     Ok(entries
         .into_iter()
@@ -1112,8 +1086,7 @@ pub fn get_unstaged_files() -> Result<Vec<String>> {
         .collect())
 }
 
-/// Returns a list of untracked files
-pub fn get_untracked_files() -> Result<Vec<String>> {
+pub fn get_untracked_files() -> GitResult<Vec<String>> {
     let entries = get_status_entries()?;
     Ok(entries
         .into_iter()

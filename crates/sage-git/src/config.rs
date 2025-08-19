@@ -1,11 +1,7 @@
-use anyhow::Result;
-use std::process::Command;
+use crate::prelude::{Git, GitResult};
 
-/// Get a git config value
-pub fn get_config(key: &str) -> Result<Option<String>> {
-    let output = Command::new("git")
-        .args(["config", "--get", key])
-        .output()?;
+pub fn get_config(key: &str) -> GitResult<Option<String>> {
+    let output = Git::new("config").args(["--get", key]).raw_output()?;
 
     if output.status.success() {
         Ok(Some(
@@ -16,14 +12,11 @@ pub fn get_config(key: &str) -> Result<Option<String>> {
     }
 }
 
-/// Check if branch should use rebase based on git config
-pub fn should_branch_rebase(branch: &str) -> Result<Option<bool>> {
-    // Check branch-specific rebase setting
+pub fn should_branch_rebase(branch: &str) -> GitResult<Option<bool>> {
     if let Some(value) = get_config(&format!("branch.{branch}.rebase"))? {
         return Ok(Some(value == "true"));
     }
 
-    // Check global pull.rebase setting
     if let Some(value) = get_config("pull.rebase")? {
         return Ok(Some(value == "true"));
     }

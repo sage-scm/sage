@@ -1,110 +1,124 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail};
 use once_cell::sync::Lazy;
 use std::process::Command;
 
-use crate::prelude::{git_ok, git_output, git_success};
+use crate::prelude::{Git, GitResult, parse_branch_lines};
 
 /// Get the current branch name.
-pub fn get_current() -> Result<String> {
-    git_output(["rev-parse", "--abbrev-ref", "HEAD"])
+pub fn get_current() -> GitResult<String> {
+    Git::new("rev-parse")
+        .args(["--abbrev-ref", "HEAD"])
+        .context("Failed to get current branch")
+        .output()
 }
 
 /// Check if the branch exists locally.
-pub fn exists(branch: &str) -> Result<bool> {
-    let output = git_output(["branch", "--list", branch])?;
-    let branches: Vec<&str> = output
-        .lines()
-        .map(|line| line.trim().trim_start_matches('*').trim())
-        .collect();
+pub fn exists(branch: &str) -> GitResult<bool> {
+    let output = Git::new("branch")
+        .args(["--list", branch])
+        .context("Failed to list branches")
+        .output()?;
 
-    Ok(branches.contains(&branch))
+    let branches = parse_branch_lines(&output);
+    Ok(branches.contains(&branch.to_string()))
 }
 
-/// Switch to a branch, and optionally create it if it doesn't exist.
-pub fn switch(name: &str, create: bool) -> Result<String> {
+pub fn switch(name: &str, create: bool) -> GitResult<String> {
     let current_branch = get_current()?;
-    let mut args = vec!["switch"];
 
+    let mut git = Git::new("switch");
     if create {
-        args.push("-c")
+        git = git.arg("-c");
     }
-    args.push(name);
-
-    git_ok(&args)?;
+    git.arg(name).context("Failed to switch branch").run()?;
 
     Ok(current_branch)
 }
 
-/// Sets the upstream branch for the current branch.
-pub fn set_upstream(name: &str) -> Result<()> {
-    git_ok(["branch", "--set-upstream-to", &format!("origin/{name}")])
+pub fn set_upstream(name: &str) -> GitResult<()> {
+    Git::new("branch")
+        .args(["--set-upstream-to", &format!("origin/{name}")])
+        .context("Failed to set upstream branch")
+        .run()
 }
 
-/// Pushes the current branch to the remote.
-pub fn push(name: &str, force: bool) -> Result<()> {
-    let mut args = vec!["push", "--set-upstream", "origin", name];
+pub fn push(name: &str, force: bool) -> GitResult<()> {
+    let mut git = Git::new("push").args(["--set-upstream", "origin", name]);
 
-    // Add force options based on the force flag
     if force {
-        args.push("--force");
+        git = git.arg("--force");
     } else {
-        args.push("--force-with-lease");
+        git = git.arg("--force-with-lease");
     }
 
-    git_ok(&args)
+    git.context("Failed to push branch").run()
 }
 
-/// Check if the current branch is the default branch (main, master).
-pub fn is_default_branch() -> Result<bool> {
+pub fn is_default_branch() -> GitResult<bool> {
     let head_branch = get_default_branch()?;
     let current = get_current()?;
     Ok(head_branch == current)
 }
 
-/// Cache for the default branch name
-static DEFAULT_BRANCH: Lazy<Result<String>> = Lazy::new(|| {
-    if let Ok(sym) = git_output(["symbolic-ref", "refs/remotes/origin/HEAD"])
+static DEFAULT_BRANCH: Lazy<GitResult<String>> = Lazy::new(|| {
+    if let Ok(sym) = Git::new("symbolic-ref")
+        .args(["refs/remotes/origin/HEAD"])
+        .output()
         && let Some(tail) = sym.rsplit('/').next()
     {
         return Ok(tail.to_string());
     }
-    // Fallback to `main` then `master`, then the current branch
-    if git_success(["show-ref", "--verify", "refs/heads/main"]).unwrap_or(false) {
+
+    if Git::new("show-ref")
+        .args(["--verify", "refs/heads/main"])
+        .success()
+        .unwrap_or(false)
+    {
         return Ok("main".into());
     }
-    if git_success(["show-ref", "--verify", "refs/heads/master"]).unwrap_or(false) {
+
+    if Git::new("show-ref")
+        .args(["--verify", "refs/heads/master"])
+        .success()
+        .unwrap_or(false)
+    {
         return Ok("master".into());
     }
+
     get_current()
 });
 
-/// Get the default branch name.
-pub fn get_default_branch() -> Result<String> {
+pub fn get_default_branch() -> GitResult<String> {
     match &*DEFAULT_BRANCH {
         Ok(branch) => Ok(branch.clone()),
         Err(e) => Err(anyhow!("Failed to determine default branch: {}", e)),
     }
 }
 
-/// Check if a given branch is the default branch.
-pub fn is_default(branch: &str) -> Result<bool> {
+pub fn is_default(branch: &str) -> GitResult<bool> {
     let head_branch = get_default_branch()?;
     Ok(head_branch == branch)
 }
 
-/// Determine if the branch has any changes on it.
-pub fn is_clean() -> Result<bool> {
-    git_output(["status", "--porcelain"]).map(|stdout| stdout.trim().is_empty())
+pub fn is_clean() -> GitResult<bool> {
+    Git::new("status")
+        .arg("--porcelain")
+        .output()
+        .map(|stdout| stdout.trim().is_empty())
 }
 
-/// Unstage all changes in the repository
-pub fn unstage_all() -> Result<()> {
-    git_ok(["restore", "--staged", "."])
+pub fn unstage_all() -> GitResult<()> {
+    Git::new("restore")
+        .args(["--staged", "."])
+        .context("Failed to unstage changes")
+        .run()
 }
 
-/// Stage all changes in the repository
-pub fn stage_all() -> Result<()> {
-    git_ok(["add", "--all"])
+pub fn stage_all() -> GitResult<()> {
+    Git::new("add")
+        .arg("--all")
+        .context("Failed to stage changes")
+        .run()
 }
 
 /// List all local branches
@@ -114,8 +128,11 @@ pub struct BranchList {
     pub local: Vec<String>,
     pub remote: Vec<String>,
 }
-pub fn list_branches() -> Result<BranchList> {
-    let output = git_output(["branch", "-a", "--format=%(refname:short)"])?;
+pub fn list_branches() -> GitResult<BranchList> {
+    let output = Git::new("branch")
+        .args(["-a", "--format=%(refname:short)"])
+        .context("Failed to list branches")
+        .output()?;
     let mut branches = BranchList::default();
     for line in output.lines() {
         // Skip the origin and HEAD definitions
@@ -136,14 +153,15 @@ pub fn list_branches() -> Result<BranchList> {
     Ok(branches)
 }
 
-/// Pull the current branch from the remote.
-pub fn pull() -> Result<()> {
+pub fn pull() -> GitResult<()> {
     let current = get_current()?;
-    git_ok(["pull", "origin", &current, "--ff-only"])
+    Git::new("pull")
+        .args(["origin", &current, "--ff-only"])
+        .context("Failed to pull branch")
+        .run()
 }
 
-/// Merge a specific branch into the current branch.
-pub fn merge(branch: &str) -> Result<()> {
+pub fn merge(branch: &str) -> GitResult<()> {
     let res = Command::new("git").arg("merge").arg(branch).output()?;
 
     if !res.status.success() {
@@ -157,8 +175,7 @@ pub fn merge(branch: &str) -> Result<()> {
     Ok(())
 }
 
-/// Check if a merge is in progress
-pub fn is_merge_in_progress() -> Result<bool> {
+pub fn is_merge_in_progress() -> GitResult<bool> {
     use std::path::Path;
     let git_dir = Command::new("git")
         .args(["rev-parse", "--git-dir"])
@@ -174,13 +191,14 @@ pub fn is_merge_in_progress() -> Result<bool> {
     Ok(merge_head.exists())
 }
 
-/// Abort an in-progress merge
-pub fn merge_abort() -> Result<()> {
-    git_ok(["merge", "--abort"])
+pub fn merge_abort() -> GitResult<()> {
+    Git::new("merge")
+        .arg("--abort")
+        .context("Failed to abort merge")
+        .run()
 }
 
-/// Check if the branch has diverged from its upstream
-pub fn has_diverged(branch: &str) -> Result<bool> {
+pub fn has_diverged(branch: &str) -> GitResult<bool> {
     use crate::status::branch_status;
 
     let status = branch_status(branch)?;
@@ -189,8 +207,7 @@ pub fn has_diverged(branch: &str) -> Result<bool> {
     Ok(status.ahead_count > 0 && status.behind_count > 0)
 }
 
-/// Check if branch is shared (pushed to remote and potentially used by others)
-pub fn is_shared_branch(branch: &str) -> Result<bool> {
+pub fn is_shared_branch(branch: &str) -> GitResult<bool> {
     use crate::status::branch_status;
 
     let status = branch_status(branch)?;
@@ -200,8 +217,7 @@ pub fn is_shared_branch(branch: &str) -> Result<bool> {
     Ok(status.upstream_branch.is_some())
 }
 
-/// Simple ahead and behind for when you dont need the full status
-pub fn ahead_behind(base: &str, compare: &str) -> Result<(i32, i32)> {
+pub fn ahead_behind(base: &str, compare: &str) -> GitResult<(i32, i32)> {
     let res = Command::new("git")
         .arg("rev-list")
         .arg("--left-right")
@@ -230,13 +246,16 @@ pub fn ahead_behind(base: &str, compare: &str) -> Result<(i32, i32)> {
     Ok((ahead, behind))
 }
 
-/// Check if there is a remote branch with the specified name.
-pub fn has_remote_branch(branch: &str) -> Result<bool> {
-    let remotes = git_output(["remote"])?;
+pub fn has_remote_branch(branch: &str) -> GitResult<bool> {
+    let remotes = Git::new("remote")
+        .context("Failed to list remotes")
+        .output()?;
     Ok(remotes.lines().any(|r| r.trim() == branch))
 }
 
-/// Check if the current branch is tracking a remote branch.
-pub fn current_upstream() -> Result<String> {
-    git_output(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+pub fn current_upstream() -> GitResult<String> {
+    Git::new("rev-parse")
+        .args(["--abbrev-ref", "--symbolic-full-name", "@{u}"])
+        .context("Failed to get upstream branch")
+        .output()
 }

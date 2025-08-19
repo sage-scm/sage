@@ -1,23 +1,20 @@
-use anyhow::{Result, anyhow};
-use std::process::Command;
+use crate::prelude::{Git, GitResult};
+use anyhow::anyhow;
 
-/// Stash the current changes
-pub fn stash_push(message: Option<&str>) -> Result<()> {
-    let mut cmd = Command::new("git");
-    cmd.arg("stash").arg("push");
+pub fn stash_push(message: Option<&str>) -> GitResult<()> {
+    let mut git = Git::new("stash").arg("push");
 
     if let Some(msg) = message {
-        cmd.arg("-m").arg(msg);
+        git = git.args(["-m", msg]);
     }
 
-    let output = cmd.output()?;
+    let output = git.raw_output()?;
 
     if output.status.success() {
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("No local changes to save") {
-            // Not an error - just no changes to stash
             Ok(())
         } else {
             Err(anyhow!("Failed to stash changes: {}", stderr.trim()))
@@ -25,16 +22,14 @@ pub fn stash_push(message: Option<&str>) -> Result<()> {
     }
 }
 
-/// Pop the last stash
-pub fn stash_pop() -> Result<()> {
-    let output = Command::new("git").args(["stash", "pop"]).output()?;
+pub fn stash_pop() -> GitResult<()> {
+    let output = Git::new("stash").arg("pop").raw_output()?;
 
     if output.status.success() {
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("No stash entries found") {
-            // Not an error - just no stash to pop
             Ok(())
         } else if stderr.contains("CONFLICT") {
             Err(anyhow!(
@@ -46,9 +41,8 @@ pub fn stash_pop() -> Result<()> {
     }
 }
 
-/// Check if there are any stashes
-pub fn has_stash() -> Result<bool> {
-    let output = Command::new("git").args(["stash", "list"]).output()?;
+pub fn has_stash() -> GitResult<bool> {
+    let output = Git::new("stash").arg("list").raw_output()?;
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);

@@ -1,32 +1,32 @@
-use anyhow::{Result, bail};
+use anyhow::bail;
 use std::process::Command;
 
-use crate::prelude::{git_ok, git_output};
+use crate::prelude::{Git, GitResult};
 
-/// Check if we're in a git repo.
-pub fn in_repo() -> Result<bool> {
-    let result = Command::new("git")
-        .arg("rev-parse")
+pub fn in_repo() -> GitResult<bool> {
+    let output = Git::new("rev-parse")
         .arg("--is-inside-work-tree")
-        .output()?;
+        .raw_output()?;
 
-    let stdout = String::from_utf8(result.stdout)?;
-    Ok(stdout.trim().to_string().eq("true"))
+    let stdout = String::from_utf8(output.stdout)?;
+    Ok(stdout.trim() == "true")
 }
 
-/// Gets the root directory of the repo.
-pub fn get_repo_root() -> Result<String> {
-    git_output(["rev-parse", "--show-toplevel"])
+pub fn get_repo_root() -> GitResult<String> {
+    Git::new("rev-parse")
+        .arg("--show-toplevel")
+        .context("Failed to get repository root")
+        .output()
 }
 
-/// Fetches the latest from remote.
-pub fn fetch_remote() -> Result<()> {
-    git_ok(["fetch", "--all", "--prune"])
+pub fn fetch_remote() -> GitResult<()> {
+    Git::new("fetch")
+        .args(["--all", "--prune"])
+        .context("Failed to fetch from remote")
+        .run()
 }
 
-/// Get the diff between the current branch and the remote branch with enhanced context.
-/// Provides rich context for AI commit message generation.
-pub fn diff() -> Result<String> {
+pub fn diff() -> GitResult<String> {
     use crate::status::{StatusType, get_status_entries};
 
     // Get all status entries to understand what files are changed
@@ -83,15 +83,13 @@ pub fn diff() -> Result<String> {
     let mut diff_content = String::new();
 
     if has_staged {
-        // Get staged changes with optimized parameters
-        let output = Command::new("git")
-            .args(["diff", "--cached", "--patch"])
-            .output()?;
+        let output = Git::new("diff")
+            .args(["--cached", "--patch"])
+            .raw_output()?;
 
         diff_content = String::from_utf8(output.stdout)?;
     } else if !unstaged_files.is_empty() {
-        // No staged changes, get unstaged changes
-        let output = Command::new("git").args(["diff", "--patch"]).output()?;
+        let output = Git::new("diff").arg("--patch").raw_output()?;
 
         diff_content = String::from_utf8(output.stdout)?;
     }
@@ -130,15 +128,13 @@ pub fn diff() -> Result<String> {
     Ok(format!("{summary}\n# Diff Content\n\n{diff_content}"))
 }
 
-/// Get commiter details
-pub fn get_commiter() -> Result<(String, String)> {
-    let name = git_output(["config", "user.name"])?;
-    let email = git_output(["config", "user.email"])?;
+pub fn get_commiter() -> GitResult<(String, String)> {
+    let name = Git::new("config").arg("user.name").output()?;
+    let email = Git::new("config").arg("user.email").output()?;
     Ok((name, email))
 }
 
-/// get the owner and repo name from the remote URL
-pub fn owner_repo() -> Result<(String, String)> {
+pub fn owner_repo() -> GitResult<(String, String)> {
     let name = name().unwrap();
     if let Some(owner_repo) = name.split('/').next() {
         let (owner, repo) = owner_repo.split_once('/').unwrap();
@@ -148,15 +144,18 @@ pub fn owner_repo() -> Result<(String, String)> {
     }
 }
 
-/// Check if there are any unresolved conflicts in the repository
-pub fn has_conflicts() -> Result<bool> {
-    let output = git_output(["diff", "--name-only", "--diff-filter=U"])?;
+pub fn has_conflicts() -> GitResult<bool> {
+    let output = Git::new("diff")
+        .args(["--name-only", "--diff-filter=U"])
+        .output()?;
     Ok(!output.trim().is_empty())
 }
 
-/// Get repo name
 pub fn name() -> Option<String> {
-    if let Ok(url) = git_output(["config", "--get", "remote.origin.url"]) {
+    if let Ok(url) = Git::new("config")
+        .args(["--get", "remote.origin.url"])
+        .output()
+    {
         let name = url
             .trim_end_matches(".git")
             .rsplit('/')

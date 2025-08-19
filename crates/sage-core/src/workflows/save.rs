@@ -4,7 +4,7 @@ use sage_events::EventData;
 use sage_git::{
     amend::{self, AmendOpts},
     branch::{get_current, is_clean, push, stage_all, unstage_all},
-    commit::{self, commit_empty},
+    commit::{commit_empty_with_output, commit_with_output},
     repo::get_repo_root,
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
@@ -58,8 +58,8 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     if opts.empty && !opts.amend {
         cli.step_start("Creating empty commit");
         // Create the empty commit and get the commit ID
-        let commit_id = match commit_empty() {
-            Ok(id) => id,
+        let result = match commit_empty_with_output() {
+            Ok(r) => r,
             Err(e) => {
                 // Extract the actual error message without the prefix
                 let error_msg = e.to_string();
@@ -77,7 +77,15 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             }
         };
 
-        cli.step_success("Write empty commit", Some(&commit_id.dimmed()));
+        // Display any hook output
+        if let Some(hook_output) = &result.hook_output {
+            for line in hook_output.lines() {
+                cli.step_update(&format!("    {}", line));
+                println!(); // Move to next line after each update
+            }
+        }
+
+        cli.step_success("Write empty commit", Some(&result.commit_id.dimmed()));
 
         // Track the empty commit event
         if let Ok(repo_root) = get_repo_root()
@@ -85,7 +93,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
         {
             let current_branch = get_current()?;
             let _ = event_manager.track(EventData::CommitCreated {
-                commit_id: commit_id.clone(),
+                commit_id: result.commit_id.clone(),
                 message: "[empty commit]".to_string(),
                 files_changed: vec![],
                 branch: current_branch,
@@ -148,12 +156,16 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     cli.step_start("Creating commit");
 
     // Create the commit and get the commit ID
-    let commit_id = match commit::commit(&commit_message) {
-        Ok(id) => id,
+    let result = match commit_with_output(&commit_message) {
+        Ok(r) => r,
         Err(e) => {
             // Extract the actual error message without the "Failed to commit: " prefix
             let error_msg = e.to_string();
-            let clean_error = if error_msg.starts_with("Failed to commit: ") {
+            let clean_error = if error_msg.starts_with("Failed to create commit: ") {
+                error_msg
+                    .trim_start_matches("Failed to create commit: ")
+                    .to_string()
+            } else if error_msg.starts_with("Failed to commit: ") {
                 error_msg
                     .trim_start_matches("Failed to commit: ")
                     .to_string()
@@ -173,7 +185,16 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             return Ok(());
         }
     };
-    cli.step_success("Write commit", Some(&commit_id.dimmed()));
+
+    // Display any hook output
+    if let Some(hook_output) = &result.hook_output {
+        for line in hook_output.lines() {
+            cli.step_update(&format!("    {}", line));
+            println!(); // Move to next line after each update
+        }
+    }
+
+    cli.step_success("Write commit", Some(&result.commit_id.dimmed()));
 
     // Track the commit event
     if let Ok(repo_root) = get_repo_root()
@@ -188,7 +209,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
                 "--no-commit-id",
                 "--name-only",
                 "-r",
-                &commit_id,
+                &result.commit_id,
             ])
             .output()
         {
@@ -201,7 +222,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
         };
 
         let _ = event_manager.track(EventData::CommitCreated {
-            commit_id: commit_id.clone(),
+            commit_id: result.commit_id.clone(),
             message: commit_message.clone(),
             files_changed,
             branch: current_branch,

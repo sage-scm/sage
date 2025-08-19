@@ -59,7 +59,9 @@ enum Command {
     },
 
     /// Show previous commits
-    Log,
+    Log {
+        limit: Option<i64>,
+    },
 
     /// Prune branches and reflog
     Clean {
@@ -307,7 +309,7 @@ async fn main() -> Result<()> {
             ConfigCmd::Unset { key } => cmd::config_unset(&key, &global_config),
             ConfigCmd::Edit => cmd::config_edit(&global_config),
         },
-        Command::Log => cmd::log(&global_config),
+        Command::Log { limit } => cmd::log(limit, &global_config),
 
         Command::Stack { op } => match op {
             StackCmd::Init { name } => cmd::stack_init(&name, &global_config),

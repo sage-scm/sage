@@ -1,31 +1,25 @@
-use crate::prelude::git_ok;
-use anyhow::Result;
+use crate::prelude::{Git, GitResult};
 
 pub struct AmendOpts {
-    // The message to amend with
     pub message: String,
-    // Create an empty git commit
     pub empty: bool,
-    // Edit without modifying the message
     pub no_edit: bool,
 }
 
-// Amend the previous commit with the given message
-pub fn amend(opts: &AmendOpts) -> Result<()> {
-    let mut args = vec!["commit", "--amend"];
+pub fn amend(opts: &AmendOpts) -> GitResult<()> {
+    let mut git = Git::new("commit").arg("--amend");
 
     if opts.empty {
-        args.push("--allow-empty");
+        git = git.arg("--allow-empty");
     }
 
     if opts.no_edit || opts.message.is_empty() {
-        args.push("--no-edit");
+        git = git.arg("--no-edit");
     }
 
     if !opts.message.is_empty() && !opts.empty {
-        args.push("-m");
-        args.push(&opts.message);
+        git = git.args(["-m", &opts.message]);
     }
 
-    git_ok(args)
+    git.context("Failed to amend commit").run()
 }
