@@ -293,22 +293,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download macOS artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: sg-macos-*
           path: ./artifacts
       
-      - name: Calculate SHA256 for macOS builds
+      - name: Calculate SHA256 for all builds
         id: sha256
         run: |
           # Get SHA256 for Intel Mac
-          AMD64_SHA=$(cat ./artifacts/sg-macos-amd64/sg-macos-amd64.tar.gz.sha256 | cut -d' ' -f1)
-          echo "amd64_sha256=$AMD64_SHA" >> $GITHUB_OUTPUT
+          MACOS_AMD64_SHA=$(cat ./artifacts/sg-macos-amd64/sg-macos-amd64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "macos_amd64_sha256=$MACOS_AMD64_SHA" >> $GITHUB_OUTPUT
           
           # Get SHA256 for Apple Silicon
-          ARM64_SHA=$(cat ./artifacts/sg-macos-arm64/sg-macos-arm64.tar.gz.sha256 | cut -d' ' -f1)
-          echo "arm64_sha256=$ARM64_SHA" >> $GITHUB_OUTPUT
+          MACOS_ARM64_SHA=$(cat ./artifacts/sg-macos-arm64/sg-macos-arm64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "macos_arm64_sha256=$MACOS_ARM64_SHA" >> $GITHUB_OUTPUT
+          
+          # Get SHA256 for Linux builds
+          LINUX_AMD64_SHA=$(cat ./artifacts/sg-linux-amd64/sg-linux-amd64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "linux_amd64_sha256=$LINUX_AMD64_SHA" >> $GITHUB_OUTPUT
+          
+          LINUX_ARM64_SHA=$(cat ./artifacts/sg-linux-arm64/sg-linux-arm64.tar.gz.sha256 | cut -d' ' -f1)
+          echo "linux_arm64_sha256=$LINUX_ARM64_SHA" >> $GITHUB_OUTPUT
       
       - name: Generate Homebrew Formula
         run: |
@@ -325,20 +331,20 @@ jobs:
             on_macos do
               if Hardware::CPU.intel?
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-macos-amd64.tar.gz"
-                sha256 "${{ steps.sha256.outputs.amd64_sha256 }}"
+                sha256 "${{ steps.sha256.outputs.macos_amd64_sha256 }}"
               else
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-macos-arm64.tar.gz"
-                sha256 "${{ steps.sha256.outputs.arm64_sha256 }}"
+                sha256 "${{ steps.sha256.outputs.macos_arm64_sha256 }}"
               end
             end
           
             on_linux do
               if Hardware::CPU.intel?
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-linux-amd64.tar.gz"
-                sha256 :no_check  # Linux SHA would need to be added here
+                sha256 "${{ steps.sha256.outputs.linux_amd64_sha256 }}"
               else
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-linux-arm64.tar.gz"
-                sha256 :no_check  # Linux SHA would need to be added here
+                sha256 "${{ steps.sha256.outputs.linux_arm64_sha256 }}"
               end
             end
           
@@ -368,13 +374,13 @@ jobs:
           fi
           
           # Try to create a PR to the Homebrew tap if it exists
-          if gh repo view sage-scm/homebrew-sage &>/dev/null; then
+          if gh repo view sage-scm/homebrew-cask &>/dev/null; then
             echo "Homebrew tap repository found. Creating update PR..."
             
             VERSION="${{ needs.prepare.outputs.version }}"
             
             # Clone using authenticated URL
-            git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/sage-scm/homebrew-sage.git" homebrew-tap
+            git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/sage-scm/homebrew-cask.git" homebrew-tap
             cd homebrew-tap
             
             # Configure git
@@ -394,14 +400,14 @@ jobs:
             
             # Push the branch
             if ! git push origin "update-sage-${VERSION}"; then
-              echo "::error title=Push Failed::Cannot push to homebrew-sage repository"
-              echo "Make sure SERVICE_ACCOUNT_TOKEN has write access to sage-scm/homebrew-sage"
+              echo "::error title=Push Failed::Cannot push to homebrew-cask repository"
+              echo "Make sure SERVICE_ACCOUNT_TOKEN has write access to sage-scm/homebrew-cask"
               exit 1
             fi
             
             # Create PR
             gh pr create \
-              --repo sage-scm/homebrew-sage \
+              --repo sage-scm/homebrew-cask \
               --title "Update Sage to ${VERSION}" \
               --body "Automated update of Sage formula to version ${VERSION}
               
@@ -413,11 +419,11 @@ jobs:
             
             echo "::notice title=Homebrew Formula Updated::A PR has been created to update the Homebrew formula."
           else
-            echo "::warning title=Homebrew Tap Not Found::The repository sage-scm/homebrew-sage does not exist or is not accessible."
+            echo "::warning title=Homebrew Tap Not Found::The repository sage-scm/homebrew-cask does not exist or is not accessible."
             echo "::notice title=Manual Setup Required::To enable Homebrew installation:"
-            echo "1. Create repository: sage-scm/homebrew-sage"
+            echo "1. Create repository: sage-scm/homebrew-cask"
             echo "2. Add Formula/sage.rb with the generated content (see artifacts)"
-            echo "3. Users can then install with: brew tap sage-scm/sage && brew install sage"
+            echo "3. Users can then install with: brew tap sage-scm/cask && brew install sage"
             echo "4. Optionally, create a HOMEBREW_TAP_TOKEN secret with write access to the tap repo for automatic updates"
           fi
       
