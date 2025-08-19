@@ -65,7 +65,7 @@ just try work my-feature
 
 ```bash
 # Homebrew (coming soon)
-brew install sage-org/tap/sage
+brew install sage-scm/cask/sage
 
 # Cargo
 cargo install --git https://github.com/sage-scm/sage sage-cli
