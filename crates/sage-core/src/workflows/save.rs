@@ -8,7 +8,6 @@ use sage_git::{
     repo::get_repo_root,
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
-use sage_tui::basic::check;
 use std::path::Path;
 
 use crate::commit::commit_message;
@@ -315,12 +314,12 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
     // User has both staged and unstaged/untracked changes.
     if staged_changes && (unstaged_changes || untracked_files) {
         cli.step_update("⚠️  You have mixed changes");
-        if check(String::from("Do you want to stage all changes? (y/n)"))? {
-            stage_all()?;
-            cli.step_success("Staged all files", None);
-        } else {
-            cli.step_success("Using staged changes", None);
-        }
+        // if check(String::from("Do you want to stage all changes? (y/n)"))? {
+        //     stage_all()?;
+        //     cli.step_success("Staged all files", None);
+        // } else {
+        //     cli.step_success("Using staged changes", None);
+        // }
         return Ok(());
     }
 

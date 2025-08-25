@@ -5,8 +5,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-comfy-table = "7.1.4"
-crossterm = "0.29.0"
-ratatui = "0.29.0"
-inquire = "0.7.5"
-anyhow = { workspace = true }
+crossterm = { workspace = true }
+atty = "0.2"
+strip-ansi-escapes = "0.2"
+anyhow.workspace = true

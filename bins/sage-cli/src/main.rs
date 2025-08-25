@@ -29,6 +29,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     no_color: bool,
 
+    /// CI mode
+    #[arg(long, global = true)]
+    ci: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -295,6 +299,28 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let global_config = GlobalConfig::new(cli.json, cli.no_color);
+
+    // Set environment variables for TUI
+    unsafe {
+        if cli.no_color {
+            std::env::set_var("NO_COLOR", "1");
+        }
+        if cli.ci {
+            std::env::set_var("CI", "1");
+        }
+    }
+
+    // Handle Ctrl+C gracefully
+    ctrlc::st_handler(|| {
+        // Clean up terminal state
+        let _ = crossterm::terminal::disable_raw_mode();
+        let _ = crossterm::execute!(
+            std::io::stdout(),
+            crossterm::cursor::Show,
+            crossterm::terminal::Clear(crossterm::terminal::ClearType::CurrentLine),
+        );
+        std::process::exit(130); // Stadard exit code for SIGINT
+    })?;
 
     match cli.command {
         // Synchronous commands

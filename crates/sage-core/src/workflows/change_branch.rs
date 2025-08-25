@@ -7,7 +7,6 @@ use sage_git::{
     repo::{fetch_remote, get_commiter, get_repo_root},
 };
 use sage_graph::SageGraph;
-use sage_tui::basic::select;
 use std::path::Path;
 
 use crate::{BranchName, CliOutput, events::EventManager};
@@ -50,7 +49,8 @@ pub fn change_branch(mut opts: ChangeBranchOpts, cli: &CliOutput) -> Result<()> 
     } else if opts.name.is_empty() {
         // We need a name for the fuzzy search
         let branch_options = list_branches()?;
-        let branch = select("Switch to branch".into(), branch_options.local)?;
+        // let branch = select("Switch to branch".into(), branch_options.local)?;
+        let branch = branch_options.local.first().unwrap();
         opts.name = BranchName::new(branch)?;
     }
 

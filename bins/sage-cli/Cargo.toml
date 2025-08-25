@@ -27,4 +27,6 @@ sage-events = { path = "../../crates/sage-events" }
 toml = { workspace = true }
 colored = { workspace = true }
 uuid = "1.6"
+crossterm = { workspace = true }
 humantime = { workspace = true }
+ctrlc = "3.4.7"

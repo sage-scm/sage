@@ -1,6 +1,5 @@
 use anyhow::{Result, bail};
 use sage_git::branch;
-use sage_tui::basic::select;
 
 use crate::{BranchName, CliOutput};
 
@@ -32,7 +31,8 @@ pub fn navigate(up: bool, cli: &CliOutput) -> Result<()> {
         if children_branches.len() == 1 {
             children_branches[0].clone()
         } else {
-            select("Multiple branches found".into(), children_branches)?
+            // select("Multiple branches found".into(), children_branches)?
+            children_branches.first().unwrap().clone()
         }
     };
 
