@@ -31,4 +31,88 @@ mod tests {
 
         println!("\n=== Benchmark Complete ===");
     }
-} 
+
+    #[test]
+    fn test_is_detached_head() {
+        // Test detached HEAD state
+        let detached_status = GitStatus {
+            current_branch: "HEAD".to_string(),
+            upstream_branch: None,
+            ahead_count: 0,
+            behind_count: 0,
+            has_stash: false,
+            staged_added: vec![],
+            staged_modified: vec![],
+            staged_deleted: vec![],
+            staged_renamed: vec![],
+            staged_copied: vec![],
+            unstaged_modified: vec![],
+            unstaged_deleted: vec![],
+            unstaged_added: vec![],
+            untracked: vec![],
+            ignored: vec![],
+            staged_modified_unstaged_modified: vec![],
+            staged_added_unstaged_modified: vec![],
+            staged_added_unstaged_deleted: vec![],
+            staged_deleted_unstaged_modified: vec![],
+            staged_renamed_unstaged_modified: vec![],
+            staged_copied_unstaged_modified: vec![],
+        };
+
+        assert!(detached_status.is_detached_head());
+
+        // Test normal branch state
+        let normal_status = GitStatus {
+            current_branch: "main".to_string(),
+            upstream_branch: Some("origin/main".to_string()),
+            ahead_count: 0,
+            behind_count: 0,
+            has_stash: false,
+            staged_added: vec![],
+            staged_modified: vec![],
+            staged_deleted: vec![],
+            staged_renamed: vec![],
+            staged_copied: vec![],
+            unstaged_modified: vec![],
+            unstaged_deleted: vec![],
+            unstaged_added: vec![],
+            untracked: vec![],
+            ignored: vec![],
+            staged_modified_unstaged_modified: vec![],
+            staged_added_unstaged_modified: vec![],
+            staged_added_unstaged_deleted: vec![],
+            staged_deleted_unstaged_modified: vec![],
+            staged_renamed_unstaged_modified: vec![],
+            staged_copied_unstaged_modified: vec![],
+        };
+
+        assert!(!normal_status.is_detached_head());
+
+        // Test with feature branch
+        let feature_status = GitStatus {
+            current_branch: "feature/awesome-feature".to_string(),
+            upstream_branch: Some("origin/feature/awesome-feature".to_string()),
+            ahead_count: 2,
+            behind_count: 1,
+            has_stash: true,
+            staged_added: vec![],
+            staged_modified: vec![],
+            staged_deleted: vec![],
+            staged_renamed: vec![],
+            staged_copied: vec![],
+            unstaged_modified: vec![],
+            unstaged_deleted: vec![],
+            unstaged_added: vec![],
+            untracked: vec![],
+            ignored: vec![],
+            staged_modified_unstaged_modified: vec![],
+            staged_added_unstaged_modified: vec![],
+            staged_added_unstaged_deleted: vec![],
+            staged_deleted_unstaged_modified: vec![],
+            staged_renamed_unstaged_modified: vec![],
+            staged_copied_unstaged_modified: vec![],
+        };
+
+        assert!(!feature_status.is_detached_head());
+    }
+}

@@ -13,8 +13,11 @@ pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Resu
 
     let branch_name = BranchName::new(args.branch.clone().unwrap_or_default())?;
     let parent_arg = args.parent.clone().unwrap_or_default();
-    let parent_name = if parent_arg.is_empty() {
-        String::new()
+    let parent_name = if parent_arg.is_empty() && args.root {
+        sage_git::branch::get_default_branch()?
+    } else if parent_arg.is_empty() && !args.root {
+        // Using the current branch as the parent
+        sage_git::branch::get_current()?
     } else {
         BranchName::new(parent_arg)?.to_string()
     };
@@ -26,7 +29,7 @@ pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Resu
         fetch: args.fetch,
         // use_root: args.root,
         push: args.push,
-        // fuzzy: args.fuzzy,
+        fuzzy: args.fuzzy,
         track: true,
         // announce: true,
         // json_mode: global_config.json,

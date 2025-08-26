@@ -12,7 +12,7 @@ use crate::{
 
 /* ───────────────────────── Stack (tree under a name) ────────────────── */
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Stack {
     pub name: String,
     pub root: BranchId,

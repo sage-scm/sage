@@ -47,6 +47,7 @@ pub fn navigate(up: bool, cli: &CliOutput) -> Result<()> {
             create: false,
             fetch: false,
             push: false,
+            fuzzy: false,
             track: false,
         },
         &tui,

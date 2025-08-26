@@ -762,6 +762,13 @@ impl GitStatus {
         self.ahead_count > 0 && self.behind_count > 0
     }
 
+    /// Checks if the repository is in a detached HEAD state
+    /// In detached HEAD, the current_branch will be "HEAD" instead of a branch name
+    #[inline]
+    pub fn is_detached_head(&self) -> bool {
+        self.current_branch == "HEAD"
+    }
+
     /// Returns just the upstream status (ahead/behind) in a concise format
     pub fn upstream_status(&self) -> String {
         if self.ahead_count == 0 && self.behind_count == 0 {

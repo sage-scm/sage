@@ -36,7 +36,7 @@ pub fn list_branches_with_output(relative: bool, cli: Option<&CliOutput>) -> Res
 
     let mut branch_infos = Vec::new();
 
-    for branch in branches.branches {
+    for branch in branches.local {
         let is_current = branch == current_branch;
         let is_default = branch == default_branch;
 

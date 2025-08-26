@@ -43,6 +43,7 @@ pub fn stack_init(stack_name: BranchName, cli: &CliOutput) -> Result<()> {
             create: true,
             fetch: true,
             push: false,
+            fuzzy: false,
             track: false,
         },
         &tui,
