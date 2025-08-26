@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
 use sage_git::branch;
+use sage_tui::Tui;
 
 use crate::{BranchName, CliOutput};
 
@@ -36,19 +37,19 @@ pub fn navigate(up: bool, cli: &CliOutput) -> Result<()> {
         }
     };
 
+    // Create a temporary TUI for change_branch
+    let tui = Tui::new();
+
     change_branch(
         super::ChangeBranchOpts {
             name: BranchName::new(change_to)?,
             parent: String::new(),
             create: false,
             fetch: false,
-            use_root: false,
             push: false,
-            fuzzy: false,
             track: false,
-            announce: false,
         },
-        cli,
+        &tui,
     )?;
 
     Ok(())

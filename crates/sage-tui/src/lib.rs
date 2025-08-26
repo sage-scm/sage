@@ -1,9 +1,9 @@
-use anyhow::Result;
+use anyhow::{Error, Result};
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent},
     execute,
-    style::{Color, Stylize},
+    style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor, Stylize},
     terminal::{self, ClearType},
 };
 use std::{
@@ -13,31 +13,34 @@ use std::{
 };
 
 mod components;
+mod editor;
+mod error;
+mod input;
+mod multi_select;
 mod progress;
+mod select;
 mod theme;
 mod tree;
 
 pub use components::{FileChange, FileStatus, MessageType, SummaryItem};
+pub use editor::TextEditor;
+pub use error::{ErrorDisplay, format_error_compact};
+pub use input::TextInput;
+pub use multi_select::MultiSelect;
 pub use progress::{ProgressBar, ProgressHandle};
+pub use select::Select;
 pub use theme::Theme;
 pub use tree::{NodeMetadata, TreeNode};
 
-// Main TUI structure for managing terminal output
 pub struct Tui {
-    /// Color theme
     theme: Theme,
-    /// Whether colors are enabled
     use_color: bool,
-    /// Whether we're in CI environment
     is_ci: bool,
-    /// Track if current line needs clearing
     needs_clear: Arc<AtomicBool>,
-    /// Terminal width for responsive layouts
     term_width: u16,
 }
 
 impl Tui {
-    /// Create a new TUI instance
     pub fn new() -> Self {
         let term_width = terminal::size().map(|(w, _)| w).unwrap_or(80);
 
@@ -50,14 +53,12 @@ impl Tui {
         }
     }
 
-    /// Create with custom theme
     pub fn with_theme(theme: Theme) -> Self {
         let mut tui = Self::new();
         tui.theme = theme;
         tui
     }
 
-    /// Print command header
     pub fn header(&self, command: &str) -> Result<()> {
         self.clear_if_needed()?;
 
@@ -70,15 +71,24 @@ impl Tui {
         Ok(())
     }
 
-    /// Print summary line (e.g., "3 files  +89 -23")
     pub fn summary(&self, items: &[SummaryItem]) -> Result<()> {
         self.clear_if_needed()?;
+
+        print!("  ");
 
         let parts: Vec<String> = items
             .iter()
             .map(|item| match item {
                 SummaryItem::Count(label, count) => {
-                    format!("{} {}", count, label)
+                    if *count == 1 {
+                        format!(
+                            "{} {}",
+                            self.style(&count.to_string(), Color::White),
+                            label.trim_end_matches('s')
+                        )
+                    } else {
+                        format!("{} {}", self.style(&count.to_string(), Color::White), label)
+                    }
                 }
                 SummaryItem::Changes(add, del) => {
                     format!(
@@ -88,7 +98,6 @@ impl Tui {
                     )
                 }
                 SummaryItem::Text(text) => {
-                    // Handle special text like "↓ 3 new commits"
                     if text.starts_with('↓') {
                         self.style(text, self.theme.warning).to_string()
                     } else if text.starts_with('↑') {
@@ -104,7 +113,6 @@ impl Tui {
         Ok(())
     }
 
-    /// Display file changes in aligned columns
     pub fn file_list(&self, files: &[FileChange]) -> Result<()> {
         self.clear_if_needed()?;
 
@@ -112,65 +120,61 @@ impl Tui {
             return Ok(());
         }
 
-        // Calculate column widths
         let max_path_len = files
             .iter()
             .map(|f| f.path.len())
             .max()
             .unwrap_or(0)
-            .min(50); // Cap at 50 chars
+            .min(50);
 
         for file in files {
-            // Path (truncate if needed)
             let path = if file.path.len() > max_path_len {
                 format!("{}...", &file.path[..max_path_len - 3])
             } else {
                 file.path.clone()
             };
 
-            print!("  {:<width$}", path, width = max_path_len + 2);
+            print!("    {:<width$}", path, width = max_path_len + 2);
 
-            // Status and changes
             match file.status {
                 FileStatus::Modified => {
                     if file.additions > 0 && file.deletions > 0 {
                         print!(
-                            "{:>5} {:>4}   ",
+                            "{:>5} {:>4}",
                             self.style(&format!("+{}", file.additions), self.theme.success),
                             self.style(&format!("-{}", file.deletions), self.theme.error)
                         );
                     } else if file.additions > 0 {
                         print!(
-                            "{:>10}   ",
+                            "{:>9}",
                             self.style(&format!("+{}", file.additions), self.theme.success)
                         );
                     } else if file.deletions > 0 {
                         print!(
-                            "{:>10}   ",
+                            "     {:>4}",
                             self.style(&format!("-{}", file.deletions), self.theme.error)
                         );
                     }
                 }
                 FileStatus::Added => {
                     print!(
-                        "{:>10}   ",
+                        "{:>9}",
                         self.style(&format!("+{}", file.additions), self.theme.success)
                     );
                 }
                 FileStatus::Deleted => {
                     print!(
-                        "{:>10}   ",
+                        "     {:>4}",
                         self.style(&format!("-{}", file.deletions), self.theme.error)
                     );
                 }
                 FileStatus::Renamed => {
-                    print!("{:>10}   ", self.style("renamed", self.theme.info));
+                    print!("{:>9}", self.style("renamed", self.theme.info));
                 }
             }
 
-            // Description
             if let Some(desc) = &file.description {
-                print!("{}", self.style(desc, self.theme.muted));
+                print!("  {}", self.style(desc, self.theme.muted));
             }
 
             println!();
@@ -180,17 +184,16 @@ impl Tui {
         Ok(())
     }
 
-    /// Start a progress indicator
     pub fn progress(&self, message: &str) -> ProgressHandle {
         let _ = self.clear_if_needed();
         ProgressHandle::new(
             message.to_string(),
             self.use_color && !self.is_ci,
             self.needs_clear.clone(),
+            self.theme.clone(),
         )
     }
 
-    /// Start a progress bar with known total
     pub fn progress_bar(&self, message: &str, total: u64) -> ProgressBar {
         let _ = self.clear_if_needed();
         ProgressBar::new(
@@ -201,7 +204,6 @@ impl Tui {
         )
     }
 
-    /// Display a tree structure (for stack visualization)
     pub fn tree(&self, root: TreeNode) -> Result<()> {
         self.clear_if_needed()?;
         self.print_tree_node(&root, "", true)?;
@@ -209,15 +211,14 @@ impl Tui {
         Ok(())
     }
 
-    /// Print commit message with title and optional body
     pub fn commit_message(&self, title: &str, body: Option<&str>) -> Result<()> {
         self.clear_if_needed()?;
 
-        println!("{}", title);
+        println!("\n  {}", title);
 
         if let Some(body) = body {
             if !body.is_empty() {
-                println!("\n{}", self.style(body, self.theme.muted));
+                println!("\n  {}", self.style(body, self.theme.muted));
             }
         }
 
@@ -225,42 +226,43 @@ impl Tui {
         Ok(())
     }
 
-    /// Interactive prompt that clears after input
     pub fn prompt(&self, message: &str, options: &[char]) -> Result<char> {
         self.clear_if_needed()?;
 
-        // Build options string
-        let options_str = if options.len() <= 3 {
-            options
-                .iter()
-                .map(|c| c.to_string())
-                .collect::<Vec<_>>()
-                .join("/")
-        } else {
-            format!("{}/{}/..", options[0], options[1])
-        };
+        print!("  {} (", message);
 
-        // Print prompt
-        print!(
-            "{} · {} · ",
-            message,
-            self.style(&options_str, self.theme.muted)
-        );
+        for (i, opt) in options.iter().enumerate() {
+            if i == 0 {
+                execute!(
+                    io::stdout(),
+                    SetForegroundColor(self.theme.primary),
+                    SetAttribute(Attribute::Bold),
+                    Print(opt.to_string()),
+                    SetAttribute(Attribute::Reset),
+                    ResetColor,
+                )?;
+            } else {
+                print!("{}", opt);
+            }
+
+            if i < options.len() - 1 {
+                print!("/");
+            }
+        }
+
+        print!(")? ");
         io::stdout().flush()?;
 
-        // Mark that we need to clear this line
         self.needs_clear.store(true, Ordering::Relaxed);
 
-        // Read input
         let result = self.read_char(options)?;
 
-        // Clear the prompt line
         self.clear_current_line()?;
+        self.needs_clear.store(false, Ordering::Relaxed);
 
         Ok(result)
     }
 
-    /// Display a message with type indicator
     pub fn message(&self, msg_type: MessageType, text: &str) -> Result<()> {
         self.clear_if_needed()?;
 
@@ -271,44 +273,61 @@ impl Tui {
             MessageType::Info => ("·", self.theme.info),
         };
 
-        println!("{} {}\n", self.style(symbol, color), text);
+        println!("  {} {}", self.style(symbol, color), text);
         Ok(())
     }
 
-    /// Display a hint (usually after an error)
     pub fn hint(&self, text: &str) -> Result<()> {
         self.clear_if_needed()?;
-
-        // Indent hints and color them muted
-        for line in text.lines() {
-            println!("  {}", self.style(line, self.theme.muted));
-        }
-
+        println!("    {}", self.style(text, self.theme.muted));
         Ok(())
     }
 
-    /// Display key-value pairs in aligned columns
     pub fn info_section(&self, title: Option<&str>, items: &[(String, String)]) -> Result<()> {
         self.clear_if_needed()?;
 
         if let Some(title) = title {
-            println!("{}", self.style(title, self.theme.muted));
+            println!("  {}", self.style(title, self.theme.muted));
         }
 
         if !items.is_empty() {
             let max_key_len = items.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
 
             for (key, value) in items {
-                // Color special values
-                let colored_value = if value.contains('↑') {
-                    self.apply_mixed_colors(value)
-                } else if value.contains("ago") {
-                    self.style(value, self.theme.muted).to_string()
-                } else {
-                    value.clone()
-                };
+                print!(
+                    "  {:<width$}    ",
+                    self.style(key, self.theme.muted),
+                    width = max_key_len
+                );
 
-                println!("  {:<width$}  {}", key, colored_value, width = max_key_len);
+                if value.contains("→") {
+                    let parts: Vec<&str> = value.split("→").collect();
+                    if parts.len() == 2 {
+                        print!(
+                            "{} {} {}",
+                            self.style(parts[0].trim(), self.theme.primary),
+                            self.style("→", self.theme.muted),
+                            parts[1].trim()
+                        );
+
+                        if let Some(remaining) = value.split("→").nth(1) {
+                            if remaining.contains('↑') || remaining.contains('↓') {
+                                print!("  ");
+                                self.print_colored_metrics(remaining)?;
+                            }
+                        }
+                        println!();
+                    } else {
+                        println!("{}", value);
+                    }
+                } else if value.contains('↑') || value.contains('↓') {
+                    self.print_colored_metrics(value)?;
+                    println!();
+                } else if value.contains("ago") {
+                    println!("{}", self.style(value, self.theme.muted));
+                } else {
+                    println!("{}", value);
+                }
             }
         }
 
@@ -316,7 +335,6 @@ impl Tui {
         Ok(())
     }
 
-    /// Print raw text with optional color
     pub fn print(&self, text: &str, color: Option<Color>) -> Result<()> {
         self.clear_if_needed()?;
 
@@ -330,7 +348,6 @@ impl Tui {
         Ok(())
     }
 
-    /// Print line with optional color
     pub fn println(&self, text: &str, color: Option<Color>) -> Result<()> {
         self.clear_if_needed()?;
 
@@ -343,19 +360,51 @@ impl Tui {
         Ok(())
     }
 
-    // Private helper methods
+    pub fn edit_text(&self, title: &str) -> TextEditor {
+        let _ = self.clear_if_needed();
+        let _ = self.message(MessageType::Info, title);
+        TextEditor::new()
+    }
+
+    pub fn select<T>(&self, prompt: &str, items: Vec<T>) -> Select<T> {
+        let _ = self.clear_if_needed();
+        Select::new(prompt, items).with_theme(self.theme.clone())
+    }
+
+    pub fn multi_select<T>(&self, prompt: &str, items: Vec<T>) -> MultiSelect<T> {
+        let _ = self.clear_if_needed();
+        MultiSelect::new(prompt, items)
+            .with_theme(self.theme.clone())
+            .with_color(self.use_color)
+    }
+
+    pub fn input(&self, prompt: &str) -> TextInput {
+        let _ = self.clear_if_needed();
+        TextInput::new(prompt).with_theme(self.theme.clone())
+    }
+
+    pub fn error(&self, error: &Error) -> Result<()> {
+        let display = ErrorDisplay::new(self.theme.clone());
+        display.show(error)?;
+        Ok(())
+    }
+
+    pub fn error_with_context(&self, error: &Error, context: &str) -> Result<()> {
+        let display = ErrorDisplay::new(self.theme.clone());
+        display.show_with_context(error, context)?;
+        Ok(())
+    }
 
     fn print_tree_node(&self, node: &TreeNode, prefix: &str, is_last: bool) -> Result<()> {
-        // Print branch connector
-        if !prefix.is_empty() {
-            print!("{}", prefix);
+        if prefix.is_empty() {
+            print!("  ");
+        } else {
+            print!("  {}", prefix);
             print!("{}", if is_last { "└─ " } else { "├─ " });
         }
 
-        // Print node name
         print!("{}", node.name);
 
-        // Print metadata with dots
         if !node.metadata.is_empty() {
             let metadata_str = node
                 .metadata
@@ -376,8 +425,11 @@ impl Tui {
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            // Calculate dots
-            let name_len = prefix.len() + node.name.len() + 3;
+            let name_len = if prefix.is_empty() {
+                2
+            } else {
+                prefix.len() + 5
+            } + node.name.len();
             let dots_needed = (50_usize.saturating_sub(name_len))
                 .saturating_sub(visible_len(&metadata_str))
                 .min(30);
@@ -391,7 +443,6 @@ impl Tui {
 
         println!();
 
-        // Print children
         for (i, child) in node.children.iter().enumerate() {
             let is_last_child = i == node.children.len() - 1;
             let child_prefix = if prefix.is_empty() {
@@ -414,40 +465,41 @@ impl Tui {
         }
     }
 
-    fn apply_mixed_colors(&self, text: &str) -> String {
-        // Handle text with mixed ↑ and ↓ symbols
-        let mut result = String::new();
-        let mut chars = text.chars().peekable();
-
-        while let Some(ch) = chars.next() {
-            if ch == '↑' {
-                // Color ↑ and following number green
-                let mut num = String::from("↑");
-                while let Some(&next) = chars.peek() {
-                    if next.is_ascii_digit() {
-                        num.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
+    fn print_colored_metrics(&self, text: &str) -> Result<()> {
+        for ch in text.chars() {
+            match ch {
+                '↑' => {
+                    execute!(
+                        io::stdout(),
+                        SetForegroundColor(self.theme.success),
+                        SetAttribute(Attribute::Bold),
+                        Print("↑"),
+                        SetAttribute(Attribute::Reset),
+                        ResetColor,
+                    )?;
                 }
-                result.push_str(&self.style(&num, self.theme.success));
-            } else if ch == '↓' {
-                // Color ↓ and following number yellow
-                let mut num = String::from("↓");
-                while let Some(&next) = chars.peek() {
-                    if next.is_ascii_digit() {
-                        num.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
+                '↓' => {
+                    execute!(
+                        io::stdout(),
+                        SetForegroundColor(self.theme.warning),
+                        SetAttribute(Attribute::Bold),
+                        Print("↓"),
+                        SetAttribute(Attribute::Reset),
+                        ResetColor,
+                    )?;
                 }
-                result.push_str(&self.style(&num, self.theme.warning));
-            } else {
-                result.push(ch);
+                '0'..='9' => {
+                    execute!(
+                        io::stdout(),
+                        SetAttribute(Attribute::Bold),
+                        Print(ch.to_string()),
+                        SetAttribute(Attribute::Reset),
+                    )?;
+                }
+                _ => print!("{}", ch),
             }
         }
-
-        result
+        Ok(())
     }
 
     fn clear_if_needed(&self) -> Result<()> {
@@ -482,7 +534,6 @@ impl Tui {
                     }
                     KeyCode::Esc => break Ok('\x1b'),
                     KeyCode::Enter => {
-                        // Default to first option on Enter
                         if !valid_options.is_empty() {
                             break Ok(valid_options[0]);
                         }
@@ -503,10 +554,7 @@ impl Default for Tui {
     }
 }
 
-// Helper functions
-
 fn supports_color() -> bool {
-    // Check if stdout is a tty and supports color
     atty::is(atty::Stream::Stdout)
         && std::env::var("NO_COLOR").is_err()
         && std::env::var("TERM").map(|t| t != "dumb").unwrap_or(true)
@@ -520,7 +568,6 @@ fn is_ci_environment() -> bool {
 }
 
 fn visible_len(s: &str) -> usize {
-    // Strip ANSI codes and count visible characters
-    let stripped = strip_ansi_escapes::strip(s);
+    let stripped = strip_ansi_escapes::strip(s.as_bytes());
     String::from_utf8_lossy(&stripped).len()
 }

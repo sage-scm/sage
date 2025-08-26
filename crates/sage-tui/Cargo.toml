@@ -9,3 +9,5 @@ crossterm = { workspace = true }
 atty = "0.2"
 strip-ansi-escapes = "0.2"
 anyhow.workspace = true
+tempfile = "3.21.0"
+which = "8.0.0"

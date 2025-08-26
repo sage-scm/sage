@@ -1,10 +1,15 @@
 use anyhow::Result;
-use sage_core::{CliOutput, SaveOpts};
+use sage_core::SaveOpts;
+use sage_tui::Tui;
 
 pub async fn save(args: &crate::SaveArgs, global_config: &crate::GlobalConfig) -> Result<()> {
-    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
-    let cli = CliOutput::new(cli_config);
-    cli.header("save");
+    let tui = if global_config.no_color {
+        Tui::with_theme(sage_tui::Theme::monochrome())
+    } else {
+        Tui::new()
+    };
+
+    tui.header("save")?;
 
     let opts = SaveOpts {
         message: args.message.clone().unwrap_or_default(),
@@ -14,9 +19,20 @@ pub async fn save(args: &crate::SaveArgs, global_config: &crate::GlobalConfig) -
         amend: args.amend,
         push: args.push || args.amend,
         empty: args.empty,
+        json_mode: global_config.json,
     };
-    sage_core::save(&opts, &cli).await?;
 
-    cli.summary();
+    let start_time = std::time::Instant::now();
+    sage_core::save(&opts, &tui).await?;
+
+    if !global_config.json {
+        let elapsed = start_time.elapsed();
+        let duration_str = format!("{:.3}s", elapsed.as_secs_f64());
+        tui.message(
+            sage_tui::MessageType::Success,
+            &format!("Done in {}", duration_str),
+        )?;
+    }
+
     Ok(())
 }

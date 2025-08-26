@@ -1,5 +1,4 @@
 use anyhow::{Result, anyhow};
-use colored::Colorize;
 use sage_events::EventData;
 use sage_git::{
     amend::{self, AmendOpts},
@@ -8,10 +7,11 @@ use sage_git::{
     repo::get_repo_root,
     status::{has_changes, has_staged_changes, has_unstaged_changes, has_untracked_files},
 };
+use sage_tui::{MessageType, Tui};
 use std::path::Path;
 
 use crate::commit::commit_message;
-use crate::{CliOutput, events::EventManager};
+use crate::events::EventManager;
 
 #[derive(Debug, Default)]
 pub struct SaveOpts {
@@ -29,9 +29,11 @@ pub struct SaveOpts {
     pub push: bool,
     /// Create an empty git commit
     pub empty: bool,
+    /// JSON output mode
+    pub json_mode: bool,
 }
 
-pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
+pub async fn save(opts: &SaveOpts, tui: &Tui) -> Result<()> {
     let config = sage_config::ConfigManager::new()?;
     let cfg = config.load()?;
 
@@ -44,18 +46,29 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
     // Early exit if working tree is clean and we're not creating an empty commit
     if is_clean()? && !opts.empty && !opts.amend {
-        cli.warning("Working tree is clean");
+        if !opts.json_mode {
+            tui.message(MessageType::Warning, "Working tree is clean")?;
+        }
         return Ok(());
     }
 
     // Handle staging
-    cli.step_start("Staging files");
-    // The other half of this step gets concluded inside the `stage_correct_files` function
-    stage_correct_files(opts, cli, &cfg)?;
-    let commit_message = get_commit_message(opts, cli).await?;
+    if !opts.json_mode {
+        let mut progress = tui.progress("Staging files");
+        stage_correct_files(opts, tui, &cfg, &mut progress)?;
+        progress.done();
+    } else {
+        let mut progress = tui.progress("");
+        stage_correct_files(opts, tui, &cfg, &mut progress)?;
+    }
+    let commit_message = get_commit_message(opts, tui).await?;
 
     if opts.empty && !opts.amend {
-        cli.step_start("Creating empty commit");
+        let progress = if !opts.json_mode {
+            tui.progress("Creating empty commit")
+        } else {
+            tui.progress("")
+        };
         // Create the empty commit and get the commit ID
         let result = match commit_empty_with_output() {
             Ok(r) => r,
@@ -71,20 +84,21 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
                 };
 
                 // Display a more helpful error message
-                cli.step_error("Failed to create empty commit", &clean_error.red());
+                progress.fail(&format!("Failed to create empty commit: {}", clean_error));
                 return Ok(());
             }
         };
 
         // Display any hook output
-        if let Some(hook_output) = &result.hook_output {
-            for line in hook_output.lines() {
-                cli.step_update(&format!("    {}", line));
-                println!(); // Move to next line after each update
+        if !opts.json_mode {
+            if let Some(hook_output) = &result.hook_output {
+                for line in hook_output.lines() {
+                    tui.println(&format!("    {}", line), None)?;
+                }
             }
         }
 
-        cli.step_success("Write empty commit", Some(&result.commit_id.dimmed()));
+        progress.finish(&format!("Write empty commit ({})", result.commit_id));
 
         // Track the empty commit event
         if let Ok(repo_root) = get_repo_root()
@@ -99,7 +113,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             });
         }
 
-        push_changes(opts, cli)?;
+        push_changes(opts, tui)?;
         return Ok(());
     }
 
@@ -110,7 +124,11 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             no_edit: (opts.empty && opts.message.is_empty())
                 || (!opts.message.is_empty() && !has_staged_changes()?), // Use no_edit if we're keeping the previous message
         };
-        cli.step_start("Amending commit");
+        let progress = if !opts.json_mode {
+            tui.progress("Amending commit")
+        } else {
+            tui.progress("")
+        };
 
         // Get the old commit ID before amending
         let old_commit_id = if let Ok(output) = std::process::Command::new("git")
@@ -134,7 +152,7 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             String::new()
         };
 
-        cli.step_success("Amended previous commit", None);
+        progress.done();
 
         // Track the amend event
         if let Ok(repo_root) = get_repo_root()
@@ -148,11 +166,15 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
             });
         }
 
-        push_changes(opts, cli)?;
+        push_changes(opts, tui)?;
         return Ok(());
     }
 
-    cli.step_start("Creating commit");
+    let progress = if !opts.json_mode {
+        tui.progress("Creating commit")
+    } else {
+        tui.progress("")
+    };
 
     // Create the commit and get the commit ID
     let result = match commit_with_output(&commit_message) {
@@ -174,26 +196,24 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
 
             // Display a more helpful error message
             if clean_error.is_empty() {
-                cli.step_error(
-                    "Failed to commit",
-                    "No changes to commit (working directory is clean)",
-                );
+                progress.fail("No changes to commit (working directory is clean)");
             } else {
-                cli.step_error("Failed to commit", &clean_error.red());
+                progress.fail(&format!("Failed to commit: {}", clean_error));
             }
             return Ok(());
         }
     };
 
     // Display any hook output
-    if let Some(hook_output) = &result.hook_output {
-        for line in hook_output.lines() {
-            cli.step_update(&format!("    {}", line));
-            println!(); // Move to next line after each update
+    if !opts.json_mode {
+        if let Some(hook_output) = &result.hook_output {
+            for line in hook_output.lines() {
+                tui.println(&format!("    {}", line), None)?;
+            }
         }
     }
 
-    cli.step_success("Write commit", Some(&result.commit_id.dimmed()));
+    progress.finish(&format!("Write commit ({})", result.commit_id));
 
     // Track the commit event
     if let Ok(repo_root) = get_repo_root()
@@ -229,28 +249,37 @@ pub async fn save(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
     }
 
     // Handle push if requested
-    push_changes(opts, cli)?;
+    push_changes(opts, tui)?;
 
     Ok(())
 }
 
 /// Push changes to remote.
-fn push_changes(opts: &SaveOpts, cli: &CliOutput) -> Result<()> {
+fn push_changes(opts: &SaveOpts, tui: &Tui) -> Result<()> {
     if !opts.push {
         return Ok(());
     }
 
-    let spinner = cli.spinner("Pushing to remote");
+    let progress = if !opts.json_mode {
+        tui.progress("Pushing to remote")
+    } else {
+        tui.progress("")
+    };
 
     let branch = get_current()?;
     push(&branch, false)?;
 
-    spinner.finish_success("Pushed to remote", Some(&branch.blue()));
+    progress.finish(&format!("Pushed to remote ({})", branch));
     Ok(())
 }
 
 /// Determines the files to stage for the commit.
-fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Config) -> Result<()> {
+fn stage_correct_files(
+    opts: &SaveOpts,
+    tui: &Tui,
+    cfg: &sage_config::Config,
+    progress: &mut sage_tui::ProgressHandle,
+) -> Result<()> {
     let staged_changes = has_staged_changes()?;
     let unstaged_changes = has_unstaged_changes()?;
     let untracked_files = has_untracked_files()?;
@@ -259,7 +288,7 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
     // User wants everything staged no matter what.
     if opts.all {
         stage_all()?;
-        cli.step_success("Staged all files", None);
+        progress.set_message("Staged all files".to_string());
         return Ok(());
     }
 
@@ -268,52 +297,54 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
         // TODO: Implement staging specific files properly
         // For now, just stage all changes
         stage_all()?;
-        cli.step_success("Staged all files", None);
+        progress.set_message("Staged all files".to_string());
         return Ok(());
     }
 
     // User is amending the last commit without changes.
     if opts.amend && opts.empty {
         unstage_all()?;
-        cli.step_success("Unstaged all files", None);
+        progress.set_message("Unstaged all files".to_string());
         return Ok(());
     }
 
     // No files changed, no need to stage.
     if opts.amend && !opts.message.is_empty() && !changed_files {
-        cli.step_success("No files staged", None);
+        progress.set_message("No files staged".to_string());
         return Ok(());
     }
 
     // User is amending last commit with changes.
     if opts.amend && !staged_changes {
         stage_all()?;
-        cli.step_success("Staged all files", None);
+        progress.set_message("Staged all files".to_string());
         return Ok(());
     }
 
     // User only has unstaged / untracked changes.
     if !staged_changes && (unstaged_changes || untracked_files) {
         stage_all()?;
-        cli.step_success("Staged all files", None);
+        progress.set_message("Staged all files".to_string());
         return Ok(());
     }
 
     // User has already staged their changes.
     if staged_changes && !unstaged_changes && !untracked_files {
-        cli.step_success("Using staged changes", None);
+        progress.set_message("Using staged changes".to_string());
         return Ok(());
     }
 
     // Early exit if there are staged changes and the ask_on_mixed_staging is disabled
     if staged_changes && !cfg.save.ask_on_mixed_staging {
-        cli.step_success("Using staged changes", None);
+        progress.set_message("Using staged changes".to_string());
         return Ok(());
     }
 
     // User has both staged and unstaged/untracked changes.
     if staged_changes && (unstaged_changes || untracked_files) {
-        cli.step_update("⚠️  You have mixed changes");
+        if !opts.json_mode {
+            tui.message(MessageType::Warning, "You have mixed changes")?;
+        }
         // if check(String::from("Do you want to stage all changes? (y/n)"))? {
         //     stage_all()?;
         //     cli.step_success("Staged all files", None);
@@ -325,7 +356,7 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
 
     // Literally nothing to commit.
     if !staged_changes && !unstaged_changes && !untracked_files {
-        cli.step_success("No changes to staged", None);
+        progress.set_message("No changes to staged".to_string());
         return Ok(());
     }
 
@@ -333,10 +364,14 @@ fn stage_correct_files(opts: &SaveOpts, cli: &CliOutput, cfg: &sage_config::Conf
 }
 
 /// Determines the commit message to use for the commit.
-async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> {
+async fn get_commit_message(opts: &SaveOpts, tui: &Tui) -> Result<String> {
     if opts.ai {
-        // Create a spinner for AI message generation
-        let spinner = cli.spinner("Generating AI commit message");
+        // Create a progress indicator for AI message generation
+        let progress = if !opts.json_mode {
+            tui.progress("Generating AI commit message")
+        } else {
+            tui.progress("")
+        };
 
         // Generate a commit message using AI
         let message_result = commit_message().await;
@@ -344,11 +379,11 @@ async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> 
         // Handle the result
         match message_result {
             Ok(message) => {
-                spinner.finish_success("AI commit message", Some(&message.clone().dimmed()));
+                progress.finish(&format!("AI commit message: {}", message));
                 return Ok(message);
             }
             Err(e) => {
-                spinner.finish_error("AI commit message generation failed", &e.to_string().red());
+                progress.fail(&format!("AI commit message generation failed: {}", e));
                 return Err(anyhow!("Failed to generate AI commit message: {}", e));
             }
         }
@@ -357,7 +392,9 @@ async fn get_commit_message(opts: &SaveOpts, cli: &CliOutput) -> Result<String> 
     if opts.message.is_empty() {
         if opts.amend {
             // For amend, we can use an empty string as the previous message will be preserved
-            cli.step_success("Using previous commit message", None);
+            if !opts.json_mode {
+                tui.message(MessageType::Info, "Using previous commit message")?;
+            }
             return Ok(String::new());
         } else {
             // This should not be reached due to the check above, but providing a fallback

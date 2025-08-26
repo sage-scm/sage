@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
 use colored::Colorize;
+use sage_tui::Tui;
 
 use crate::{BranchName, CliOutput};
 
@@ -31,6 +32,9 @@ pub fn stack_init(stack_name: BranchName, cli: &CliOutput) -> Result<()> {
         cli.step_success("Tracking current branch", Some(&current_branch.dimmed()));
     }
 
+    // Create a temporary TUI for change_branch
+    let tui = Tui::new();
+
     // We will now create the new branch
     change_branch(
         super::ChangeBranchOpts {
@@ -38,13 +42,10 @@ pub fn stack_init(stack_name: BranchName, cli: &CliOutput) -> Result<()> {
             parent: current_branch.clone(),
             create: true,
             fetch: true,
-            use_root: false,
             push: false,
-            fuzzy: false,
             track: false,
-            announce: false,
         },
-        cli,
+        &tui,
     )?;
 
     // We will now init the stack

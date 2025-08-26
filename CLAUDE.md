@@ -36,7 +36,7 @@ sage/
 │   ├── sage-core/    # Core business logic and workflows
 │   ├── sage-git/     # Git operations (wraps git2)
 │   ├── sage-config/  # Configuration management
-│   ├── sage-tui/     # Terminal UI components
+│   ├── sage-tui/     # Terminal UI output formatting and interactive components
 │   ├── sage-graph/   # Branch graph for stack operations
 │   ├── sage-plugin/  # Plugin SDK
 │   └── sage-utils/   # Shared utilities
@@ -54,7 +54,13 @@ sage/
 
 3. **Error Handling**: Consistent use of `anyhow::Result` throughout the codebase.
 
-4. **CLI Output**: The `CliOutput` trait in `sage-core` provides consistent terminal output with colors, spinners, and progress bars.
+4. **Terminal UI**: The `sage-tui` crate provides a unified terminal output system with:
+   - Consistent colored output with theme support
+   - Progress indicators and progress bars
+   - Interactive prompts with keyboard input handling
+   - Tree visualization for branch stacks
+   - File change displays with aligned columns
+   - Auto-detection of CI environments and color support
 
 5. **Configuration System**: Layered config supporting editor preferences, auto-update, plugins, save behavior, TUI customization, and AI settings. Config is managed through `sage-config` crate.
 
@@ -79,6 +85,14 @@ The `sage-git` crate provides a safe wrapper around git2 operations, handling co
 - Commit operations
 - Remote interactions
 - Repository state queries
+
+### Terminal UI Components
+The `sage-tui` crate provides:
+- `Tui` struct: Main interface for terminal output with methods for headers, summaries, file lists, trees, prompts, and messages
+- `ProgressHandle` and `ProgressBar`: Animated progress indicators with automatic cleanup
+- `Theme`: Customizable color themes (default, monochrome, high-contrast, solarized)
+- `TreeNode`: Tree structure visualization for branch stacks
+- Components for file changes, status messages, and interactive prompts
 
 ## Development Notes
 

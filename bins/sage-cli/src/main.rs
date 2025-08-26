@@ -311,7 +311,7 @@ async fn main() -> Result<()> {
     }
 
     // Handle Ctrl+C gracefully
-    ctrlc::st_handler(|| {
+    ctrlc::set_handler(|| {
         // Clean up terminal state
         let _ = crossterm::terminal::disable_raw_mode();
         let _ = crossterm::execute!(

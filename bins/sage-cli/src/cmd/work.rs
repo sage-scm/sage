@@ -1,10 +1,15 @@
 use anyhow::Result;
-use sage_core::{BranchName, ChangeBranchOpts, CliOutput, change_branch};
+use sage_core::{BranchName, ChangeBranchOpts, change_branch};
+use sage_tui::Tui;
 
 pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Result<()> {
-    let cli_config = sage_core::cli::GlobalConfig::new(global_config.json, global_config.no_color);
-    let cli = CliOutput::new(cli_config);
-    cli.header("work");
+    let tui = if global_config.no_color {
+        Tui::with_theme(sage_tui::Theme::monochrome())
+    } else {
+        Tui::new()
+    };
+
+    tui.header("work")?;
 
     let branch_name = BranchName::new(args.branch.clone().unwrap_or_default())?;
     let parent_arg = args.parent.clone().unwrap_or_default();
@@ -19,15 +24,25 @@ pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Resu
         parent: parent_name.to_string(),
         create: true,
         fetch: args.fetch,
-        use_root: args.root,
+        // use_root: args.root,
         push: args.push,
-        fuzzy: args.fuzzy,
+        // fuzzy: args.fuzzy,
         track: true,
-        announce: true,
+        // announce: true,
+        // json_mode: global_config.json,
     };
 
-    change_branch(opts, &cli)?;
+    // let start_time = std::time::Instant::now();
+    change_branch(opts, &tui)?;
 
-    cli.summary();
+    // if !global_config.json {
+    //     let elapsed = start_time.elapsed();
+    //     let duration_str = format!("{:.3}s", elapsed.as_secs_f64());
+    //     tui.message(
+    //         sage_tui::MessageType::Success,
+    //         &format!("Done in {}", duration_str),
+    //     )?;
+    // }
+
     Ok(())
 }

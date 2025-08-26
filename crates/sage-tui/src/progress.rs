@@ -1,5 +1,7 @@
+use crate::Theme;
 use crossterm::{
     cursor, execute,
+    style::{Color, Print, ResetColor, SetForegroundColor},
     terminal::{self, ClearType},
 };
 use std::io::{self, Write};
@@ -15,17 +17,25 @@ pub struct ProgressHandle {
     needs_clear: Arc<AtomicBool>,
     start_time: Instant,
     active: bool,
+    theme: Theme,
 }
 
 impl ProgressHandle {
-    pub(crate) fn new(message: String, use_animation: bool, needs_clear: Arc<AtomicBool>) -> Self {
+    pub(crate) fn new(
+        message: String,
+        use_animation: bool,
+        needs_clear: Arc<AtomicBool>,
+        theme: Theme,
+    ) -> Self {
+        // Don't print a newline - just start on current line
         let mut handle = Self {
             message,
-            spinner: Spinner::dots(),
+            spinner: Spinner::braille(),
             use_animation,
             needs_clear,
             start_time: Instant::now(),
             active: true,
+            theme,
         };
 
         handle.render();
@@ -39,38 +49,89 @@ impl ProgressHandle {
         }
     }
 
-    /// Complete with success
-    pub fn done(self) {
-        self.finish("done");
+    /// Complete silently - removes the entire progress line
+    pub fn done(mut self) {
+        self.active = false;
+
+        // Just clear the current line completely
+        execute!(
+            io::stdout(),
+            cursor::MoveToColumn(0),
+            terminal::Clear(ClearType::CurrentLine),
+        )
+        .ok();
+
+        self.needs_clear.store(false, Ordering::Relaxed);
+    }
+
+    /// Complete with visible confirmation (use sparingly)
+    pub fn done_with_message(mut self, message: &str) {
+        self.active = false;
+
+        // Replace the current progress line with the message
+        execute!(
+            io::stdout(),
+            cursor::MoveToColumn(0),
+            terminal::Clear(ClearType::CurrentLine),
+            SetForegroundColor(self.theme.muted),
+            Print("  "),
+            Print(&self.message),
+            Print(": "),
+            Print(message),
+            ResetColor,
+            Print("\n"),
+        )
+        .ok();
+
+        self.needs_clear.store(false, Ordering::Relaxed);
     }
 
     /// Complete with custom message
     pub fn finish(mut self, suffix: &str) {
         self.active = false;
 
+        // Replace current line with final message
         execute!(
             io::stdout(),
             cursor::MoveToColumn(0),
             terminal::Clear(ClearType::CurrentLine),
+            Print(format!("  {} {}\n", self.message, suffix)),
         )
         .ok();
 
-        println!("{} {}", self.message, suffix);
         self.needs_clear.store(false, Ordering::Relaxed);
     }
 
-    /// Fail with error message
+    /// Fail silently or with error message
     pub fn fail(mut self, error: &str) {
         self.active = false;
 
-        execute!(
-            io::stdout(),
-            cursor::MoveToColumn(0),
-            terminal::Clear(ClearType::CurrentLine),
-        )
-        .ok();
+        if error.is_empty() {
+            // Just clear the progress line
+            execute!(
+                io::stdout(),
+                cursor::MoveToColumn(0),
+                terminal::Clear(ClearType::CurrentLine),
+            )
+            .ok();
+        } else {
+            // Replace with error message
+            execute!(
+                io::stdout(),
+                cursor::MoveToColumn(0),
+                terminal::Clear(ClearType::CurrentLine),
+                SetForegroundColor(self.theme.muted),
+                Print("  "),
+                Print(&self.message),
+                Print(": "),
+                SetForegroundColor(self.theme.error),
+                Print(error),
+                ResetColor,
+                Print("\n"),
+            )
+            .ok();
+        }
 
-        println!("{} failed: {}", self.message, error);
         self.needs_clear.store(false, Ordering::Relaxed);
     }
 
@@ -81,22 +142,39 @@ impl ProgressHandle {
     }
 
     fn render(&mut self) {
-        let frame = if self.use_animation {
-            self.spinner.next()
-        } else {
-            "..."
-        };
+        if !self.use_animation {
+            execute!(
+                io::stdout(),
+                cursor::SavePosition,
+                cursor::MoveToColumn(0),
+                terminal::Clear(ClearType::CurrentLine),
+                Print(format!("  {}...", self.message)),
+                cursor::RestorePosition,
+            )
+            .ok();
+            io::stdout().flush().ok();
+            self.needs_clear.store(true, Ordering::Relaxed);
+            return;
+        }
+
+        let frame = self.spinner.next();
 
         execute!(
             io::stdout(),
+            cursor::SavePosition,
             cursor::MoveToColumn(0),
             terminal::Clear(ClearType::CurrentLine),
+            Print("  "),
+            Print(&self.message),
+            Print("... "),
+            SetForegroundColor(self.theme.muted),
+            Print(frame),
+            ResetColor,
+            cursor::RestorePosition,
         )
         .ok();
 
-        print!("{} {}", self.message, frame);
         io::stdout().flush().ok();
-
         self.needs_clear.store(true, Ordering::Relaxed);
     }
 }
@@ -108,11 +186,16 @@ impl Drop for ProgressHandle {
                 io::stdout(),
                 cursor::MoveToColumn(0),
                 terminal::Clear(ClearType::CurrentLine),
+                Print("  "), // Indent
+                Print(&self.message),
+                Print(" "),
+                SetForegroundColor(self.theme.warning),
+                Print("!"),
+                ResetColor,
+                Print(" interrupted\n"),
             )
             .ok();
 
-            // Show incomplete message
-            println!("{} interrupted", self.message);
             self.needs_clear.store(false, Ordering::Relaxed);
         }
     }
@@ -136,7 +219,7 @@ impl ProgressBar {
         use_animation: bool,
         needs_clear: Arc<AtomicBool>,
     ) -> Self {
-        let bar = Self {
+        let mut bar = Self {
             message,
             total,
             current: 0,
@@ -171,8 +254,8 @@ impl ProgressBar {
     pub fn finish(mut self) {
         self.active = false;
         self.current = self.total;
-        self.render();
 
+        // Clear the progress line and print done message
         execute!(
             io::stdout(),
             cursor::MoveToColumn(0),
@@ -180,13 +263,14 @@ impl ProgressBar {
         )
         .ok();
 
-        println!("{} done", self.message);
+        println!("  {} done", self.message);
         self.needs_clear.store(false, Ordering::Relaxed);
     }
 
     fn render(&self) {
         execute!(
             io::stdout(),
+            cursor::SavePosition,
             cursor::MoveToColumn(0),
             terminal::Clear(ClearType::CurrentLine),
         )
@@ -198,13 +282,13 @@ impl ProgressBar {
             0
         };
 
-        // Build progress bar
+        // Build progress bar with indent
         let bar_width = 20;
         let filled = (bar_width * percent as usize / 100).min(bar_width);
         let empty = bar_width - filled;
 
         print!(
-            "{} [{}{}] {}%",
+            "  {} [{}{}] {}%",
             self.message,
             "█".repeat(filled),
             "░".repeat(empty),
@@ -224,6 +308,7 @@ impl ProgressBar {
             }
         }
 
+        execute!(io::stdout(), cursor::RestorePosition).ok();
         io::stdout().flush().ok();
         self.needs_clear.store(true, Ordering::Relaxed);
     }
@@ -239,7 +324,7 @@ impl Drop for ProgressBar {
             )
             .ok();
 
-            println!("{} interrupted", self.message);
+            println!("  {} interrupted", self.message);
             self.needs_clear.store(false, Ordering::Relaxed);
         }
     }
@@ -252,9 +337,23 @@ struct Spinner {
 }
 
 impl Spinner {
+    fn braille() -> Self {
+        Self {
+            frames: vec!["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+            current: 0,
+        }
+    }
+
     fn dots() -> Self {
         Self {
-            frames: vec!["·", "··", "···", "····", "···", "··", "·"],
+            frames: vec!["   ", "·  ", "·· ", "···", " ··", "  ·", "   "],
+            current: 0,
+        }
+    }
+
+    fn wave() -> Self {
+        Self {
+            frames: vec!["◡◡◡", "◠◡◡", "◡◠◡", "◡◡◠", "◡◠◡", "◠◡◡", "◡◡◡"],
             current: 0,
         }
     }
