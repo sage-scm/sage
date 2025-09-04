@@ -1,5 +1,7 @@
 use anyhow::{anyhow, bail};
 use once_cell::sync::Lazy;
+use std::collections::HashSet;
+use std::fs;
 use std::process::Command;
 
 use crate::prelude::{Git, GitResult, parse_branch_lines};
@@ -118,6 +120,29 @@ pub fn stage_all() -> GitResult<()> {
     Git::new("add")
         .arg("--all")
         .context("Failed to stage changes")
+        .run()
+}
+
+/// Stage a specific set of file paths.
+///
+/// Accepts any iterable of items that can be referenced as `&str`,
+/// for example `Vec<String>` or `Vec<&str>`.
+pub fn stage_paths<I, S>(paths: I) -> GitResult<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let paths_vec: Vec<String> = paths.into_iter().map(|p| p.as_ref().to_string()).collect();
+
+    if paths_vec.is_empty() {
+        // Nothing to stage; treat as success.
+        return Ok(());
+    }
+
+    Git::new("add")
+        .arg("--")
+        .args(&paths_vec)
+        .context("Failed to stage provided paths")
         .run()
 }
 
@@ -258,4 +283,94 @@ pub fn current_upstream() -> GitResult<String> {
         .args(["--abbrev-ref", "--symbolic-full-name", "@{u}"])
         .context("Failed to get upstream branch")
         .output()
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ChangedFile {
+    pub name: String,
+    pub additions: usize,
+    pub deletions: usize,
+}
+
+/// Return all changed files relative to HEAD with additions and deletions.
+pub fn changed_files() -> GitResult<Vec<ChangedFile>> {
+    // Gather tracked changes (staged + unstaged) vs HEAD
+    let diff_output = Git::new("diff")
+        .args(["--numstat", "HEAD"]) // includes both staged and unstaged changes vs HEAD
+        .context("Failed to get changed files")
+        .output()?;
+
+    let mut files = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+
+    for line in diff_output.lines() {
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        let additions = parts[0].parse::<usize>().unwrap_or(0);
+        let deletions = parts[1].parse::<usize>().unwrap_or(0);
+        let name = parts[2].to_string();
+        seen.insert(name.clone());
+        files.push(ChangedFile {
+            name,
+            additions,
+            deletions,
+        });
+    }
+
+    // Also include untracked files (not shown by `git diff`)
+    // We approximate additions as the file's line count; ensure at least 1 so they render as "added".
+    if let Ok(untracked) = Git::new("ls-files")
+        .args(["--others", "--exclude-standard"]) // human-readable (newline separated)
+        .output_lines()
+    {
+        for name in untracked
+            .into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+        {
+            if seen.contains(&name) {
+                continue;
+            }
+
+            let additions = fs::read_to_string(&name)
+                .map(|s| {
+                    let count = s.lines().count();
+                    if count == 0 { 1 } else { count }
+                })
+                .unwrap_or(1);
+
+            files.push(ChangedFile {
+                name,
+                additions,
+                deletions: 0,
+            });
+        }
+    }
+
+    Ok(files)
+}
+
+/// Get total additions and deletions for the last commit.
+pub fn last_commit_additions_deletions() -> GitResult<(usize, usize)> {
+    // Use git log to emit only numstat lines for the last commit
+    let output = Git::new("log")
+        .args(["-1", "--numstat", "--format="])
+        .context("Failed to get last commit stats")
+        .output()?;
+
+    let mut additions: usize = 0;
+    let mut deletions: usize = 0;
+
+    for line in output.lines() {
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        additions = additions.saturating_add(parts[0].parse::<usize>().unwrap_or(0));
+        deletions = deletions.saturating_add(parts[1].parse::<usize>().unwrap_or(0));
+    }
+
+    Ok((additions, deletions))
 }

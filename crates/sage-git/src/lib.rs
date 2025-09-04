@@ -4,6 +4,7 @@ pub mod commit;
 pub mod config;
 pub mod diff;
 pub mod helpers;
+pub mod hooks;
 pub mod prelude;
 pub mod rebase;
 pub mod repo;

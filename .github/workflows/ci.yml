@@ -2,14 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
 
 jobs:
   check:
@@ -17,13 +18,15 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        
+        uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -34,7 +37,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Check code
         run: just check
 
@@ -43,15 +46,15 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-          
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Check formatting
         run: just fmt-check
 
@@ -60,15 +63,15 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-          
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -79,7 +82,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Run clippy
         run: just lint
 
@@ -91,13 +94,13 @@ jobs:
         os: [blacksmith-2vcpu-ubuntu-2404-arm, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-        
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -108,7 +111,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Run tests
         run: just test
 
@@ -117,13 +120,13 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-        
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -134,7 +137,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Check documentation
         run: just doc-check
 
@@ -143,16 +146,16 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-        
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Install cargo-audit
         run: cargo install cargo-audit
-        
+
       - name: Run security audit
         run: just audit
 
@@ -164,13 +167,13 @@ jobs:
         os: [blacksmith-2vcpu-ubuntu-2404-arm, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-        
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -181,10 +184,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Build release
         run: just release
-        
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

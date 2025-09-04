@@ -35,7 +35,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, tui: &Tui) -> Result<()> {
     let status = status()?;
 
     // Early exit on invalid options
-    early_exists(&opts, &status, &graph)?;
+    early_exist(&opts, &status, &graph)?;
 
     // Check if there are loose changes
     validate_status(&status, tui)?;
@@ -65,7 +65,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, tui: &Tui) -> Result<()> {
     }
 
     if branch_exists {
-        switch_existing(&opts.name, tui)?;
+        switch_existing(&opts.name, opts.fuzzy, tui)?;
     } else {
         create_new_branch(&opts.name, tui)?;
         created = true;
@@ -92,7 +92,7 @@ pub fn change_branch(mut opts: ChangeBranchOpts, tui: &Tui) -> Result<()> {
 /// - Cannot create a branch with a fuzzy name
 /// - Branch exists within another stack
 /// - Branch is not part of the current stack
-fn early_exists(opts: &ChangeBranchOpts, status: &GitStatus, graph: &SageGraph) -> Result<()> {
+fn early_exist(opts: &ChangeBranchOpts, status: &GitStatus, graph: &SageGraph) -> Result<()> {
     if !opts.parent.is_empty() && !exists(&opts.parent).unwrap_or_default() {
         bail!("Parent branch does not exist");
     }
@@ -130,25 +130,27 @@ fn create_new_branch(name: &str, tui: &Tui) -> Result<()> {
 
     tui.message(
         MessageType::Success,
-        &format!("created and switched to '{}'", name),
+        &format!("created and switched to '{name}'"),
     )?;
 
     Ok(())
 }
 
 /// Switches to an existing branch.
-fn switch_existing(name: &str, tui: &Tui) -> Result<()> {
-    let choice = tui.prompt(&format!("'{}' exists, switch to it", name), &['y', 'n'])?;
+fn switch_existing(name: &str, fuzzy: bool, tui: &Tui) -> Result<()> {
+    if !fuzzy {
+        let choice = tui.prompt(&format!("'{name}' exists, switch to it"), &['y', 'n'])?;
 
-    if choice != 'y' {
-        bail!("Cancelled");
+        if choice != 'y' {
+            bail!("Cancelled");
+        }
     }
 
-    let progress = tui.progress(&format!("switching to '{}'", name));
+    let progress = tui.progress(&format!("switching to '{name}'"));
     switch(name, false)?;
     progress.done();
 
-    tui.message(MessageType::Success, &format!("switched to '{}'", name))?;
+    tui.message(MessageType::Success, &format!("switched to '{name}'"))?;
 
     Ok(())
 }

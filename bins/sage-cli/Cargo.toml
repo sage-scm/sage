@@ -14,19 +14,17 @@ name = "sg"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.37", features = ["derive", "color"] }
-owo-colors = "4.2.0"
+clap = { version = "4.5.37", features = ["derive"] }
 anyhow = { workspace = true }
-tokio = { version = "1.36.0", features = ["full"] }
+tokio = "1.36.0"
 sage-core = { path = "../../crates/sage-core" }
 sage-git = { path = "../../crates/sage-git" }
-sage-plugin = { version = "0.1.0", path = "../../crates/sage-plugin" }
 sage-tui = { path = "../../crates/sage-tui" }
 sage-config = { path = "../../crates/sage-config" }
 sage-events = { path = "../../crates/sage-events" }
 toml = { workspace = true }
 colored = { workspace = true }
-uuid = "1.6"
+uuid = { version = "1.6", default-features = false }
 crossterm = { workspace = true }
-humantime = { workspace = true }
 ctrlc = "3.4.7"
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }

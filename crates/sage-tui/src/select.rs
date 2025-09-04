@@ -8,42 +8,27 @@ use crossterm::{
 };
 use std::io::{self, Write};
 
-use crate::Theme;
+use crate::{Theme, supports_color};
 
-/// Action to take after handling a key
 enum SelectAction {
     Continue,
     Select,
     Cancel,
 }
 
-/// Interactive select component with fuzzy search
 pub struct Select<'a, T> {
-    /// Items to select from
     items: Vec<T>,
-    /// Display function for items
     display: Box<dyn Fn(&T) -> String + 'a>,
-    /// Optional preview function
     preview: Option<Box<dyn Fn(&T) -> Vec<String> + 'a>>,
-    /// Prompt message
     prompt: String,
-    /// Enable fuzzy search
     fuzzy_search: bool,
-    /// Current filter string
     filter: String,
-    /// Filtered items with their original indices
     filtered_indices: Vec<usize>,
-    /// Currently selected index in filtered list
     selected: usize,
-    /// Theme
     theme: Theme,
-    /// Whether colors are enabled
     use_color: bool,
-    /// Show item index numbers
     show_numbers: bool,
-    /// Max items to show at once
     max_height: usize,
-    /// Scroll offset
     scroll_offset: usize,
 }
 
@@ -69,7 +54,6 @@ impl<'a, T> Select<'a, T> {
         }
     }
 
-    /// Set custom display function
     pub fn with_display<F>(mut self, f: F) -> Self
     where
         F: Fn(&T) -> String + 'a,
@@ -78,7 +62,6 @@ impl<'a, T> Select<'a, T> {
         self
     }
 
-    /// Set preview function
     pub fn with_preview<F>(mut self, f: F) -> Self
     where
         F: Fn(&T) -> Vec<String> + 'a,
@@ -87,54 +70,42 @@ impl<'a, T> Select<'a, T> {
         self
     }
 
-    /// Enable fuzzy search
     pub fn fuzzy_search(mut self, enabled: bool) -> Self {
         self.fuzzy_search = enabled;
         self
     }
 
-    /// Show item numbers for quick selection
     pub fn show_numbers(mut self, show: bool) -> Self {
         self.show_numbers = show;
         self
     }
 
-    /// Set max visible height
     pub fn max_height(mut self, height: usize) -> Self {
-        self.max_height = height.max(3); // Minimum 3 items
+        self.max_height = height.max(3);
         self
     }
 
-    /// Set theme
     pub fn with_theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
         self
     }
 
-    /// Set whether to use colors
     pub fn with_color(mut self, use_color: bool) -> Self {
         self.use_color = use_color;
         self
     }
 
-    /// Run the interactive selection
     pub fn run(mut self) -> Result<Option<usize>> {
         if self.items.is_empty() {
             return Ok(None);
         }
-
-        // Enable raw mode for keyboard input
         terminal::enable_raw_mode()?;
 
-        // Hide cursor during selection
         execute!(io::stdout(), cursor::Hide)?;
-
-        // Save cursor position
         execute!(io::stdout(), cursor::SavePosition)?;
 
         let result = self.run_loop();
 
-        // Restore terminal state
         execute!(io::stdout(), cursor::RestorePosition)?;
         execute!(io::stdout(), terminal::Clear(ClearType::FromCursorDown))?;
         execute!(io::stdout(), cursor::Show)?;
@@ -247,7 +218,6 @@ impl<'a, T> Select<'a, T> {
         if self.filter.is_empty() {
             self.filtered_indices = (0..self.items.len()).collect();
         } else {
-            // Simple fuzzy matching
             let filter_lower = self.filter.to_lowercase();
 
             for (idx, item) in self.items.iter().enumerate() {
@@ -259,7 +229,6 @@ impl<'a, T> Select<'a, T> {
             }
         }
 
-        // Reset selection
         self.selected = 0;
         self.scroll_offset = 0;
     }
@@ -283,17 +252,12 @@ impl<'a, T> Select<'a, T> {
     }
 
     fn render(&self) -> Result<()> {
-        // Clear from cursor down
         execute!(
             io::stdout(),
             cursor::RestorePosition,
             terminal::Clear(ClearType::FromCursorDown)
         )?;
-
-        // Print prompt
         println!("  {}", self.prompt);
-
-        // Show filter if active
         if self.fuzzy_search {
             if self.filter.is_empty() {
                 println!("  {}", self.style("Type to filter...", self.theme.muted));
@@ -305,14 +269,8 @@ impl<'a, T> Select<'a, T> {
                 );
             }
         }
-
-        // Empty line for spacing
         println!();
-
-        // Calculate visible range
         let visible_end = (self.scroll_offset + self.max_height).min(self.filtered_indices.len());
-
-        // Show items
         for (display_idx, actual_idx) in self.filtered_indices[self.scroll_offset..visible_end]
             .iter()
             .enumerate()
@@ -320,8 +278,6 @@ impl<'a, T> Select<'a, T> {
             let is_selected = display_idx + self.scroll_offset == self.selected;
             let item = &self.items[*actual_idx];
             let display_text = (self.display)(item);
-
-            // Indent and selection indicator
             print!("  ");
 
             if is_selected {
@@ -330,8 +286,6 @@ impl<'a, T> Select<'a, T> {
                 print!(" ");
             }
             print!(" ");
-
-            // Number if enabled
             if self.show_numbers && display_idx < 9 {
                 print!(
                     "{} ",
@@ -340,24 +294,18 @@ impl<'a, T> Select<'a, T> {
             } else if self.show_numbers {
                 print!("  ");
             }
-
-            // Item text
             if is_selected {
                 println!("{}", self.style(&display_text, self.theme.primary));
             } else {
                 println!("{}", display_text);
             }
         }
-
-        // Show scroll indicators
         if self.scroll_offset > 0 {
             println!("  {}", self.style("↑ more above", self.theme.muted));
         }
         if visible_end < self.filtered_indices.len() {
             println!("  {}", self.style("↓ more below", self.theme.muted));
         }
-
-        // Show preview if available
         if let Some(preview_fn) = &self.preview {
             if !self.filtered_indices.is_empty() {
                 let selected_item = &self.items[self.filtered_indices[self.selected]];
@@ -372,8 +320,6 @@ impl<'a, T> Select<'a, T> {
                 }
             }
         }
-
-        // Show help
         println!();
         println!(
             "  {}",
@@ -391,10 +337,4 @@ impl<'a, T> Select<'a, T> {
             text.to_string()
         }
     }
-}
-
-fn supports_color() -> bool {
-    atty::is(atty::Stream::Stdout)
-        && std::env::var("NO_COLOR").is_err()
-        && std::env::var("TERM").map(|t| t != "dumb").unwrap_or(true)
 }

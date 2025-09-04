@@ -1,26 +1,16 @@
-/// Items that can appear in a summary line
 #[derive(Debug, Clone)]
 pub enum SummaryItem {
-    /// A count with label (e.g., "3 files")
     Count(String, usize),
-    /// Addition/deletion counts
     Changes(usize, usize),
-    /// Raw text
     Text(String),
 }
 
-/// Represents a file change
 #[derive(Debug, Clone)]
 pub struct FileChange {
-    /// File path
     pub path: String,
-    /// Lines added
     pub additions: usize,
-    /// Lines deleted
     pub deletions: usize,
-    /// File status
     pub status: FileStatus,
-    /// Optional description
     pub description: Option<String>,
 }
 
@@ -65,7 +55,6 @@ impl FileChange {
     }
 }
 
-/// File status in version control
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileStatus {
     Modified,
@@ -74,7 +63,6 @@ pub enum FileStatus {
     Renamed,
 }
 
-/// Message type for colored output
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MessageType {
     Success,

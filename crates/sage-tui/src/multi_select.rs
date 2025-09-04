@@ -1,14 +1,14 @@
 use anyhow::Result;
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    style::{Color, Print, ResetColor, SetForegroundColor, Stylize},
+    style::{Color, Stylize},
     terminal::{self, ClearType},
 };
 use std::io::{self, Write};
 
-use crate::Theme;
+use crate::{Theme, supports_color};
 
 pub struct MultiSelect<'a, T> {
     items: Vec<T>,
@@ -218,10 +218,4 @@ impl<'a, T> MultiSelect<'a, T> {
             text.to_string()
         }
     }
-}
-
-fn supports_color() -> bool {
-    atty::is(atty::Stream::Stdout)
-        && std::env::var("NO_COLOR").is_err()
-        && std::env::var("TERM").map(|t| t != "dumb").unwrap_or(true)
 }

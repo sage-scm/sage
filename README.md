@@ -8,6 +8,8 @@
 
 Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as `sg`) and an optional sync server for shared stacks. It keeps branch stacks tidy, automates the boring bits, and gives you a slick TUI when you feel fancy – **no magic, no yak shaving, just clean commits**.
 
+👉 **Just getting started?** Check out the [Getting Started guide](docs/GETTING_STARTED.md) for a step-by-step walkthrough of creating, saving, syncing, and sharing stacks.
+
 ---
 
 ## Why Sage?

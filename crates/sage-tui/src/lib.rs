@@ -37,19 +37,17 @@ pub struct Tui {
     use_color: bool,
     is_ci: bool,
     needs_clear: Arc<AtomicBool>,
-    term_width: u16,
+    last_line_blank: Arc<AtomicBool>,
 }
 
 impl Tui {
     pub fn new() -> Self {
-        let term_width = terminal::size().map(|(w, _)| w).unwrap_or(80);
-
         Self {
             theme: Theme::default(),
             use_color: supports_color(),
             is_ci: is_ci_environment(),
             needs_clear: Arc::new(AtomicBool::new(false)),
-            term_width,
+            last_line_blank: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -65,9 +63,19 @@ impl Tui {
         if !self.is_ci {
             println!("sage {}\n", self.style(command, self.theme.muted));
         } else {
-            println!("sage {}", command);
+            println!("sage {}\n", command);
         }
+        self.last_line_blank.store(false, Ordering::Relaxed);
 
+        Ok(())
+    }
+
+    pub fn blank_line(&self) -> Result<()> {
+        if !self.last_line_blank.load(Ordering::Relaxed) {
+            println!();
+            io::stdout().flush()?;
+            self.last_line_blank.store(true, Ordering::Relaxed);
+        }
         Ok(())
     }
 
@@ -109,7 +117,8 @@ impl Tui {
             })
             .collect();
 
-        println!("{}\n", parts.join("  "));
+        println!("{}", parts.join("  "));
+        self.last_line_blank.store(false, Ordering::Relaxed);
         Ok(())
     }
 
@@ -176,11 +185,10 @@ impl Tui {
             if let Some(desc) = &file.description {
                 print!("  {}", self.style(desc, self.theme.muted));
             }
-
             println!();
+            self.last_line_blank.store(false, Ordering::Relaxed);
         }
-
-        println!();
+        self.blank_line()?;
         Ok(())
     }
 
@@ -190,39 +198,35 @@ impl Tui {
             message.to_string(),
             self.use_color && !self.is_ci,
             self.needs_clear.clone(),
+            self.last_line_blank.clone(),
             self.theme.clone(),
         )
     }
 
     pub fn progress_bar(&self, message: &str, total: u64) -> ProgressBar {
         let _ = self.clear_if_needed();
-        ProgressBar::new(
-            message.to_string(),
-            total,
-            self.use_color && !self.is_ci,
-            self.needs_clear.clone(),
-        )
+        ProgressBar::new(message.to_string(), total, self.needs_clear.clone())
     }
 
     pub fn tree(&self, root: TreeNode) -> Result<()> {
         self.clear_if_needed()?;
         self.print_tree_node(&root, "", true)?;
-        println!();
+        self.blank_line()?;
         Ok(())
     }
 
     pub fn commit_message(&self, title: &str, body: Option<&str>) -> Result<()> {
         self.clear_if_needed()?;
-
-        println!("\n  {}", title);
+        self.println(&format!("  {}", title), None)?;
 
         if let Some(body) = body {
             if !body.is_empty() {
-                println!("\n  {}", self.style(body, self.theme.muted));
+                self.blank_line()?;
+                self.println(&format!("  {}", self.style(body, self.theme.muted)), None)?;
             }
         }
-
-        println!();
+        self.blank_line()?;
+        io::stdout().flush()?;
         Ok(())
     }
 
@@ -274,12 +278,14 @@ impl Tui {
         };
 
         println!("  {} {}", self.style(symbol, color), text);
+        self.last_line_blank.store(false, Ordering::Relaxed);
         Ok(())
     }
 
     pub fn hint(&self, text: &str) -> Result<()> {
         self.clear_if_needed()?;
         println!("    {}", self.style(text, self.theme.muted));
+        self.last_line_blank.store(false, Ordering::Relaxed);
         Ok(())
     }
 
@@ -288,6 +294,7 @@ impl Tui {
 
         if let Some(title) = title {
             println!("  {}", self.style(title, self.theme.muted));
+            self.last_line_blank.store(false, Ordering::Relaxed);
         }
 
         if !items.is_empty() {
@@ -317,21 +324,26 @@ impl Tui {
                             }
                         }
                         println!();
+                        self.last_line_blank.store(false, Ordering::Relaxed);
                     } else {
                         println!("{}", value);
+                        self.last_line_blank.store(false, Ordering::Relaxed);
                     }
                 } else if value.contains('↑') || value.contains('↓') {
                     self.print_colored_metrics(value)?;
                     println!();
+                    self.last_line_blank.store(false, Ordering::Relaxed);
                 } else if value.contains("ago") {
                     println!("{}", self.style(value, self.theme.muted));
+                    self.last_line_blank.store(false, Ordering::Relaxed);
                 } else {
                     println!("{}", value);
+                    self.last_line_blank.store(false, Ordering::Relaxed);
                 }
             }
         }
 
-        println!();
+        self.blank_line()?;
         Ok(())
     }
 
@@ -356,7 +368,8 @@ impl Tui {
         } else {
             println!("{}", text);
         }
-
+        self.last_line_blank
+            .store(text.trim().is_empty(), Ordering::Relaxed);
         Ok(())
     }
 
@@ -366,12 +379,12 @@ impl Tui {
         TextEditor::new()
     }
 
-    pub fn select<T>(&self, prompt: &str, items: Vec<T>) -> Select<T> {
+    pub fn select<T>(&self, prompt: &str, items: Vec<T>) -> Select<'_, T> {
         let _ = self.clear_if_needed();
         Select::new(prompt, items).with_theme(self.theme.clone())
     }
 
-    pub fn multi_select<T>(&self, prompt: &str, items: Vec<T>) -> MultiSelect<T> {
+    pub fn multi_select<T>(&self, prompt: &str, items: Vec<T>) -> MultiSelect<'_, T> {
         let _ = self.clear_if_needed();
         MultiSelect::new(prompt, items)
             .with_theme(self.theme.clone())
@@ -554,7 +567,7 @@ impl Default for Tui {
     }
 }
 
-fn supports_color() -> bool {
+pub(crate) fn supports_color() -> bool {
     atty::is(atty::Stream::Stdout)
         && std::env::var("NO_COLOR").is_err()
         && std::env::var("TERM").map(|t| t != "dumb").unwrap_or(true)

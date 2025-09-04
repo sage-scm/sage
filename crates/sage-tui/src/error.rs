@@ -1,11 +1,11 @@
 use anyhow::{Error, Result};
 use crossterm::{
     execute,
-    style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
+    style::{Attribute, Print, ResetColor, SetAttribute, SetForegroundColor},
 };
-use std::io::{self, Write};
+use std::io;
 
-use crate::{MessageType, Theme};
+use crate::Theme;
 
 pub struct ErrorDisplay {
     theme: Theme,

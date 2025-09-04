@@ -24,8 +24,8 @@ pub fn work(args: &crate::WorkArgs, global_config: &crate::GlobalConfig) -> Resu
 
     let opts = ChangeBranchOpts {
         name: branch_name,
-        parent: parent_name.to_string(),
-        create: true,
+        parent: parent_name,
+        create: !args.fuzzy,
         fetch: args.fetch,
         // use_root: args.root,
         push: args.push,

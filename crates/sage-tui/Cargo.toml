@@ -9,5 +9,6 @@ crossterm = { workspace = true }
 atty = "0.2"
 strip-ansi-escapes = "0.2"
 anyhow.workspace = true
-tempfile = "3.21.0"
+tempfile = { version = "3.21.0", default-features = false }
 which = "8.0.0"
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
