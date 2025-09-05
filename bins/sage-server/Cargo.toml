@@ -5,7 +5,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = "0.8.4"
-sage-core = { version = "0.1.0", path = "../../crates/sage-core" }
-sage-git = { version = "0.1.0", path = "../../crates/sage-git" }
-tokio = { version = "1.44.2", features = ["full"] }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
