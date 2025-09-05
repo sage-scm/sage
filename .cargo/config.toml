@@ -1,10 +1,54 @@
-# Cargo configuration for cross-platform builds
+# Cargo configuration for fast development builds
 
 [net]
 git-fetch-with-cli = true
 
-[unstable]
-codegen-backend = true
+# Platform-specific linker configuration for faster builds
+[target.x86_64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "split-debuginfo=unpacked"]
+
+[target.x86_64-pc-windows-msvc]
+linker = "lld-link.exe"
+
+[target.x86_64-pc-windows-gnu]
+linker = "rust-lld.exe"
+
+# Use multiple codegen units for faster compilation (trades compile time for runtime performance)
 [profile.dev]
-codegen-backend = "cranelift"
+# Cranelift backend for faster debug builds (requires nightly)
+# Uncomment if using nightly:
+# codegen-backend = "cranelift"
+
+# Faster compilation settings
+codegen-units = 256
+debug = 1  # Minimal debug info
+
+[profile.dev.package."*"]
+# Optimize dependencies even in debug mode
+opt-level = 2
+
+# Release build optimizations
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+# Special profile for CI/testing - fast to compile but with some optimizations
+[profile.ci]
+inherits = "dev"
+opt-level = 1
+
+# Profile for profiling/benchmarking
+[profile.bench]
+inherits = "release"
+debug = true
