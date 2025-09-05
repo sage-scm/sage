@@ -12,8 +12,8 @@ echo -e "${BLUE}     Running pre-push verification...      ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
 
 # Parse remote and branch info
-remote="$1"
-url="$2"
+remote="${1:-}"
+url="${2:-}"
 
 # Check if pushing to main/master branch
 protected_branches="main master"

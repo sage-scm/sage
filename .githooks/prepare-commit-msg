@@ -2,8 +2,8 @@
 set -euo pipefail
 
 COMMIT_MSG_FILE=$1
-COMMIT_SOURCE=$2
-SHA1=$3
+COMMIT_SOURCE=${2:-}
+SHA1=${3:-}
 
 # Skip if message was provided (not empty commit)
 if [ -z "${COMMIT_SOURCE:-}" ]; then
