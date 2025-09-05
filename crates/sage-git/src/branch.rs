@@ -121,6 +121,29 @@ pub fn stage_all() -> GitResult<()> {
         .run()
 }
 
+/// Stage a specific set of file paths.
+///
+/// Accepts any iterable of items that can be referenced as `&str`,
+/// for example `Vec<String>` or `Vec<&str>`.
+pub fn stage_paths<I, S>(paths: I) -> GitResult<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let paths_vec: Vec<String> = paths.into_iter().map(|p| p.as_ref().to_string()).collect();
+
+    if paths_vec.is_empty() {
+        // Nothing to stage; treat as success.
+        return Ok(());
+    }
+
+    Git::new("add")
+        .arg("--")
+        .args(&paths_vec)
+        .context("Failed to stage provided paths")
+        .run()
+}
+
 /// List all local branches
 #[derive(Debug, Default)]
 pub struct BranchList {
