@@ -290,13 +290,7 @@ pub enum StackCmd {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config = sage_config::ConfigManager::new()?;
-    let cfg = config.load()?;
-
-    if cfg.auto_update {
-        let _ = check_for_updates().await;
-    }
-
+    // Parse CLI first so we can respect flags like --json/--no-color early
     let cli = Cli::parse();
     let global_config = GlobalConfig::new(cli.json, cli.no_color);
 
@@ -308,6 +302,14 @@ async fn main() -> Result<()> {
         if cli.ci {
             std::env::set_var("CI", "1");
         }
+    }
+
+    // Load config and run update checks unless JSON output is requested
+    let config = sage_config::ConfigManager::new()?;
+    let cfg = config.load()?;
+
+    if cfg.auto_update && !cli.json {
+        let _ = check_for_updates().await;
     }
 
     // Handle Ctrl+C gracefully
