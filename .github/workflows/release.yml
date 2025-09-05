@@ -21,6 +21,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   prepare:
     name: Prepare Release
@@ -31,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
-      
+
       - name: Determine version
         id: version
         run: |
@@ -44,26 +47,28 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Releasing version: $VERSION"
-      
+
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-      
+        uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Update version files
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
-          
+
           # Update the version in bins/sage-cli/Cargo.toml
           sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
-          
+
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
-          
+
           echo "Version files updated to ${VERSION_NO_V}"
-        
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Run pre-release checks
         run: just pre-release
 
@@ -104,32 +109,32 @@ jobs:
             asset_name: sg-windows-arm64
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-          
+
       - name: Install just
         uses: taiki-e/install-action@just
-        
+
       - name: Install musl tools for x86_64
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-tools
-          
+
       - name: Install AArch64 GNU Toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
-          
+
       - name: Install cross for musl targets
         if: matrix.target == 'aarch64-unknown-linux-musl'
         run: |
           cargo install cross --locked
-        
+
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -140,7 +145,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          
+
       - name: Build release
         shell: bash
         run: |
@@ -158,7 +163,7 @@ jobs:
                 export CC=aarch64-linux-gnu-gcc
                 ;;
             esac
-            
+
             # Build with appropriate flags
             # For Windows, use default features since OpenSSL is now excluded on Windows
             # For others, disable default features to avoid AI feature
@@ -172,12 +177,12 @@ jobs:
                 cargo build --release --target ${{ matrix.target }} --bin sg --no-default-features
             fi
           fi
-          
+
       - name: Package binary and generate checksums
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          
+
           # Determine binary extension
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             BINARY_NAME="sg.exe"
@@ -190,7 +195,7 @@ jobs:
             # Create tar.gz for Unix-like systems
             tar czf "$ARCHIVE_NAME" "$BINARY_NAME"
           fi
-          
+
           # Generate SHA256 checksum
           if [[ "${{ matrix.target }}" == *"windows"* ]] && command -v powershell >/dev/null 2>&1; then
             # Use PowerShell on Windows (Git Bash has PowerShell available)
@@ -202,17 +207,17 @@ jobs:
           else
             echo "Warning: No SHA256 utility found"
           fi
-          
+
           # Move files to root (portable path)
           mv "$ARCHIVE_NAME"* "${{ github.workspace }}/"
-          
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
           path: |
             ${{ matrix.asset_name }}.*
-  
+
   release:
     name: Create Release
     needs: [prepare, build]
@@ -223,12 +228,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != ''
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-      
+
       - name: Determine if prerelease
         id: prerelease
         run: |
@@ -238,7 +243,7 @@ jobs:
           else
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Handle existing release and tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -246,13 +251,13 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Check if release exists and delete it (but keep the tag for now)
           if gh release view "${VERSION}" &>/dev/null; then
             echo "Release ${VERSION} already exists. Deleting it..."
             gh release delete "${VERSION}" --yes
           fi
-          
+
           # For manual dispatch, handle tag creation/update
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.event_name }}" == "workflow_call" ]]; then
             # Check if tag exists
@@ -267,7 +272,7 @@ jobs:
               git push origin "${VERSION}"
             fi
           fi
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -283,7 +288,7 @@ jobs:
             ./artifacts/**/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
+
   update-homebrew:
     name: Update Homebrew Formula
     needs: [prepare, release]
@@ -292,42 +297,42 @@ jobs:
     if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.')
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-      
+
       - name: Calculate SHA256 for all builds
         id: sha256
         run: |
           # Get SHA256 for Intel Mac
           MACOS_AMD64_SHA=$(cat ./artifacts/sg-macos-amd64/sg-macos-amd64.tar.gz.sha256 | cut -d' ' -f1)
           echo "macos_amd64_sha256=$MACOS_AMD64_SHA" >> $GITHUB_OUTPUT
-          
+
           # Get SHA256 for Apple Silicon
           MACOS_ARM64_SHA=$(cat ./artifacts/sg-macos-arm64/sg-macos-arm64.tar.gz.sha256 | cut -d' ' -f1)
           echo "macos_arm64_sha256=$MACOS_ARM64_SHA" >> $GITHUB_OUTPUT
-          
+
           # Get SHA256 for Linux builds
           LINUX_AMD64_SHA=$(cat ./artifacts/sg-linux-amd64/sg-linux-amd64.tar.gz.sha256 | cut -d' ' -f1)
           echo "linux_amd64_sha256=$LINUX_AMD64_SHA" >> $GITHUB_OUTPUT
-          
+
           LINUX_ARM64_SHA=$(cat ./artifacts/sg-linux-arm64/sg-linux-arm64.tar.gz.sha256 | cut -d' ' -f1)
           echo "linux_arm64_sha256=$LINUX_ARM64_SHA" >> $GITHUB_OUTPUT
-      
+
       - name: Generate Homebrew Formula
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
-          
+
           cat > sage.rb << EOF
           class Sage < Formula
             desc "🌿 Sage — A Git workflow tool for managing branches and commits"
             homepage "https://github.com/sage-scm/sage"
             version "${VERSION_NO_V}"
             license "MIT"
-          
+
             on_macos do
               if Hardware::CPU.intel?
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-macos-amd64.tar.gz"
@@ -337,7 +342,7 @@ jobs:
                 sha256 "${{ steps.sha256.outputs.macos_arm64_sha256 }}"
               end
             end
-          
+
             on_linux do
               if Hardware::CPU.intel?
                 url "https://github.com/sage-scm/sage/releases/download/${VERSION}/sg-linux-amd64.tar.gz"
@@ -347,20 +352,20 @@ jobs:
                 sha256 "${{ steps.sha256.outputs.linux_arm64_sha256 }}"
               end
             end
-          
+
             def install
               bin.install "sg"
             end
-          
+
             test do
               system "#{bin}/sg", "--version"
             end
           end
           EOF
-          
+
           echo "Homebrew formula generated:"
           cat sage.rb
-      
+
       - name: Create/Update Homebrew Tap PR
         env:
           GITHUB_TOKEN: ${{ secrets.SERVICE_ACCOUNT_TOKEN }}
@@ -372,51 +377,51 @@ jobs:
             echo "The generated Homebrew formula is available as an artifact for manual update."
             exit 0
           fi
-          
+
           # Try to create a PR to the Homebrew tap if it exists
           if gh repo view sage-scm/homebrew-cask &>/dev/null; then
             echo "Homebrew tap repository found. Creating update PR..."
-            
+
             VERSION="${{ needs.prepare.outputs.version }}"
-            
+
             # Clone using authenticated URL
             git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/sage-scm/homebrew-cask.git" homebrew-tap
             cd homebrew-tap
-            
+
             # Configure git
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            
+
             # Create a new branch for the update
             git checkout -b "update-sage-${VERSION}"
-            
+
             # Update the formula
             mkdir -p Formula
             cp ../sage.rb Formula/sage.rb
-            
+
             # Commit and push
             git add Formula/sage.rb
             git commit -m "Update Sage to ${VERSION}"
-            
+
             # Push the branch
             if ! git push origin "update-sage-${VERSION}"; then
               echo "::error title=Push Failed::Cannot push to homebrew-cask repository"
               echo "Make sure SERVICE_ACCOUNT_TOKEN has write access to sage-scm/homebrew-cask"
               exit 1
             fi
-            
+
             # Create PR
             gh pr create \
               --repo sage-scm/homebrew-cask \
               --title "Update Sage to ${VERSION}" \
               --body "Automated update of Sage formula to version ${VERSION}
-              
+
               This PR was automatically generated by the release workflow.
-              
+
               Release: https://github.com/${{ github.repository }}/releases/tag/${VERSION}" \
               --base main \
               --head "update-sage-${VERSION}"
-            
+
             echo "::notice title=Homebrew Formula Updated::A PR has been created to update the Homebrew formula."
           else
             echo "::warning title=Homebrew Tap Not Found::The repository sage-scm/homebrew-cask does not exist or is not accessible."
@@ -426,13 +431,13 @@ jobs:
             echo "3. Users can then install with: brew tap sage-scm/cask && brew install sage"
             echo "4. Optionally, create a HOMEBREW_TAP_TOKEN secret with write access to the tap repo for automatic updates"
           fi
-      
+
       - name: Upload Formula as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: homebrew-formula
           path: sage.rb
-  
+
   finalize:
     name: Finalize Release
     needs: [prepare, release, update-homebrew]
@@ -444,39 +449,38 @@ jobs:
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
           ref: main
-      
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Update and commit version changes
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
-          
+
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Update the version in bins/sage-cli/Cargo.toml
           sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
-          
+
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
-          
+
           # Check if there are changes to commit
           if ! git diff --exit-code bins/sage-cli/Cargo.toml Cargo.lock; then
             # Stage the changes
             git add bins/sage-cli/Cargo.toml Cargo.lock
-            
+
             # Commit with conventional commit message and skip CI
             git commit -m "chore(release): bump version to ${VERSION_NO_V} [skip ci]
 
 Automated version bump after release ${VERSION}"
-            
+
             # Push the changes
             git push origin main
             echo "✅ Version ${VERSION_NO_V} committed and pushed to main"
           else
             echo "ℹ️ Version already up to date, no changes needed"
           fi
-

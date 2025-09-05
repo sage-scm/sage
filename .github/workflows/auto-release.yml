@@ -2,16 +2,16 @@ name: Auto Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Run in dry-run mode (no release created)'
+        description: "Run in dry-run mode (no release created)"
         required: false
         default: false
         type: boolean
       debug:
-        description: 'Enable debug logging'
+        description: "Enable debug logging"
         required: false
         default: false
         type: boolean
@@ -20,6 +20,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   DEBUG: ${{ github.event.inputs.debug || 'false' }}
+  CARGO_INCREMENTAL: 0
 
 permissions:
   contents: write
@@ -44,7 +45,7 @@ jobs:
 
       - name: Get latest release
         id: latest_release
-        run: ./scripts/get-latest-release.sh
+        run: ./scripts/release/get-latest-release.sh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: false
@@ -56,30 +57,30 @@ jobs:
             # For first release, validate last 10 commits or all if less than 10
             COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "0")
             if [ "$COMMIT_COUNT" -gt 10 ]; then
-              ./scripts/validate-commits.sh "HEAD~10..HEAD" false
+              ./scripts/release/validate-commits.sh "HEAD~10..HEAD" false
             else
-              ./scripts/validate-commits.sh "HEAD~$COMMIT_COUNT..HEAD" false 2>/dev/null || ./scripts/validate-commits.sh "" false
+              ./scripts/release/validate-commits.sh "HEAD~$COMMIT_COUNT..HEAD" false 2>/dev/null || ./scripts/release/validate-commits.sh "" false
             fi
           else
             if git rev-parse "v${{ steps.latest_release.outputs.latest_version }}" >/dev/null 2>&1; then
-              ./scripts/validate-commits.sh "v${{ steps.latest_release.outputs.latest_version }}..HEAD" false
+              ./scripts/release/validate-commits.sh "v${{ steps.latest_release.outputs.latest_version }}..HEAD" false
             else
               # Fallback if tag doesn't exist
-              ./scripts/validate-commits.sh "HEAD~10..HEAD" false
+              ./scripts/release/validate-commits.sh "HEAD~10..HEAD" false
             fi
           fi
         continue-on-error: false
 
       - name: Analyze conventional commits
         id: analysis
-        run: ./scripts/analyze-commits.sh "${{ steps.latest_release.outputs.latest_version }}" "${{ steps.latest_release.outputs.is_first_release }}"
+        run: ./scripts/release/analyze-commits.sh "${{ steps.latest_release.outputs.latest_version }}" "${{ steps.latest_release.outputs.is_first_release }}"
         continue-on-error: false
 
       - name: Generate release notes
         id: release_notes
         if: steps.analysis.outputs.should_release == 'true'
         run: |
-          ./scripts/generate-release-notes.sh \
+          ./scripts/release/generate-release-notes.sh \
             "${{ steps.analysis.outputs.next_version }}" \
             "${{ steps.analysis.outputs.version_type }}" \
             "${{ steps.analysis.outputs.current_version }}" \
@@ -92,7 +93,7 @@ jobs:
         id: changelog
         if: steps.analysis.outputs.should_release == 'true'
         run: |
-          ./scripts/update-changelog.sh \
+          ./scripts/release/update-changelog.sh \
             "${{ steps.analysis.outputs.next_version }}" \
             "${{ steps.analysis.outputs.version_type }}" \
             "${{ steps.analysis.outputs.current_version }}" \
@@ -123,7 +124,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install just
         uses: taiki-e/install-action@just
@@ -182,13 +185,13 @@ jobs:
         run: |
           # Find all asset files and upload with retry logic
           set -e
-          
+
           # Function to upload with retry
           upload_with_retry() {
             local file="$1"
             local max_attempts=3
             local attempt=1
-            
+
             while [ $attempt -le $max_attempts ]; do
               echo "Uploading $file (attempt $attempt/$max_attempts)"
               if gh release upload v${{ needs.analyze.outputs.next_version }} "$file" --clobber; then
@@ -202,11 +205,11 @@ jobs:
                 attempt=$((attempt + 1))
               fi
             done
-            
+
             echo "ERROR: Failed to upload $file after $max_attempts attempts"
             return 1
           }
-          
+
           # Upload all assets
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) | while read -r file; do
             upload_with_retry "$file"
@@ -227,26 +230,26 @@ jobs:
             const title = `🚨 Automated Release Failed - v${{ needs.analyze.outputs.next_version || 'unknown' }}`;
             const body = `
             ## Release Failure Report
-            
+
             **Version:** v${{ needs.analyze.outputs.next_version || 'unknown' }}
             **Workflow:** ${{ github.workflow }}
             **Run ID:** ${{ github.run_id }}
             **Commit:** ${{ github.sha }}
-            
+
             ### Failed Jobs
             - Analyze: ${{ needs.analyze.result }}
             - Release: ${{ needs.release.result }}
             - Build Assets: ${{ needs.build-assets.result }}
             - Attach Assets: ${{ needs.attach-assets.result }}
-            
+
             ### Next Steps
             1. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed logs
             2. Fix any issues identified
             3. Re-run the workflow or create a manual release
-            
+
             This issue was automatically created by the release workflow.
             `;
-            
+
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,

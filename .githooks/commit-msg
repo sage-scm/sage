@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+commit_file="$1"
+commit_message=$(cat "$commit_file")
+
+# Skip during rebase/merge
+if [[ -d ".git/rebase-merge" || -d ".git/rebase-apply" || -d ".git/MERGE_HEAD" ]]; then
+    exit 0
+fi
+
+# Check commit message format
+# Expected format: type(scope): description
+# or: type: description
+# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build
+
+valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|build"
+pattern="^($valid_types)(\([a-z0-9_-]+\))?: .{1,}"
+
+if ! echo "$commit_message" | grep -qE "$pattern"; then
+    echo -e "${RED}✗ Invalid commit message format${NC}"
+    echo
+    echo "Expected format: type(scope): description"
+    echo "                 type: description"
+    echo
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+    echo
+    echo "Examples:"
+    echo "  feat(cli): add new work command"
+    echo "  fix: resolve merge conflict in save workflow"
+    echo "  docs(readme): update installation instructions"
+    echo
+    echo "Your message: $commit_message"
+    exit 1
+fi
+
+# Check commit message length (first line)
+first_line=$(echo "$commit_message" | head -n1)
+if [ ${#first_line} -gt 100 ]; then
+    echo -e "${YELLOW}⚠️  Commit message first line is ${#first_line} characters (recommended: <100)${NC}"
+fi
+
+echo -e "${GREEN}✓ Commit message format is valid${NC}"

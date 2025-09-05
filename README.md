@@ -47,19 +47,23 @@ Download pre-built binaries from [GitHub Releases](https://github.com/sage-scm/s
 
 All downloads include SHA256 checksums for verification.
 
-### Install from Source
+### Building from Source
 
 ```bash
-# Clone the repository
+# Quick developer setup (installs hooks, tools, and builds project)
 git clone https://github.com/sage-scm/sage
 cd sage
+./scripts/dev-setup.sh
 
-# Install sage
-just install
+# Or build manually:
+cargo build --release
+./target/release/sg --version
 
 # Try commands without installing
 just try work my-feature
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full development setup including Git hooks and code quality tools.
 
 ### Package Managers
 

@@ -3,13 +3,13 @@ name: Update Copyright Year
 on:
   schedule:
     # Run at 00:05 on January 1st
-    - cron: '5 0 1 1 *'
+    - cron: "5 0 1 1 *"
   # Allow manual triggering
   workflow_dispatch:
 
 jobs:
   update-copyright:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for proper PR creation
+          fetch-depth: 0 # Fetch all history for proper PR creation
 
       - name: Set up Git
         run: |
@@ -38,7 +38,7 @@ jobs:
         run: |
           # Initialize error tracking
           ERRORS=""
-          
+
           # Update MIT license file
           if [ -f LICENSE-MIT ]; then
             # More robust pattern that handles various copyright formats
@@ -51,7 +51,7 @@ jobs:
           else
             ERRORS="$ERRORS\n- LICENSE-MIT file not found"
           fi
-          
+
           # Update Apache license file
           if [ -f LICENSE-APACHE ]; then
             # More robust pattern that handles various copyright formats
@@ -64,7 +64,7 @@ jobs:
           else
             ERRORS="$ERRORS\n- LICENSE-APACHE file not found"
           fi
-          
+
           # Check for Cargo.toml files without license field
           MISSING_LICENSES=""
           while IFS= read -r file; do
@@ -72,11 +72,11 @@ jobs:
               MISSING_LICENSES="$MISSING_LICENSES\n- $file"
             fi
           done < <(find . -name "Cargo.toml" -not -path "./target/*")
-          
+
           if [ -n "$MISSING_LICENSES" ]; then
             ERRORS="$ERRORS\n- The following Cargo.toml files are missing license fields:$MISSING_LICENSES"
           fi
-          
+
           # Save errors for creating issue if needed
           if [ -n "$ERRORS" ]; then
             {
@@ -107,11 +107,11 @@ jobs:
           title: "Update copyright year to ${{ env.YEAR }}"
           body: |
             This is an automated PR to update the copyright year to ${{ env.YEAR }}.
-            
+
             The update was performed by the scheduled GitHub Action that runs at the beginning of each year.
           branch: update-copyright-year
           delete-branch: true
-          base: main  # Explicitly specify the base branch
+          base: main # Explicitly specify the base branch
 
       - name: PR Result
         if: env.CHANGES == 'true'
@@ -126,8 +126,8 @@ jobs:
           title: "Failed to update copyright year to ${{ env.YEAR }}"
           body: |
             The scheduled GitHub Action to update the copyright year encountered the following issues:
-            
+
             ${{ env.ERRORS }}
-            
+
             Please manually address these issues.
           labels: bug, automation
