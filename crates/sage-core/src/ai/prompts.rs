@@ -38,27 +38,87 @@ Bad examples (avoid):
     format!("{prefix}{diff}{footer}")
 }
 
-/// Prompt for generating pull request descriptions
-pub fn pr_description_prompt(title: &str, commit_log: &str) -> String {
-    format!(
-        r#"You are writing a GitHub pull request description for a change with the title: "{title}".
+/// Prompt for generating pull request title
+pub async fn pr_title_prompt(commits: Vec<String>) -> String {
+    // Join the commits into a block that can be pasted into the prompt.
+    let commit_log = commits.join("\n");
 
-        Here's information about the commits in this PR:
+    // The prompt that instructs the LLM to generate the title.
+    format!(
+        r#"You are an assistant that converts a list of git commit messages into a single Conventional Commit pull request title.
+
+        The input is the following commit messages, one per line:
         ```
         {commit_log}
         ```
 
-        Follow these guidelines for an effective PR description:
+        Follow these rules to generate the title:
 
-        1. Start with a brief summary of what this PR achieves (1-2 sentences).
-        2. Explain the problem this PR solves and why it's important.
-        3. Highlight key changes or new features introduced.
-        4. If applicable, mention any testing performed or areas that would benefit from extra review.
-        5. If there are any breaking changes, dependencies, or deployment considerations, note them.
+        1. **Choose the most relevant commit** – prefer the most recent commit that starts with a Conventional Commit type (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`).
+        2. **Scope** – if any commit contains a JIRA ticket reference like `ABC‑123` or `PROJ‑4567`, use that ticket as the scope: `type(scope): subject`.
+        3. **Breaking changes** – if any commit mentions `BREAKING CHANGE` (case‑insensitive), add an exclamation mark after the type: `type!:`.
+        4. **Subject** – use the first line of the chosen commit after the type (and optional scope), trimmed.
+        5. **Lower‑case** – the entire title must be lower‑cased.
+        6. **Format** – output exactly one line, e.g. `feat(scope): subject` or `fix: subject`.
+        7. **Fallback** – if no commit matches the pattern, output `chore: no conventional commit found`.
+        8. **Length** - Keep the title between 32-50 characters max
+        9. **Relevane** - Ensure the title captures all the changes / the core of them, and not just the first commit.
 
-        Format your description professionally, using proper Markdown formatting with headers and lists where appropriate.
-        Be concise yet thorough - aim for clarity and completeness.
-
-        Your response should ONLY include the PR description text, no additional explanations or comments."#
+        Return **only** the pull request title, no additional explanation or formatting."#
     )
+}
+
+/// Prompt for generating pull request descriptions
+pub fn pr_description_prompt(title: &str, commits: Vec<String>, template: &str) -> String {
+    // Join the commits into a block that can be injected into the prompt.
+    let commit_log = commits.join("\n");
+
+    // The prompt text – it changes slightly depending on whether a template is supplied.
+    if template.trim().is_empty() {
+        format!(
+            r#"You are an assistant that writes a concise, professional GitHub pull‑request body.
+
+            The pull‑request title is: "{title}"
+
+            The list of commits in this PR is:
+            ```
+            {commit_log}
+            ```
+
+            Write a well‑structured body in Markdown that includes the following sections:
+
+            1. **Summary** – 1–2 sentences summarizing what the PR achieves.
+            2. **Problem** – a short description of the issue or feature being addressed.
+            3. **Solution** – the key changes or new features introduced.
+            4. **Testing** – what tests were added or updated, and any areas that might need additional review.
+            5. **Breaking changes** – list any breaking changes or deployment considerations.
+
+            The body should be clean, no extraneous commentary, and ready to be pasted directly into the GitHub PR description field. Return only the Markdown body, nothing else."#
+        )
+    } else {
+        // A non‑empty template was supplied – we ask the LLM to replace the
+        // placeholders ({{summary}}, {{details}}, etc.) with appropriate content.
+        format!(
+            r#"You are an assistant that fills in a pull‑request template.
+
+            The pull‑request title is: "{title}"
+
+            The list of commits in this PR is:
+            ```
+            {commit_log}
+            ```
+
+            The template is:
+            ```
+            {template}
+            ```
+
+            Replace the placeholders in the template with content that matches the sections
+            (you can assume the placeholders are {{summary}}, {{details}}, {{testing}},
+            {{breaking_changes}}, etc.).  Keep the formatting exactly as in the template.
+            If there are no placeholders, utilise the headers as markers for the different content.
+            Ensure you only check boxes / fill in information you actually know. Don't guess anything.
+            Return **only** the completed Markdown body, no additional explanation."#
+        )
+    }
 }
