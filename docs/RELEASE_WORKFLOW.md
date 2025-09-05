@@ -219,7 +219,7 @@ cargo install --git https://github.com/sage-scm/sage --tag v1.2.3 sage-cli
 **Solutions**:
 ```bash
 # Check commit format
-./scripts/validate-commits.sh "HEAD~5..HEAD"
+./scripts/release/validate-commits.sh "HEAD~5..HEAD"
 
 # Check workflow status
 gh workflow list
@@ -267,16 +267,16 @@ Test the release workflow locally:
 
 ```bash
 # Test commit analysis
-./scripts/analyze-commits.sh "1.0.0" "false"
+./scripts/release/analyze-commits.sh "1.0.0" "false"
 
 # Test release notes generation
-./scripts/generate-release-notes.sh "1.1.0" "minor" "1.0.0" "0" "2" "1" "3"
+./scripts/release/generate-release-notes.sh "1.1.0" "minor" "1.0.0" "0" "2" "1" "3"
 
 # Test full workflow
-./scripts/test-release-workflow.sh
+./scripts/release/test-release-workflow.sh
 
 # Validate commits
-./scripts/validate-commits.sh "HEAD~10..HEAD"
+./scripts/release/validate-commits.sh "HEAD~10..HEAD"
 ```
 
 ### Monitoring
