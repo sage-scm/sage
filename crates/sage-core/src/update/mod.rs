@@ -130,87 +130,121 @@ fn show_update_notification(current: &str, latest: &str) {
     let repo_name = option_env!("SAGE_REPO_NAME").unwrap_or("sage");
     let installation_method = detect_installation_method();
 
+    // Visual: compact, clear, and consistent spacing
+    println!();
     println!(
-        "\n{}",
-        "✨ A new version of Sage is available!".sage().bold()
+        "{}",
+        "────────────────────────────────────────────────────────".gray()
     );
-    println!("Current version: {}", current.yellow());
-    println!("Latest version: {}", latest.green());
+    println!(
+        "{} {} {} {}",
+        "✨ Sage update available".sage().bold(),
+        "—".gray(),
+        format!("v{}", current).yellow().bold(),
+        format!("→ v{}", latest).green().bold()
+    );
+
+    let notes_url = format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}");
+    println!("{} {}", "Release notes:".bold(), notes_url.as_str().url());
     println!();
 
     match installation_method {
         InstallationMethod::Homebrew => {
-            println!("To update via Homebrew:");
+            println!("{}", "Update via Homebrew:".bold());
             println!(
-                "  {}",
+                "  {} {}",
+                "•".gray(),
                 "brew update && brew upgrade sage-scm/sage/sage".cyan()
             );
-            println!();
-            println!("Alternative update methods:");
+            println!("{}", "Other options:".bold());
             println!(
-                "  • Quick install: {}",
+                "  {} {} {}",
+                "•".gray(),
+                "Quick install:".gray(),
                 format!(
                     "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
             println!(
-                "  • Manual download: {}",
-                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
-                    .cyan()
+                "  {} {} {}",
+                "•".gray(),
+                "Manual download:".gray(),
+                notes_url.as_str().cyan()
             );
         }
         InstallationMethod::Cargo => {
-            println!("To update via Cargo:");
+            println!("{}", "Update via Cargo:".bold());
             println!(
-                "  {}",
+                "  {} {}",
+                "•".gray(),
                 format!(
                     "cargo install --git https://github.com/{repo_owner}/{repo_name} --tag v{latest} sage-cli --force"
                 )
                 .cyan()
             );
-            println!();
-            println!("Alternative update methods:");
+            println!("{}", "Other options:".bold());
             println!(
-                "  • Quick install: {}",
+                "  {} {} {}",
+                "•".gray(),
+                "Quick install:".gray(),
                 format!(
                     "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
-            println!("  • Homebrew: {}", "brew install sage-scm/sage/sage".cyan());
             println!(
-                "  • Manual download: {}",
-                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
-                    .cyan()
+                "  {} {} {}",
+                "•".gray(),
+                "Homebrew:".gray(),
+                "brew install sage-scm/sage/sage".cyan()
+            );
+            println!(
+                "  {} {} {}",
+                "•".gray(),
+                "Manual download:".gray(),
+                notes_url.as_str().cyan()
             );
         }
         InstallationMethod::Manual => {
-            println!("To update:");
+            println!("{}", "Update options:".bold());
             println!(
-                "  • Quick install: {}",
+                "  {} {} {}",
+                "•".gray(),
+                "Quick install:".gray(),
                 format!(
                     "curl -fsSL https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/install.sh | sh"
                 )
                 .cyan()
             );
-            println!("  • Homebrew: {}", "brew install sage-scm/sage/sage".cyan());
             println!(
-                "  • From source: {}",
+                "  {} {} {}",
+                "•".gray(),
+                "Homebrew:".gray(),
+                "brew install sage-scm/sage/sage".cyan()
+            );
+            println!(
+                "  {} {} {}",
+                "•".gray(),
+                "From source:".gray(),
                 format!(
                     "cargo install --git https://github.com/{repo_owner}/{repo_name} --tag v{latest} sage-cli"
                 )
                 .cyan()
             );
             println!(
-                "  • Manual download: {}",
-                format!("https://github.com/{repo_owner}/{repo_name}/releases/tag/v{latest}")
-                    .cyan()
+                "  {} {} {}",
+                "•".gray(),
+                "Manual download:".gray(),
+                notes_url.as_str().cyan()
             );
         }
     }
 
-    println!();
+    println!(
+        "{}",
+        "────────────────────────────────────────────────────────".gray()
+    );
 }
 
 pub async fn check_for_updates() -> Result<()> {
