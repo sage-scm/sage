@@ -84,8 +84,12 @@ if [ ! -d "$INSTALL_DIR" ]; then
 fi
 
 print_info "Installing $BINARY_NAME to $INSTALL_DIR..."
-cp "$BINARY_PATH" "$INSTALL_DIR/$BINARY_NAME"
-chmod +x "$INSTALL_DIR/$BINARY_NAME"
+temp_path="$(mktemp "$INSTALL_DIR/${BINARY_NAME}.tmp.XXXXXX")"
+trap 'rm -f "$temp_path"' EXIT
+cp "$BINARY_PATH" "$temp_path"
+chmod +x "$temp_path"
+mv "$temp_path" "$INSTALL_DIR/$BINARY_NAME"
+trap - EXIT
 
 # Verify installation
 if command -v $BINARY_NAME >/dev/null 2>&1; then
