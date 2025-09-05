@@ -361,3 +361,17 @@ pub fn get_ref_type(reference: &str) -> GitResult<String> {
         .context("Failed to get reference type")
         .output()
 }
+
+/// Get commit messages between two branches/refs
+pub fn get_commit_messages_between(from: &str, to: &str) -> GitResult<Vec<String>> {
+    let output = Git::new("log")
+        .args(["--oneline", "--pretty=format:%s", &format!("{from}..{to}")])
+        .context("Failed to get commit messages between refs")
+        .output()?;
+
+    if output.trim().is_empty() {
+        return Ok(vec![]);
+    }
+
+    Ok(output.lines().map(|s| s.trim().to_string()).collect())
+}
