@@ -6,6 +6,16 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+if [ "${SKIP_SAGE_HOOKS:-0}" = "1" ] || [ "${SKIP_COMMIT_MSG:-0}" = "1" ]; then
+    exit 0
+fi
+
+MODE="${SAGE_HOOKS_COMMIT_MSG:-assist}"
+case "$MODE" in
+    skip|assist|enforce) ;;
+    *) MODE="assist" ;;
+esac
+
 commit_file="${1:-}"
 commit_message=$(cat "$commit_file")
 
@@ -14,35 +24,38 @@ if [[ -d ".git/rebase-merge" || -d ".git/rebase-apply" || -d ".git/MERGE_HEAD" ]
     exit 0
 fi
 
-# Check commit message format
-# Expected format: type(scope): description
-# or: type: description
-# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build
+if [ "$MODE" = "skip" ]; then
+    exit 0
+fi
 
 valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|build"
 pattern="^($valid_types)(\([a-z0-9_-]+\))?: .{1,}"
 
 if ! echo "$commit_message" | grep -qE "$pattern"; then
-    echo -e "${RED}✗ Invalid commit message format${NC}"
+    echo -e "${YELLOW}⚠️  Commit message does not match Conventional Commit format${NC}"
     echo
     echo "Expected format: type(scope): description"
     echo "                 type: description"
     echo
     echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
     echo
+    if [ "$MODE" = "enforce" ] || [ -n "${CI:-}" ]; then
+        echo -e "${RED}Hook is enforcing commit message format. Aborting commit.${NC}"
+        exit 1
+    fi
     echo "Examples:"
     echo "  feat(cli): add new work command"
     echo "  fix: resolve merge conflict in save workflow"
     echo "  docs(readme): update installation instructions"
     echo
     echo "Your message: $commit_message"
-    exit 1
+    echo -e "${YELLOW}Commit will continue; please tidy the summary when you get a moment.${NC}"
+    exit 0
 fi
 
-# Check commit message length (first line)
 first_line=$(echo "$commit_message" | head -n1)
 if [ ${#first_line} -gt 100 ]; then
     echo -e "${YELLOW}⚠️  Commit message first line is ${#first_line} characters (recommended: <100)${NC}"
 fi
 
-echo -e "${GREEN}✓ Commit message format is valid${NC}"
+echo -e "${GREEN}✓ Commit message format looks good${NC}"

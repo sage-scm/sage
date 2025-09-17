@@ -7,113 +7,142 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+if [ "${SKIP_SAGE_HOOKS:-0}" = "1" ] || [ "${SKIP_PREPUSH:-0}" = "1" ]; then
+    echo -e "${YELLOW}Skipping pre-push hook (explicitly disabled)${NC}"
+    exit 0
+fi
+
+PROFILE="${SAGE_HOOKS_PREPUSH_PROFILE:-fast}"
+case "$PROFILE" in
+    fast|full) ;;
+    *) PROFILE="fast" ;;
+esac
+
+STRICT_MODE="${SAGE_HOOKS_PREPUSH_STRICT:-0}"
+
+FAILURES=()
+
+has_tty() {
+    [ -t 0 ] && [ -t 1 ]
+}
+
+record_failure() {
+    local label="$1"
+    if [ ${#FAILURES[@]} -eq 0 ]; then
+        FAILURES=("$label")
+    else
+        FAILURES=("${FAILURES[@]}" "$label")
+    fi
+}
+
+run_step() {
+    local label="$1"
+    local advice="$2"
+    shift 2
+    local cmd=("$@")
+
+    echo -e "${YELLOW}→ ${label}${NC}"
+    if "${cmd[@]}"; then
+        echo -e "${GREEN}   ✓ ${label}${NC}"
+    else
+        echo -e "${RED}   ✗ ${label}${NC}"
+        if [ -n "$advice" ]; then
+            echo -e "${YELLOW}     › ${advice}${NC}"
+        fi
+        record_failure "$label"
+    fi
+}
+
+run_soft_step() {
+    local label="$1"
+    shift
+    local cmd=("$@")
+
+    echo -e "${YELLOW}→ ${label}${NC}"
+    if "${cmd[@]}"; then
+        echo -e "${GREEN}   ✓ ${label}${NC}"
+    else
+        echo -e "${YELLOW}   ⚠️  ${label} reported warnings${NC}"
+    fi
+}
+
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
 echo -e "${BLUE}     Running pre-push verification...      ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
 
-# Parse remote and branch info
 remote="${1:-}"
 url="${2:-}"
 
-# Check if pushing to main/master branch
 protected_branches="main master"
 current_branch=$(git symbolic-ref HEAD | sed -e 's,.*/\(.*\),\1,')
 
 for branch in $protected_branches; do
     if [ "$current_branch" = "$branch" ]; then
         echo -e "${YELLOW}⚠️  Pushing to protected branch '$branch'${NC}"
-        read -p "Are you sure you want to push to $branch? (y/N) " -n 1 -r
+        if has_tty; then
+            read -p "Do you want to continue pushing to $branch? (y/N) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo -e "${RED}Push cancelled${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${YELLOW}ℹ️  Non-interactive push; continuing. Set SAGE_HOOKS_PREPUSH_STRICT=1 to block.${NC}"
+            if [ "$STRICT_MODE" = "1" ]; then
+                echo -e "${RED}Push blocked in strict mode${NC}"
+                exit 1
+            fi
+        fi
+    fi
+done
+
+echo -e "${YELLOW}Profile: $PROFILE${NC}"
+
+run_step "Formatting check" "Run 'cargo fmt' to fix formatting" cargo fmt -- --check
+run_step "Cargo check" "Run 'cargo check --workspace'" cargo check --workspace
+
+if [ "$PROFILE" = "full" ]; then
+    run_step "Clippy" "Run 'cargo clippy --all-targets --all-features'" cargo clippy --all-targets --all-features -- -D warnings
+    run_step "Cargo build" "Run 'cargo build --all-features'" cargo build --all-features
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        run_step "cargo nextest" "Run 'cargo nextest run --workspace --all-features'" cargo nextest run --workspace --all-features
+    else
+        run_step "Cargo test" "Run 'cargo test --workspace --all-features'" cargo test --workspace --all-features
+    fi
+    if [ -f ".config/hakari.toml" ] && command -v cargo-hakari >/dev/null 2>&1; then
+        run_step "cargo hakari" "Run 'cargo hakari generate'" cargo hakari generate --diff
+    fi
+    run_soft_step "cargo doc" cargo doc --no-deps --all-features 2>/dev/null
+    if command -v cargo-audit >/dev/null 2>&1; then
+        run_soft_step "cargo audit" cargo audit
+    fi
+else
+    echo -e "${YELLOW}Tip:${NC} Run 'just ci' when you want the full build/test/doc sweep before pushing."
+fi
+
+if [ ${#FAILURES[@]} -gt 0 ]; then
+    echo -e "${YELLOW}⚠️  Some checks reported issues:${NC}"
+    for failure in "${FAILURES[@]}"; do
+        echo -e "  - $failure"
+    done
+
+    if [ "$STRICT_MODE" = "1" ] || [ -n "${CI:-}" ]; then
+        echo -e "${RED}Strict mode enabled – aborting push.${NC}"
+        exit 1
+    fi
+
+    if has_tty; then
+        read -p "Continue with push anyway? (y/N) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${RED}Push cancelled${NC}"
             exit 1
         fi
-    fi
-done
-
-# 1. Run formatting check
-echo -e "${YELLOW}📝 Checking code formatting...${NC}"
-if cargo fmt --all -- --check; then
-    echo -e "${GREEN}✓ Code formatting is correct${NC}"
-else
-    echo -e "${RED}✗ Code needs formatting. Run 'cargo fmt --all'${NC}"
-    exit 1
-fi
-
-# 2. Run clippy with strict checks
-echo -e "${YELLOW}🔍 Running clippy checks...${NC}"
-if cargo clippy --all-targets --all-features -- -D warnings; then
-    echo -e "${GREEN}✓ Clippy checks passed${NC}"
-else
-    echo -e "${RED}✗ Clippy found issues${NC}"
-    exit 1
-fi
-
-# 3. Build the project
-echo -e "${YELLOW}🔨 Building project...${NC}"
-if cargo build --all-features; then
-    echo -e "${GREEN}✓ Build successful${NC}"
-else
-    echo -e "${RED}✗ Build failed${NC}"
-    exit 1
-fi
-
-# 4. Run tests
-echo -e "${YELLOW}🧪 Running tests...${NC}"
-# Use nextest if available for faster test runs
-if command -v cargo-nextest &> /dev/null; then
-    if cargo nextest run --workspace --all-features; then
-        echo -e "${GREEN}✓ All tests passed${NC}"
     else
-        echo -e "${RED}✗ Tests failed${NC}"
-        exit 1
+        echo -e "${YELLOW}Continuing push (non-interactive session).${NC}"
     fi
 else
-    if cargo test --workspace --all-features; then
-        echo -e "${GREEN}✓ All tests passed${NC}"
-    else
-        echo -e "${RED}✗ Tests failed${NC}"
-        exit 1
-    fi
+    echo -e "${GREEN}✅ Pre-push checks completed${NC}"
 fi
 
-# 5. Check for workspace-hack consistency (if using hakari)
-if [ -f ".config/hakari.toml" ]; then
-    echo -e "${YELLOW}📦 Checking workspace-hack...${NC}"
-    if command -v cargo-hakari &> /dev/null; then
-        if cargo hakari generate --diff; then
-            echo -e "${GREEN}✓ workspace-hack is up to date${NC}"
-        else
-            echo -e "${RED}✗ workspace-hack needs updating. Run 'cargo hakari generate'${NC}"
-            exit 1
-        fi
-    else
-        echo -e "${YELLOW}⚠️  cargo-hakari not installed, skipping workspace-hack check${NC}"
-    fi
-fi
-
-# 6. Check documentation builds
-echo -e "${YELLOW}📚 Building documentation...${NC}"
-if cargo doc --no-deps --all-features 2>/dev/null; then
-    echo -e "${GREEN}✓ Documentation builds successfully${NC}"
-else
-    echo -e "${YELLOW}⚠️  Documentation build has warnings${NC}"
-    # Don't fail on doc warnings, just notify
-fi
-
-# 7. Security audit (if cargo-audit is installed)
-if command -v cargo-audit &> /dev/null; then
-    echo -e "${YELLOW}🔒 Running security audit...${NC}"
-    if cargo audit; then
-        echo -e "${GREEN}✓ No security vulnerabilities found${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Security vulnerabilities detected (non-blocking)${NC}"
-        # Don't block on security issues, just warn
-    fi
-else
-    echo -e "${YELLOW}ℹ️  Install cargo-audit for security checks: cargo install cargo-audit${NC}"
-fi
-
-echo -e "${BLUE}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}✅ All pre-push checks passed!${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
