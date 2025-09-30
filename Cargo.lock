@@ -153,6 +153,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
+name = "hack-workspace"
+version = "0.1.0"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -258,20 +262,30 @@ version = "2025.10.1"
 dependencies = [
  "anyhow",
  "clap",
+ "hack-workspace",
  "tokio",
 ]
 
 [[package]]
 name = "sage-core"
 version = "0.1.0"
+dependencies = [
+ "hack-workspace",
+]
 
 [[package]]
 name = "sage-fmt"
 version = "0.1.0"
+dependencies = [
+ "hack-workspace",
+]
 
 [[package]]
 name = "sage-git"
 version = "0.1.0"
+dependencies = [
+ "hack-workspace",
+]
 
 [[package]]
 name = "slab"
