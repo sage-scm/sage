@@ -83,7 +83,7 @@ test-one pattern:
     cargo test --workspace {{pattern}}
 
 # Run tests continuously on file changes
-test-watch:
+test-watch: ensure-dev-tools
     cargo watch -x "test --workspace"
 
 # Run benchmarks (including ignored ones)
@@ -101,22 +101,33 @@ lint-fix:
     cargo clippy --workspace --fix -- -D warnings
 
 # Format code
-fmt:
+fmt: ensure-dev-tools
     @echo -e "${CYAN}Formatting code...${NC}"
     cargo fmt
 
 # Check if code is formatted
-fmt-check:
+fmt-check: ensure-dev-tools
     cargo fmt -- --check
 
 # ────────────────────────────────────────────────────────────────
 # 🛠️ Development Workflow
 # ────────────────────────────────────────────────────────────────
 
+# Ensure required developer tooling is installed
+ensure-dev-tools:
+    @echo -e "${CYAN}Ensuring rustfmt component is available...${NC}"
+    rustup component add rustfmt --quiet >/dev/null 2>&1 || rustup component add rustfmt
+    @if ! command -v cargo-watch >/dev/null 2>&1; then \
+        echo -e "${CYAN}Installing cargo-watch for live development...${NC}"; \
+        cargo install cargo-watch --locked; \
+    else \
+        echo -e "${GREEN}cargo-watch already installed.${NC}"; \
+    fi
+
 # Watch files and rebuild automatically
-watch:
+watch: ensure-dev-tools
     @echo -e "${GREEN}Watching for changes...${NC}"
-    watchexec -re rs ./install-local.sh
+    cargo watch -s './install-local.sh'
 
 # Try a sg command without installing (cargo run)
 try +args:
