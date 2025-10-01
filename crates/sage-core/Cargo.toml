@@ -8,3 +8,4 @@ anyhow.workspace = true
 colored = "3.0"
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 sage-git = { version = "0.1.0", path = "../sage-git" }
+fuzzy-matcher = "0.3"

@@ -2,6 +2,8 @@ use anyhow::Result;
 use gix::Repository;
 
 mod branch;
+mod commit;
+mod config;
 mod exec;
 mod status;
 

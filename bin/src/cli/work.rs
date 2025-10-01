@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Args;
+use sage_core::work;
 
 #[derive(Debug, Args)]
 pub struct WorkCommand {
@@ -17,6 +18,6 @@ pub struct WorkCommand {
 
 impl WorkCommand {
     pub fn run(self) -> Result<()> {
-        todo!()
+        work(self.branch, self.parent, self.fuzzy, self.push, self.root)
     }
 }
