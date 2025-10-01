@@ -86,11 +86,6 @@ test-one pattern:
 test-watch: ensure-dev-tools
     cargo watch -x "test --workspace"
 
-# Run benchmarks (including ignored ones)
-bench:
-    @echo -e "${CYAN}Running benchmarks...${NC}"
-    cargo bench --workspace -- --include-ignored
-
 # Check code quality with clippy
 lint:
     @echo -e "${CYAN}Running clippy...${NC}"
@@ -133,14 +128,6 @@ watch: ensure-dev-tools
 try +args:
     @echo -e "${CYAN}Running: sg {{args}}${NC}"
     cargo run --bin sg -- {{args}}
-
-# Run sg with debug logging
-debug +args:
-    RUST_LOG=sage=debug sg {{args}}
-
-# Run sg with trace logging
-trace +args:
-    RUST_LOG=sage=trace sg {{args}}
 
 # ────────────────────────────────────────────────────────────────
 # 📚 Documentation
@@ -231,26 +218,6 @@ stats:
 work feature:
     sg work {{feature}}
 
-# Save current work
-save message:
-    sg save "{{message}}"
-
-# Save with AI-generated message
-save-ai:
-    sg save -a
-
-# Sync current branch
-sync:
-    sg sync
-
-# Share changes (create PR)
-share:
-    sg share
-
-# Show current stack
-stack:
-    sg stack
-
 # ────────────────────────────────────────────────────────────────
 # 🧰 Utilities
 # ────────────────────────────────────────────────────────────────
@@ -271,17 +238,6 @@ find-dep pattern:
 version:
     @sg --version 2>/dev/null || echo "Sage not installed yet"
 
-# Show built-in features
-features:
-    @echo -e "${CYAN}Built-in features (always enabled):${NC}"
-    @echo "  • Advanced stacked-diff operations"
-    @echo "  • AI-powered commit messages (Ollama)"
-    @echo "  • Terminal UI dashboard"
-
 # Open repository in browser
 browse:
     @open https://github.com/$( git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' ) 2>/dev/null || echo "Not a GitHub repo"
-
-# Show recent git history with sg
-history:
-    sg log --graph --oneline -n 20
