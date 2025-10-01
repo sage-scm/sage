@@ -3,25 +3,6 @@
 [net]
 git-fetch-with-cli = true
 
-# Platform-specific linker configuration for faster builds
-[target.x86_64-apple-darwin]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-
-[target.aarch64-apple-darwin]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "split-debuginfo=unpacked"]
-
-[target.x86_64-pc-windows-msvc]
-linker = "lld-link.exe"
-
-[target.x86_64-pc-windows-gnu]
-linker = "rust-lld.exe"
-
 # Use multiple codegen units for faster compilation (trades compile time for runtime performance)
 [profile.dev]
 # Cranelift backend for faster debug builds (requires nightly)

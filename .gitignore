@@ -4,3 +4,4 @@
 .idea/
 /.idea
 /.kiro
+.cargo/config.local.toml
