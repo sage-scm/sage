@@ -27,10 +27,10 @@ impl Repo {
 
         for entry in iter {
             let item = entry?;
-            if let Some(summary) = item.summary() {
-                if !matches!(summary, Summary::Added) {
-                    files.push(item.rela_path().to_string());
-                }
+            if let Some(summary) = item.summary()
+                && !matches!(summary, Summary::Added)
+            {
+                files.push(item.rela_path().to_string());
             }
         }
 

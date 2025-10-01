@@ -21,6 +21,8 @@ pub struct GitCommand {
     allow_failure: bool,
 }
 
+// Builder helpers aren't all in use yet while the CLI surface is small.
+#[allow(dead_code)]
 impl GitCommand {
     pub fn new(repo_path: impl Into<PathBuf>) -> Self {
         Self {

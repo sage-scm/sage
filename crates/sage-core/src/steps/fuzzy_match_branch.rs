@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 
 pub fn fuzzy_match_branch(name: &str, branches: Vec<String>) -> Result<Option<String>> {
@@ -9,14 +9,14 @@ pub fn fuzzy_match_branch(name: &str, branches: Vec<String>) -> Result<Option<St
 
     // First check for exact match (case insensitive)
     for branch in &branches {
-        if branch.eq_ignore_ascii_case(&name) {
+        if branch.eq_ignore_ascii_case(name) {
             return Ok(Some(branch.clone()));
         }
     }
 
     // If no exact match, perform fuzzy search
     for branch in &branches {
-        if let Some(score) = matcher.fuzzy_match(&branch, &name)
+        if let Some(score) = matcher.fuzzy_match(branch, name)
             && score > best_score
         {
             best_score = score;

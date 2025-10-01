@@ -1,8 +1,6 @@
 use anyhow::Result;
 use colored::Colorize;
 
-use sage_git::Repo;
-
 pub fn list_branches() -> Result<()> {
     let repo = sage_git::Repo::open()?;
     let current_branch = repo.get_current_branch()?;
@@ -17,7 +15,7 @@ pub fn list_branches() -> Result<()> {
 
     let mut combined = branches
         .into_iter()
-        .chain(remote_branches.into_iter())
+        .chain(remote_branches)
         .collect::<Vec<String>>();
 
     combined.sort();

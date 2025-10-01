@@ -134,8 +134,8 @@ impl Repo {
                         ..
                     } = change
                     {
-                        let relative = gix::path::try_from_bstr(location)
-                            .map_err(|err| anyhow::Error::new(err))?;
+                        let relative =
+                            gix::path::try_from_bstr(location).map_err(anyhow::Error::new)?;
                         let full_path = work_dir.join(relative.as_ref());
 
                         if entry_mode.is_tree() {

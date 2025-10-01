@@ -111,12 +111,12 @@ fmt-check: ensure-dev-tools
 # Ensure required developer tooling is installed
 ensure-dev-tools:
     @toolchain=$(rustup show active-toolchain 2>/dev/null | head -n1 | cut -d' ' -f1); \
-    if [ -z "$$toolchain" ]; then \
+    if [ -z "$toolchain" ]; then \
         toolchain=$(rustup default 2>/dev/null | head -n1 | cut -d' ' -f1); \
     fi; \
-    if [ -n "$$toolchain" ]; then \
-        echo -e "${CYAN}Ensuring rustfmt & clippy for toolchain $$toolchain...${NC}"; \
-        rustup component add --toolchain "$$toolchain" rustfmt clippy; \
+    if [ -n "$toolchain" ]; then \
+        echo -e "${CYAN}Ensuring rustfmt & clippy for toolchain $toolchain...${NC}"; \
+        rustup component add --toolchain "$toolchain" rustfmt clippy; \
     else \
         echo -e "${CYAN}Ensuring rustfmt & clippy for active toolchain...${NC}"; \
         rustup component add rustfmt clippy; \

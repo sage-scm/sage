@@ -16,6 +16,6 @@ pub struct Repo {
 impl Repo {
     pub fn open() -> Result<Self> {
         let repo = gix::discover(".")?;
-        Ok(Self { repo: repo })
+        Ok(Self { repo })
     }
 }

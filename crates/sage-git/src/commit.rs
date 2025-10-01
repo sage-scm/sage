@@ -4,7 +4,7 @@ use gix::Id;
 use super::Repo;
 
 impl Repo {
-    pub fn get_current_commit(&self) -> Result<Id> {
+    pub fn get_current_commit(&self) -> Result<Id<'_>> {
         let found = self.repo.head_commit()?;
         Ok(found.id())
     }
