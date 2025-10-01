@@ -125,6 +125,8 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt,clippy
 
       - uses: Swatinem/rust-cache@v2
 

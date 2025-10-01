@@ -54,7 +54,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt
+          components: rustfmt,clippy
 
       - uses: Swatinem/rust-cache@v2
 

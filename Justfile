@@ -87,12 +87,12 @@ test-watch: ensure-dev-tools
     cargo watch -x "test --workspace"
 
 # Check code quality with clippy
-lint:
+lint: ensure-dev-tools
     @echo -e "${CYAN}Running clippy...${NC}"
     cargo clippy --workspace -- -D warnings
 
 # Fix lint issues automatically
-lint-fix:
+lint-fix: ensure-dev-tools
     cargo clippy --workspace --fix -- -D warnings
 
 # Format code
@@ -110,14 +110,27 @@ fmt-check: ensure-dev-tools
 
 # Ensure required developer tooling is installed
 ensure-dev-tools:
-    @echo -e "${CYAN}Ensuring rustfmt component is available...${NC}"
-    rustup component add rustfmt --quiet >/dev/null 2>&1 || rustup component add rustfmt
-    @if ! command -v cargo-watch >/dev/null 2>&1; then \
-        echo -e "${CYAN}Installing cargo-watch for live development...${NC}"; \
-        cargo install cargo-watch --locked; \
-    else \
-        echo -e "${GREEN}cargo-watch already installed.${NC}"; \
+    @bash -eu <<'SCRIPT'
+    toolchain="$(rustup show active-toolchain 2>/dev/null | awk 'NR==1 {print $1}')"
+    if [ -z "$toolchain" ]; then
+        toolchain="$(rustup default 2>/dev/null | awk 'NR==1 {print $1}')"
     fi
+
+    if [ -n "$toolchain" ]; then
+        echo -e "${CYAN}Ensuring rustfmt & clippy for toolchain $toolchain...${NC}"
+        rustup component add --toolchain "$toolchain" rustfmt clippy
+    else
+        echo -e "${CYAN}Ensuring rustfmt & clippy for active toolchain...${NC}"
+        rustup component add rustfmt clippy
+    fi
+
+    if ! command -v cargo-watch >/dev/null 2>&1; then
+        echo -e "${CYAN}Installing cargo-watch for live development...${NC}"
+        cargo install cargo-watch --locked
+    else
+        echo -e "${GREEN}cargo-watch already installed.${NC}"
+    fi
+SCRIPT
 
 # Watch files and rebuild automatically
 watch: ensure-dev-tools
