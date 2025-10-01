@@ -33,7 +33,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          DATE=$(date -u '+%Y.%m.%d')
+          YEAR=$(date -u '+%Y')
+          MONTH=$(date -u '+%-m')
+          DAY=$(date -u '+%-d')
+          DATE="${YEAR}.${MONTH}.${DAY}"
           MAX_RELEASE=0
 
           while IFS= read -r tag; do
