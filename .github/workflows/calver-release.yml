@@ -1,0 +1,62 @@
+name: CalVer Release
+
+on:
+  push:
+    branches:
+      - fresh
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: calver-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    name: Determine CalVer Version
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    outputs:
+      version: ${{ steps.calver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Compute CalVer version
+        id: calver
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DATE=$(date -u '+%Y.%m.%d')
+          MAX_RELEASE=0
+
+          while IFS= read -r tag; do
+            suffix="${tag#${DATE}.}"
+            if [[ "$suffix" != "$tag" && "$suffix" =~ ^[0-9]+$ ]]; then
+              numeric_suffix=$((10#$suffix))
+              if (( numeric_suffix > MAX_RELEASE )); then
+                MAX_RELEASE=$numeric_suffix
+              fi
+            fi
+          done < <(git tag -l "${DATE}.*")
+
+          NEXT_RELEASE=$((MAX_RELEASE + 1))
+          VERSION="${DATE}.${NEXT_RELEASE}"
+
+          echo "Computed CalVer version: ${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+  run-release-workflow:
+    name: Trigger Release Workflow
+    needs: determine-version
+    if: needs.determine-version.outputs.version != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+    secrets: inherit
