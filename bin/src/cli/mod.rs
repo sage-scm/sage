@@ -1,6 +1,8 @@
+pub mod list;
 pub mod save;
 pub mod work;
 
+pub use list::ListCommand;
 pub use save::SaveCommand;
 pub use work::WorkCommand;
 
@@ -17,4 +19,5 @@ pub struct Cli {
 pub enum Command {
     Save(SaveCommand),
     Work(WorkCommand),
+    List(ListCommand),
 }

@@ -18,4 +18,4 @@ clap = { version = "4.5", features = ["derive"] }
 anyhow.workspace = true
 tokio = { version = "1.47", features = ["macros", "rt-multi-thread"] }
 hack-workspace = { version = "0.1", path = "../hack-workspace" }
-
+sage-core = { version = "0.1.0", path = "../crates/sage-core" }

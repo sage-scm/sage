@@ -14,5 +14,7 @@ pub struct SaveCommand {
 }
 
 impl SaveCommand {
-    pub fn run(self) -> Result<()> {todo!()}
+    pub fn run(self) -> Result<()> {
+        todo!()
+    }
 }
