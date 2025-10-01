@@ -11,7 +11,8 @@ use gix::{
     interrupt,
     progress::Discard,
     refs::{
-        FullName, Target, TargetRef, transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog}
+        FullName, Target, TargetRef,
+        transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
     },
     worktree::stack::state::attributes::Source as AttrSource,
 };
@@ -326,12 +327,8 @@ impl Repo {
     pub fn remote_name(&self) -> Result<Option<String>> {
         let remote = self.repo.remote_default_name(gix::remote::Direction::Fetch);
         match remote {
-            Some(remote) => {
-                Ok(Some(remote.to_string()))
-            }
-            None => {
-                Ok(None)
-            }
+            Some(remote) => Ok(Some(remote.to_string())),
+            None => Ok(None),
         }
     }
 
@@ -349,7 +346,10 @@ impl Repo {
         if let TargetRef::Symbolic(target_name) = head_ref.target() {
             // Extract the last component after '/'
             let branch = target_name.as_bstr();
-            let branch = branch.rsplitn(2, |&b| b == b'/').next().unwrap_or(&branch[0..]);
+            let branch = branch
+                .rsplitn(2, |&b| b == b'/')
+                .next()
+                .unwrap_or(&branch[0..]);
             Ok(String::from_utf8_lossy(branch).to_string())
         } else {
             bail!("Unable to determine default branch");

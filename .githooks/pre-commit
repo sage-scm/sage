@@ -81,21 +81,19 @@ fi
 # 1. Format staged Rust code only
 if [ ${#RUST_FILES[@]} -gt 0 ]; then
     echo -e "${YELLOW}📝 Formatting staged Rust files...${NC}"
-    if command -v rustfmt >/dev/null 2>&1; then
-        if rustfmt --edition 2021 "${RUST_FILES[@]}"; then
-            echo -e "${GREEN}✓ Rustfmt completed${NC}"
-        else
-            echo -e "${RED}✗ rustfmt failed; run 'rustfmt ${RUST_FILES[*]}'${NC}"
-            exit 1
-        fi
-    else
-        if cargo fmt -- "${RUST_FILES[@]}"; then
-            echo -e "${GREEN}✓ cargo fmt updated staged files${NC}"
-        else
-            echo -e "${RED}✗ cargo fmt failed; run 'cargo fmt -- ${RUST_FILES[*]}'${NC}"
-            exit 1
-        fi
+    if ! command -v rustfmt >/dev/null 2>&1; then
+        echo -e "${RED}✗ rustfmt is not available; run 'rustup component add rustfmt'${NC}"
+        exit 1
     fi
+
+    if rustfmt --edition 2024 "${RUST_FILES[@]}"; then
+        echo -e "${GREEN}✓ Rustfmt completed${NC}"
+    else
+        echo -e "${RED}✗ rustfmt failed; ensure your toolchain supports the 2024 edition${NC}"
+        echo -e "${YELLOW}  › Try 'rustup update' or use 'SKIP_PRECOMMIT=1 git commit' to bypass temporarily${NC}"
+        exit 1
+    fi
+
     restage_original_files
 else
     echo -e "${YELLOW}No staged Rust files, skipping formatting.${NC}"
