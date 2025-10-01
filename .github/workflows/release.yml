@@ -61,8 +61,8 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
-          # Update the version in bins/sage-cli/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
+          # Update the version in bin/Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bin/Cargo.toml
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
@@ -467,16 +467,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Update the version in bins/sage-cli/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
+          # Update the version in bin/Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bin/Cargo.toml
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
           # Check if there are changes to commit
-          if ! git diff --exit-code bins/sage-cli/Cargo.toml Cargo.lock; then
+          if ! git diff --exit-code bin/Cargo.toml Cargo.lock; then
             # Stage the changes
-            git add bins/sage-cli/Cargo.toml Cargo.lock
+            git add bin/Cargo.toml Cargo.lock
 
             # Commit with conventional commit message and skip CI
             git commit \
