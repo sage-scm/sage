@@ -84,21 +84,18 @@ impl Repo {
     }
 
     pub fn get_default_branch(&self) -> Result<String> {
-        let output = self
-            .git()?
-            .arg("symbolic-ref")
-            .arg("--short")
-            .arg("refs/remotes/origin/HEAD")
-            .run_with_output()?;
+        let reference = self
+            .repo
+            .find_reference("refs/remotes/origin/HEAD")
+            .context("refs/remotes/origin/HEAD not found")?;
 
-        let branch = String::from_utf8(output.stdout)?;
-        let branch = branch.trim();
+        let branch = reference.name().shorten().to_string();
 
         if branch.is_empty() {
             bail!("Unable to determine default branch");
         }
 
-        Ok(branch.to_string())
+        Ok(branch)
     }
 
     fn is_ref(&self, name: &str) -> bool {
