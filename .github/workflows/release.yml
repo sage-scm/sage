@@ -71,6 +71,9 @@ jobs:
 
           echo "Version files updated to ${VERSION_NO_V}"
 
+      - name: Stage version file updates
+        run: git add bin/Cargo.toml Cargo.lock
+
       - name: Install just
         uses: taiki-e/install-action@just
 
