@@ -11,8 +11,7 @@ use gix::{
     interrupt,
     progress::Discard,
     refs::{
-        FullName, Target,
-        transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
+        FullName, Target, TargetRef, transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog}
     },
     worktree::stack::state::attributes::Source as AttrSource,
 };
@@ -83,19 +82,37 @@ impl Repo {
         Ok(head.is_none())
     }
 
+    pub fn remote_name(&self) -> Result<Option<String>> {
+        let remote = self.repo.remote_default_name(gix::remote::Direction::Fetch);
+        match remote {
+            Some(remote) => {
+                Ok(Some(remote.to_string()))
+            }
+            None => {
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn has_remote(&self) -> Result<bool> {
+        let remote = self.remote_name()?;
+        Ok(remote.is_some())
+    }
+
     pub fn get_default_branch(&self) -> Result<String> {
-        let reference = self
-            .repo
-            .find_reference("refs/remotes/origin/HEAD")
-            .context("refs/remotes/origin/HEAD not found")?;
+        let remote_name = self.remote_name()?.unwrap();
+        let head_ref_name = format!("refs/remotes/{}/{}", remote_name, "HEAD");
 
-        let branch = reference.name().shorten().to_string();
+        let head_ref = self.repo.find_reference(&head_ref_name)?;
 
-        if branch.is_empty() {
+        if let TargetRef::Symbolic(target_name) = head_ref.target() {
+            // Extract the last component after '/'
+            let branch = target_name.as_bstr();
+            let branch = branch.rsplitn(2, |&b| b == b'/').next().unwrap_or(&branch[0..]);
+            Ok(String::from_utf8_lossy(branch).to_string())
+        } else {
             bail!("Unable to determine default branch");
         }
-
-        Ok(branch)
     }
 
     fn is_ref(&self, name: &str) -> bool {
