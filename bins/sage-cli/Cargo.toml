@@ -1,7 +1,7 @@
 [package]
 license = "MIT OR Apache-2.0"
 name = "sage-cli"
-version = "0.1.1"
+version = "2025.10.2002"
 edition = "2024"
 description = "🌿 Sage — A Git workflow tool for managing branches and commits"
 repository = "https://github.com/sage-scm/sage"
