@@ -40,7 +40,7 @@ impl Console {
     }
 
     pub fn header(&self, command: &str) -> Result<()> {
-        println!("sage {}", command);
+        println!("sage {}", self.style(command, self.theme.muted));
         Ok(())
     }
 
