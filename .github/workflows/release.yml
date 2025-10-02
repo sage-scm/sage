@@ -58,55 +58,33 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Ensure Python 3 is available
-        run: python3 --version
-
       - name: Update version files
-        id: version_files
         run: |
           set -euo pipefail
-
-          if ! command -v python3 >/dev/null 2>&1; then
-            echo "Python 3 is required for manifest path detection"
-            exit 1
-          fi
 
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
-          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | \
-            python3 -c "import json, sys; pkgs=[p['manifest_path'] for p in json.load(sys.stdin)['packages'] if p['name']=='sage-cli']; print(pkgs[0])")
+          MANIFEST_PATH=$(git ls-files '*Cargo.toml' | while read -r file; do
+            if grep -Eq '^name\s*=\s*"sage-cli"' "$file"; then
+              echo "$file"
+              break
+            fi
+          done)
 
           if [ -z "$MANIFEST_PATH" ]; then
-            echo "sage-cli package not found"
+            echo "sage-cli manifest not found"
             exit 1
           fi
 
-          REPO_ROOT=$(git rev-parse --show-toplevel)
-          REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
-
-          cargo set-version --package sage-cli "${VERSION_NO_V}"
+          sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"${VERSION_NO_V}\"/" "$MANIFEST_PATH"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
-          echo "manifest_path=${REL_MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
-          echo "Version files updated to ${VERSION_NO_V}"
+          git add "$MANIFEST_PATH" Cargo.lock
 
-      - name: Stage version file updates
-        env:
-          MANIFEST_PATH: ${{ steps.version_files.outputs.manifest_path }}
-        run: |
-          if [ -n "$MANIFEST_PATH" ]; then
-            git add "$MANIFEST_PATH" Cargo.lock
-          else
-            echo "No manifest path detected; skipping staging"
-          fi
+          echo "Version files updated to ${VERSION_NO_V} in $MANIFEST_PATH"
 
       - name: Install just
         uses: taiki-e/install-action@just
@@ -495,14 +473,6 @@ jobs:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
           ref: main
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Ensure Python 3 is available
-        run: python3 --version
-
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -512,11 +482,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          if ! command -v python3 >/dev/null 2>&1; then
-            echo "Python 3 is required for manifest path detection"
-            exit 1
-          fi
-
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
@@ -524,40 +489,36 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | \
-            python3 -c "import json, sys; pkgs=[p['manifest_path'] for p in json.load(sys.stdin)['packages'] if p['name']=='sage-cli']; print(pkgs[0])")
+          MANIFEST_PATH=$(git ls-files '*Cargo.toml' | while read -r file; do
+            if grep -Eq '^name\s*=\s*"sage-cli"' "$file"; then
+              echo "$file"
+              break
+            fi
+          done)
 
           if [ -z "$MANIFEST_PATH" ]; then
-            echo "sage-cli package not found"
-            exit 1
+            echo "sage-cli manifest not found"
+            exit 0
           fi
 
-          REPO_ROOT=$(git rev-parse --show-toplevel)
-          REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
-
-          cargo set-version --package sage-cli "${VERSION_NO_V}"
+          sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"${VERSION_NO_V}\"/" "$MANIFEST_PATH"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
-          if [ -z "$REL_MANIFEST_PATH" ]; then
-            echo "No manifest path detected; skipping version commit"
+          if git diff --quiet "$MANIFEST_PATH" Cargo.lock; then
+            echo "ℹ️ Version already up to date, no changes needed"
             exit 0
           fi
 
-          # Check if there are changes to commit
-          if ! git diff --exit-code "$REL_MANIFEST_PATH" Cargo.lock; then
-            # Stage the changes
-            git add "$REL_MANIFEST_PATH" Cargo.lock
+          # Stage the changes
+          git add "$MANIFEST_PATH" Cargo.lock
 
-            # Commit with conventional commit message and skip CI
-            git commit \
+          # Commit with conventional commit message and skip CI
+          git commit \
               -m "chore(release): bump version to ${VERSION_NO_V} [skip ci]" \
               -m "Automated version bump after release ${VERSION}"
 
-            # Push the changes
-            git push origin main
-            echo "✅ Version ${VERSION_NO_V} committed and pushed to main"
-          else
-            echo "ℹ️ Version already up to date, no changes needed"
-          fi
+          # Push the changes
+          git push origin main
+          echo "✅ Version ${VERSION_NO_V} committed and pushed to main"
