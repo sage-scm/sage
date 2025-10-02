@@ -58,21 +58,59 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Ensure Python 3 is available
+        run: python3 --version
+
       - name: Update version files
+        id: version_files
         run: |
+          set -euo pipefail
+
+          if ! command -v python3 >/dev/null 2>&1; then
+            echo "Python 3 is required for manifest path detection"
+            exit 1
+          fi
+
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
-          # Update the version in bin/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bin/Cargo.toml
+          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | python3 - <<'PY'
+import json, sys
+
+for pkg in json.load(sys.stdin)["packages"]:
+    if pkg["name"] == "sage-cli":
+        print(pkg["manifest_path"])
+        break
+else:
+    raise SystemExit("sage-cli package not found")
+PY
+)
+
+          REPO_ROOT=$(git rev-parse --show-toplevel)
+          REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
+
+          cargo set-version --package sage-cli "${VERSION_NO_V}"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
+          echo "manifest_path=${REL_MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
           echo "Version files updated to ${VERSION_NO_V}"
 
       - name: Stage version file updates
-        run: git add bin/Cargo.toml Cargo.lock
+        env:
+          MANIFEST_PATH: ${{ steps.version_files.outputs.manifest_path }}
+        run: |
+          if [ -n "$MANIFEST_PATH" ]; then
+            git add "$MANIFEST_PATH" Cargo.lock
+          else
+            echo "No manifest path detected; skipping staging"
+          fi
 
       - name: Install just
         uses: taiki-e/install-action@just
@@ -461,6 +499,14 @@ jobs:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
           ref: main
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Ensure Python 3 is available
+        run: python3 --version
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -468,6 +514,13 @@ jobs:
 
       - name: Update and commit version changes
         run: |
+          set -euo pipefail
+
+          if ! command -v python3 >/dev/null 2>&1; then
+            echo "Python 3 is required for manifest path detection"
+            exit 1
+          fi
+
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
@@ -475,16 +528,35 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Update the version in bin/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bin/Cargo.toml
+          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | python3 - <<'PY'
+import json, sys
+
+for pkg in json.load(sys.stdin)["packages"]:
+    if pkg["name"] == "sage-cli":
+        print(pkg["manifest_path"])
+        break
+else:
+    raise SystemExit("sage-cli package not found")
+PY
+)
+
+          REPO_ROOT=$(git rev-parse --show-toplevel)
+          REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
+
+          cargo set-version --package sage-cli "${VERSION_NO_V}"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
+          if [ -z "$REL_MANIFEST_PATH" ]; then
+            echo "No manifest path detected; skipping version commit"
+            exit 0
+          fi
+
           # Check if there are changes to commit
-          if ! git diff --exit-code bin/Cargo.toml Cargo.lock; then
+          if ! git diff --exit-code "$REL_MANIFEST_PATH" Cargo.lock; then
             # Stage the changes
-            git add bin/Cargo.toml Cargo.lock
+            git add "$REL_MANIFEST_PATH" Cargo.lock
 
             # Commit with conventional commit message and skip CI
             git commit \
