@@ -19,6 +19,14 @@ pub struct Console {
     symbols: Symbols,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageType {
+    Success,
+    Error,
+    Warning,
+    Info,
+}
+
 impl Console {
     pub fn new() -> Self {
         Self {
