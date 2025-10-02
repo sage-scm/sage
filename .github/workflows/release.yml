@@ -79,17 +79,13 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
-          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | python3 - <<'PY'
-import json, sys
+          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | \
+            python3 -c "import json, sys; pkgs=[p['manifest_path'] for p in json.load(sys.stdin)['packages'] if p['name']=='sage-cli']; print(pkgs[0])")
 
-for pkg in json.load(sys.stdin)["packages"]:
-    if pkg["name"] == "sage-cli":
-        print(pkg["manifest_path"])
-        break
-else:
-    raise SystemExit("sage-cli package not found")
-PY
-)
+          if [ -z "$MANIFEST_PATH" ]; then
+            echo "sage-cli package not found"
+            exit 1
+          fi
 
           REPO_ROOT=$(git rev-parse --show-toplevel)
           REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
@@ -528,17 +524,13 @@ PY
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | python3 - <<'PY'
-import json, sys
+          MANIFEST_PATH=$(cargo metadata --no-deps --format-version 1 | \
+            python3 -c "import json, sys; pkgs=[p['manifest_path'] for p in json.load(sys.stdin)['packages'] if p['name']=='sage-cli']; print(pkgs[0])")
 
-for pkg in json.load(sys.stdin)["packages"]:
-    if pkg["name"] == "sage-cli":
-        print(pkg["manifest_path"])
-        break
-else:
-    raise SystemExit("sage-cli package not found")
-PY
-)
+          if [ -z "$MANIFEST_PATH" ]; then
+            echo "sage-cli package not found"
+            exit 1
+          fi
 
           REPO_ROOT=$(git rev-parse --show-toplevel)
           REL_MANIFEST_PATH=${MANIFEST_PATH#${REPO_ROOT}/}
