@@ -35,13 +35,13 @@ pub fn log() -> Result<()> {
             " {} {} {} @{}",
             "●".bright_green(),
             commit.hash.bright_yellow(),
-            "by",
+            "by".dimmed(),
             commit.author
         );
 
         // Print he commit message indented
         if !commit.message.is_empty() {
-            println!("  {}", commit.message);
+            println!("  {}", commit.message.dimmed());
         }
     }
 
