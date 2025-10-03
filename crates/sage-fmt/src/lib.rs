@@ -10,6 +10,7 @@ mod theme;
 use symbols::{Symbols, ascii_mode as symbols_ascii_mode};
 pub use theme::Theme;
 
+#[allow(dead_code)]
 pub struct Console {
     theme: Theme,
     use_color: bool,
