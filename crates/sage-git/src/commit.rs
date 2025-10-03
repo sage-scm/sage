@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use gix::date::time::Format;
 use gix::revision::walk::Sorting;
 use gix::{Id, ObjectId, traverse::commit::simple::CommitTimeOrder};
@@ -39,9 +40,15 @@ impl Repo {
 
             let commit = self.repo.find_commit(id)?;
 
-            let hash = commit.id().to_hex().to_string();
+            let hash = commit.id().to_hex().to_string()[0..8].to_string();
             let message = String::from_utf8_lossy(&commit.message_raw()?).to_string();
-            let date = commit.time()?.format(Format::Unix).to_string();
+            let date = if let Some(dt) = DateTime::<Utc>::from_timestamp(commit.time()?.seconds, 0)
+            {
+                format!("{}", dt.format("%a %b %d %Y"))
+            } else {
+                "Unknown date".to_string()
+            };
+
             let author = commit.author()?.name.to_string();
 
             commits.push(Commit {

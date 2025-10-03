@@ -9,3 +9,4 @@ hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 anyhow.workspace = true
 gix = "0.73"
 gix-worktree-state = "0.20"
+chrono = "0.4"
