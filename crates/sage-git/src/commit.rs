@@ -1,8 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use gix::date::time::Format;
 use gix::revision::walk::Sorting;
-use gix::{Id, ObjectId, traverse::commit::simple::CommitTimeOrder};
+use gix::{Id, traverse::commit::simple::CommitTimeOrder};
 
 use super::Repo;
 
@@ -42,7 +41,7 @@ impl Repo {
             let commit = self.repo.find_commit(id)?;
 
             let hash = commit.id().to_hex().to_string()[0..8].to_string();
-            let message = String::from_utf8_lossy(&commit.message_raw()?).to_string();
+            let message = String::from_utf8_lossy(commit.message_raw()?).to_string();
             let date = if let Some(dt) = DateTime::<Utc>::from_timestamp(commit.time()?.seconds, 0)
             {
                 format!("{}", dt.format("%a %b %d %Y"))
