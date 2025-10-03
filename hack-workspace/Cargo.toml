@@ -14,4 +14,13 @@ publish = false
 # are managed by hakari.
 
 ### BEGIN HAKARI SECTION
+[dependencies]
+once_cell = { version = "1" }
+smallvec = { version = "1", default-features = false, features = ["const_generics", "write"] }
+
+[build-dependencies]
+proc-macro2 = { version = "1" }
+quote = { version = "1" }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+
 ### END HAKARI SECTION
