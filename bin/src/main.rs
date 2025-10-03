@@ -11,5 +11,6 @@ fn main() -> Result<()> {
         Command::Save(command) => command.run(),
         Command::Work(command) => command.run(),
         Command::List(command) => command.run(),
+        Command::Log(command) => command.run(),
     }
 }
