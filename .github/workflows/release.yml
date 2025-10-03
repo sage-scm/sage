@@ -291,6 +291,8 @@ jobs:
       contents: write
     # Run for tags or when version is provided via workflow_dispatch/workflow_call
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != ''
+    outputs:
+      release_notes: ${{ steps.changelog.outputs.markdown }}
     env:
       DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
     steps:
@@ -315,6 +317,197 @@ jobs:
           else
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
+
+      - name: Generate changelog notes
+        id: changelog
+        env:
+          CURRENT_REF: ${{ needs.prepare.outputs.checkout_ref }}
+          CURRENT_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force >/dev/null 2>&1 || true
+
+          current_ref="$CURRENT_REF"
+
+          if git rev-parse --verify --quiet "$current_ref" >/dev/null; then
+            current_commit="$current_ref"
+          else
+            current_commit="${GITHUB_SHA}"
+          fi
+
+          # Determine previous tag for diff (if any)
+          previous_tag=""
+          if git describe --tags --abbrev=0 "${current_commit}^" >/dev/null 2>&1; then
+            previous_tag=$(git describe --tags --abbrev=0 "${current_commit}^" 2>/dev/null || echo "")
+          elif git tag --merged "${current_commit}" >/dev/null 2>&1; then
+            previous_tag=$(git tag --merged "${current_commit}" --sort=-creatordate | head -n1 || echo "")
+          fi
+
+          if [ -n "$previous_tag" ]; then
+            range="$previous_tag..$current_commit"
+          else
+            range="$current_commit"
+          fi
+
+          # Collect commits (excluding merges) in the range
+          commits=$(git log --no-merges --pretty=format:'%h%x09%s' "$range")
+
+          breaking=""
+          features=""
+          fixes=""
+          perf=""
+          docs=""
+          refactor=""
+          tests=""
+          ci=""
+          chore=""
+          build=""
+          style=""
+          other=""
+
+          if [ -n "$commits" ]; then
+            while IFS=$'\t' read -r hash subject; do
+              [ -z "$hash" ] && continue
+
+              clean="$subject"
+              if [[ "$subject" == *":"* ]]; then
+                clean="${subject#*:}"
+                clean=$(printf '%s' "$clean" | sed -E 's/^[[:space:]]+//')
+              fi
+
+              type_part="${subject%%:*}"
+              type_lower=$(printf '%s' "$type_part" | tr '[:upper:]' '[:lower:]')
+              raw_type="$type_lower"
+
+              is_breaking=0
+              if [[ "$raw_type" == *"!" ]]; then
+                is_breaking=1
+                raw_type="${raw_type%!}"
+              fi
+
+              type_name="${raw_type%%(*}"
+
+              entry="- ${clean} (${hash})\n"
+
+              if [[ $is_breaking -eq 1 ]]; then
+                breaking+="$entry"
+              fi
+
+              case "$type_name" in
+                feat)
+                  features+="$entry"
+                  ;;
+                fix|bugfix|hotfix|patch)
+                  fixes+="$entry"
+                  ;;
+                perf)
+                  perf+="$entry"
+                  ;;
+                docs|doc)
+                  docs+="$entry"
+                  ;;
+                refactor)
+                  refactor+="$entry"
+                  ;;
+                test|tests)
+                  tests+="$entry"
+                  ;;
+                ci)
+                  ci+="$entry"
+                  ;;
+                chore)
+                  chore+="$entry"
+                  ;;
+                build)
+                  build+="$entry"
+                  ;;
+                style)
+                  style+="$entry"
+                  ;;
+                *)
+                  other+="$entry"
+                  ;;
+              esac
+            done <<< "$commits"
+          fi
+
+          notes_file="$RUNNER_TEMP/release-notes.md"
+
+          {
+            printf "# Changelog for %s\n\n" "$CURRENT_VERSION"
+
+            if [ -n "$breaking" ]; then
+              printf "## Breaking Changes\n\n"
+              printf "%b\n" "$breaking"
+            fi
+
+            if [ -n "$features" ]; then
+              printf "## Features\n\n"
+              printf "%b\n" "$features"
+            fi
+
+            if [ -n "$fixes" ]; then
+              printf "## Fixes\n\n"
+              printf "%b\n" "$fixes"
+            fi
+
+            if [ -n "$perf" ]; then
+              printf "## Performance Improvements\n\n"
+              printf "%b\n" "$perf"
+            fi
+
+            if [ -n "$refactor" ]; then
+              printf "## Refactors\n\n"
+              printf "%b\n" "$refactor"
+            fi
+
+            if [ -n "$docs" ]; then
+              printf "## Documentation\n\n"
+              printf "%b\n" "$docs"
+            fi
+
+            if [ -n "$tests" ]; then
+              printf "## Tests\n\n"
+              printf "%b\n" "$tests"
+            fi
+
+            if [ -n "$ci" ]; then
+              printf "## Continuous Integration\n\n"
+              printf "%b\n" "$ci"
+            fi
+
+            if [ -n "$build" ]; then
+              printf "## Build System\n\n"
+              printf "%b\n" "$build"
+            fi
+
+            if [ -n "$chore" ]; then
+              printf "## Maintenance\n\n"
+              printf "%b\n" "$chore"
+            fi
+
+            if [ -n "$style" ]; then
+              printf "## Styling\n\n"
+              printf "%b\n" "$style"
+            fi
+
+            if [ -n "$other" ]; then
+              printf "## Other Changes\n\n"
+              printf "%b\n" "$other"
+            fi
+
+            if [ -z "$breaking$features$fixes$perf$docs$refactor$tests$ci$chore$build$style$other" ]; then
+              printf "- No notable changes since the previous release.\n"
+            fi
+          } > "$notes_file"
+
+          echo "file=$notes_file" >> "$GITHUB_OUTPUT"
+          {
+            echo "markdown<<'EOF'"
+            cat "$notes_file"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Handle existing release and tag
         if: env.DRY_RUN != 'true'
@@ -352,9 +545,10 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: Release ${{ needs.prepare.outputs.version }}
+          body: ${{ steps.changelog.outputs.markdown }}
           draft: false
           prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
-          generate_release_notes: true
+          generate_release_notes: false
           fail_on_unmatched_files: false
           files: |
             ./artifacts/**/*.tar.gz
@@ -369,6 +563,11 @@ jobs:
           echo "Dry run enabled: skipping tag management and GitHub release creation."
           echo "Artifacts prepared:"
           ls -R ./artifacts
+          echo ""
+          echo "Changelog preview:"
+          cat <<'EOF'
+${{ steps.changelog.outputs.markdown }}
+EOF
 
   update-homebrew:
     name: Update Homebrew Formula
