@@ -41,7 +41,12 @@ pub fn log() -> Result<()> {
 
         // Print he commit message indented
         if !commit.message.is_empty() {
-            println!("  {}", commit.message.dimmed());
+            // We will split each line and add the padding to each of the lines too.
+            let padding = "    ";
+            let lines = commit.message.split('\n').collect::<Vec<&str>>();
+            for line in lines {
+                println!("{}{}", padding, line.dimmed());
+            }
         }
     }
 
