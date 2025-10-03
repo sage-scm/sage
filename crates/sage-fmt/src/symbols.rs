@@ -52,8 +52,5 @@ pub fn ascii_mode() -> bool {
         return true;
     }
     // Fall back to very conservative detection
-    match std::env::var("TERM") {
-        Ok(term) if term == "dumb" => true,
-        _ => false,
-    }
+    matches!(std::env::var("TERM"), Ok(term) if term == "dumb")
 }
