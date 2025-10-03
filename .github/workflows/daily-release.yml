@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: fresh
 
       - name: Fetch tags
         run: git fetch --tags --force
@@ -64,4 +65,5 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       version: ${{ needs.determine-version.outputs.version }}
+      branch: fresh
     secrets: inherit

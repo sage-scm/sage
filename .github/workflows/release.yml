@@ -10,11 +10,21 @@ on:
         description: 'Version to release (e.g., v1.0.0)'
         required: true
         type: string
+      branch:
+        description: 'Branch to release from'
+        required: false
+        default: 'main'
+        type: string
   workflow_call:
     inputs:
       version:
         description: 'Version to release (e.g., v1.0.0)'
         required: true
+        type: string
+      branch:
+        description: 'Branch to release from'
+        required: false
+        default: 'main'
         type: string
 
 permissions:
@@ -30,10 +40,17 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     outputs:
       version: ${{ steps.version.outputs.version }}
+      branch: ${{ steps.release_branch.outputs.branch }}
+      checkout_ref: ${{ steps.release_branch.outputs.checkout_ref }}
+    env:
+      RELEASE_BRANCH: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || 'main' }}
+      RELEASE_CHECKOUT_REF: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || github.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_CHECKOUT_REF }}
 
       - name: Determine version
         id: version
@@ -92,6 +109,13 @@ jobs:
       - name: Run pre-release checks
         run: just pre-release
 
+      - name: Record release branch context
+        id: release_branch
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build Release
     needs: prepare
@@ -129,6 +153,9 @@ jobs:
             asset_name: sg-windows-arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -249,6 +276,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != ''
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -320,6 +350,9 @@ jobs:
     if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.')
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -467,11 +500,14 @@ jobs:
     runs-on: ubuntu-latest
     # Only run after successful release
     if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && always() && needs.release.result == 'success'
+    env:
+      RELEASE_BRANCH: ${{ needs.prepare.outputs.branch }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
-          ref: main
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_BRANCH }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -520,5 +556,6 @@ jobs:
               -m "Automated version bump after release ${VERSION}"
 
           # Push the changes
-          git push origin main
-          echo "✅ Version ${VERSION_NO_V} committed and pushed to main"
+          BRANCH="${RELEASE_BRANCH}"
+          git push origin "$BRANCH"
+          echo "✅ Version ${VERSION_NO_V} committed and pushed to ${BRANCH}"
