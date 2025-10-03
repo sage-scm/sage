@@ -27,6 +27,7 @@ pub enum MessageType {
     Info,
 }
 
+#[allow(dead_code)]
 impl Console {
     pub fn new() -> Self {
         Self {

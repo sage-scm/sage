@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub struct Symbols {
     pub check: &'static str,
     pub cross: &'static str,
