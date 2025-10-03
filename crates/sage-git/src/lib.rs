@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use gix::Repository;
 
@@ -17,5 +19,9 @@ impl Repo {
     pub fn open() -> Result<Self> {
         let repo = gix::discover(".")?;
         Ok(Self { repo })
+    }
+
+    pub fn git_dir(&self) -> PathBuf {
+        self.repo.path().to_path_buf()
     }
 }

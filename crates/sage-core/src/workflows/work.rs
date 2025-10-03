@@ -1,6 +1,8 @@
+use std::time::Duration;
+
 use anyhow::{Result, bail};
 
-use crate::fuzzy_match_branch;
+use crate::{fetch_if_stale, fuzzy_match_branch};
 
 pub fn work(
     branch: String,
@@ -10,6 +12,7 @@ pub fn work(
     root: bool,
 ) -> Result<()> {
     let mut repo = sage_git::Repo::open()?;
+    let _ = fetch_if_stale(&repo)?;
     let current_branch = repo.get_current_branch()?;
 
     if branch == current_branch {

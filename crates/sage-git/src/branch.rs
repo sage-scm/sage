@@ -21,6 +21,19 @@ use gix_worktree_state::checkout;
 use super::Repo;
 
 impl Repo {
+    pub fn fetch(&self) -> Result<()> {
+        if !self.has_remote()? {
+            return Ok(());
+        }
+
+        self.git()?
+            .arg("fetch")
+            .arg("--no-progress")
+            .arg("--all")
+            .arg("--prune")
+            .run()
+    }
+
     pub fn get_current_branch(&self) -> Result<String> {
         let head_name = self.repo.head_name()?;
 
