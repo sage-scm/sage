@@ -15,6 +15,11 @@ on:
         required: false
         default: 'main'
         type: string
+      dry_run:
+        description: 'Run without creating a release or pushing changes'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       version:
@@ -26,6 +31,11 @@ on:
         required: false
         default: 'main'
         type: string
+      dry_run:
+        description: 'Run without creating a release or pushing changes'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -42,9 +52,11 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       branch: ${{ steps.release_branch.outputs.branch }}
       checkout_ref: ${{ steps.release_branch.outputs.checkout_ref }}
+      dry_run: ${{ steps.release_branch.outputs.dry_run }}
     env:
       RELEASE_BRANCH: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || 'main' }}
       RELEASE_CHECKOUT_REF: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || github.ref }}
+      DRY_RUN: ${{ format('{0}', (github.event_name == 'workflow_call' && inputs.dry_run) || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') || false) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,6 +127,11 @@ jobs:
           COMMIT_SHA=$(git rev-parse HEAD)
           echo "branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
           echo "checkout_ref=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     name: Build Release
@@ -274,6 +291,8 @@ jobs:
       contents: write
     # Run for tags or when version is provided via workflow_dispatch/workflow_call
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != ''
+    env:
+      DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -298,6 +317,7 @@ jobs:
           fi
 
       - name: Handle existing release and tag
+        if: env.DRY_RUN != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -327,6 +347,7 @@ jobs:
           fi
 
       - name: Create Release
+        if: env.DRY_RUN != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
@@ -342,12 +363,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Dry run summary
+        if: env.DRY_RUN == 'true'
+        run: |
+          echo "Dry run enabled: skipping tag management and GitHub release creation."
+          echo "Artifacts prepared:"
+          ls -R ./artifacts
+
   update-homebrew:
     name: Update Homebrew Formula
     needs: [prepare, release]
     runs-on: ubuntu-latest
     # Only run for stable releases (not prereleases)
-    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.')
+    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.') && needs.prepare.outputs.dry_run != 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -499,7 +527,7 @@ jobs:
     needs: [prepare, release, update-homebrew]
     runs-on: ubuntu-latest
     # Only run after successful release
-    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && always() && needs.release.result == 'success'
+    if: needs.prepare.outputs.dry_run != 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && always() && needs.release.result == 'success'
     env:
       RELEASE_BRANCH: ${{ needs.prepare.outputs.branch }}
     steps:
