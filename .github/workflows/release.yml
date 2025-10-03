@@ -10,12 +10,32 @@ on:
         description: 'Version to release (e.g., v1.0.0)'
         required: true
         type: string
+      branch:
+        description: 'Branch to release from'
+        required: false
+        default: 'main'
+        type: string
+      dry_run:
+        description: 'Run without creating a release or pushing changes'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       version:
         description: 'Version to release (e.g., v1.0.0)'
         required: true
         type: string
+      branch:
+        description: 'Branch to release from'
+        required: false
+        default: 'main'
+        type: string
+      dry_run:
+        description: 'Run without creating a release or pushing changes'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -30,18 +50,30 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     outputs:
       version: ${{ steps.version.outputs.version }}
+      branch: ${{ steps.release_branch.outputs.branch }}
+      checkout_ref: ${{ steps.release_branch.outputs.checkout_ref }}
+      dry_run: ${{ steps.release_branch.outputs.dry_run }}
+    env:
+      RELEASE_BRANCH: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || 'main' }}
+      RELEASE_CHECKOUT_REF: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || github.ref }}
+      DRY_RUN: ${{ format('{0}', (github.event_name == 'workflow_call' && inputs.dry_run) || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') || false) }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_CHECKOUT_REF }}
 
       - name: Determine version
         id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version || '' }}
+          DISPATCH_VERSION: ${{ github.event.inputs.version || '' }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          elif [ "${{ github.event_name }}" = "workflow_call" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          elif [ -n "$DISPATCH_VERSION" ]; then
+            VERSION="$DISPATCH_VERSION"
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
@@ -50,27 +82,56 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt,clippy
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Update version files
         run: |
+          set -euo pipefail
+
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
-          # Update the version in bins/sage-cli/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
+          MANIFEST_PATH=$(git ls-files '*Cargo.toml' | while read -r file; do
+            if grep -Eq '^name\s*=\s*"sage-cli"' "$file"; then
+              echo "$file"
+              break
+            fi
+          done)
+
+          if [ -z "$MANIFEST_PATH" ]; then
+            echo "sage-cli manifest not found"
+            exit 1
+          fi
+
+          sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"${VERSION_NO_V}\"/" "$MANIFEST_PATH"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
-          echo "Version files updated to ${VERSION_NO_V}"
+          git add "$MANIFEST_PATH" Cargo.lock
+
+          echo "Version files updated to ${VERSION_NO_V} in $MANIFEST_PATH"
 
       - name: Install just
         uses: taiki-e/install-action@just
 
       - name: Run pre-release checks
         run: just pre-release
+
+      - name: Record release branch context
+        id: release_branch
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     name: Build Release
@@ -109,11 +170,15 @@ jobs:
             asset_name: sg-windows-arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+          components: rustfmt
 
       - name: Install just
         uses: taiki-e/install-action@just
@@ -226,8 +291,13 @@ jobs:
       contents: write
     # Run for tags or when version is provided via workflow_dispatch/workflow_call
     if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != ''
+    env:
+      DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -240,11 +310,14 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           if [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" =~ ^v?[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Handle existing release and tag
+        if: env.DRY_RUN != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -274,6 +347,7 @@ jobs:
           fi
 
       - name: Create Release
+        if: env.DRY_RUN != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
@@ -289,14 +363,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Dry run summary
+        if: env.DRY_RUN == 'true'
+        run: |
+          echo "Dry run enabled: skipping tag management and GitHub release creation."
+          echo "Artifacts prepared:"
+          ls -R ./artifacts
+
   update-homebrew:
     name: Update Homebrew Formula
     needs: [prepare, release]
     runs-on: ubuntu-latest
     # Only run for stable releases (not prereleases)
-    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.')
+    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && contains(needs.prepare.outputs.version, '.') && needs.prepare.outputs.dry_run != 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -443,18 +527,25 @@ jobs:
     needs: [prepare, release, update-homebrew]
     runs-on: ubuntu-latest
     # Only run after successful release
-    if: (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && always() && needs.release.result == 'success'
+    if: needs.prepare.outputs.dry_run != 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.version != '' || inputs.version != '') && always() && needs.release.result == 'success'
+    env:
+      RELEASE_BRANCH: ${{ needs.prepare.outputs.branch }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
-          ref: main
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_BRANCH }}
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
 
       - name: Update and commit version changes
         run: |
+          set -euo pipefail
+
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
@@ -462,25 +553,37 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Update the version in bins/sage-cli/Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"${VERSION_NO_V}\"/" bins/sage-cli/Cargo.toml
+          MANIFEST_PATH=$(git ls-files '*Cargo.toml' | while read -r file; do
+            if grep -Eq '^name\s*=\s*"sage-cli"' "$file"; then
+              echo "$file"
+              break
+            fi
+          done)
+
+          if [ -z "$MANIFEST_PATH" ]; then
+            echo "sage-cli manifest not found"
+            exit 0
+          fi
+
+          sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"${VERSION_NO_V}\"/" "$MANIFEST_PATH"
 
           # Update Cargo.lock to reflect the version change
           cargo update --workspace
 
-          # Check if there are changes to commit
-          if ! git diff --exit-code bins/sage-cli/Cargo.toml Cargo.lock; then
-            # Stage the changes
-            git add bins/sage-cli/Cargo.toml Cargo.lock
-
-            # Commit with conventional commit message and skip CI
-            git commit -m "chore(release): bump version to ${VERSION_NO_V} [skip ci]
-
-Automated version bump after release ${VERSION}"
-
-            # Push the changes
-            git push origin main
-            echo "✅ Version ${VERSION_NO_V} committed and pushed to main"
-          else
+          if git diff --quiet "$MANIFEST_PATH" Cargo.lock; then
             echo "ℹ️ Version already up to date, no changes needed"
+            exit 0
           fi
+
+          # Stage the changes
+          git add "$MANIFEST_PATH" Cargo.lock
+
+          # Commit with conventional commit message and skip CI
+          git commit \
+              -m "chore(release): bump version to ${VERSION_NO_V} [skip ci]" \
+              -m "Automated version bump after release ${VERSION}"
+
+          # Push the changes
+          BRANCH="${RELEASE_BRANCH}"
+          git push origin "$BRANCH"
+          echo "✅ Version ${VERSION_NO_V} committed and pushed to ${BRANCH}"
