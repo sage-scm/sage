@@ -1,0 +1,67 @@
+name: Daily Release
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: daily-release
+  cancel-in-progress: false
+
+jobs:
+  determine-version:
+    name: Determine Daily Version
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      should_release: ${{ steps.compute.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Determine release necessity
+        id: compute
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TZ_REGION="Australia/Brisbane"
+          TODAY=$(TZ="$TZ_REGION" date '+%Y.%m.%d')
+          echo "Evaluating release for ${TODAY} (5 PM AEST schedule)"
+
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [[ -n "$LAST_TAG" ]]; then
+            if git diff --quiet "$LAST_TAG"..HEAD; then
+              echo "No new commits since ${LAST_TAG}. Skipping release."
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [[ "$LAST_TAG" == "$TODAY" ]]; then
+              echo "A release for ${TODAY} already exists. Skipping to enforce daily cadence."
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "Computed daily release version: ${TODAY}"
+          echo "version=${TODAY}" >> "$GITHUB_OUTPUT"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+
+  run-release-workflow:
+    name: Trigger Release Workflow
+    needs: determine-version
+    if: needs.determine-version.outputs.should_release == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.determine-version.outputs.version }}
+    secrets: inherit
