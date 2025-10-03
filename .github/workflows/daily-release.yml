@@ -16,7 +16,7 @@ concurrency:
 jobs:
   determine-version:
     name: Determine Daily Version
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.compute.outputs.version }}
       should_release: ${{ steps.compute.outputs.should_release }}
@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
 
           TZ_REGION="Australia/Brisbane"
-          TODAY=$(TZ="$TZ_REGION" date '+%Y.%m.%d')
+          TODAY=$(TZ="$TZ_REGION" date '+%Y.%-m.%-d')
           echo "Evaluating release for ${TODAY} (5 PM AEST schedule)"
 
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
