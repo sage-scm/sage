@@ -69,6 +69,12 @@ impl Console {
     }
 }
 
+impl Default for Console {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub(crate) fn supports_color() -> bool {
     if std::env::var("NO_COLOR").is_ok() {
         return false;
