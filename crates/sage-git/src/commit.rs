@@ -30,6 +30,7 @@ impl Repo {
         let walk = self
             .repo
             .rev_walk([head_commit.id()])
+            .use_commit_graph(false)
             .sorting(Sorting::ByCommitTime(CommitTimeOrder::NewestFirst))
             .all()?;
 
