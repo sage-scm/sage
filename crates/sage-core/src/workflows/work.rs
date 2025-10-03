@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use anyhow::{Result, bail};
 
 use crate::{fetch_if_stale, fuzzy_match_branch};
