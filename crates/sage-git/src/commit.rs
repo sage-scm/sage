@@ -19,7 +19,11 @@ impl Repo {
         Ok(found.id())
     }
 
-    pub fn get_commits(&self) -> Result<Vec<Commit>> {
+    pub fn get_commits(&self, limit: Option<usize>) -> Result<Vec<Commit>> {
+        if matches!(limit, Some(0)) {
+            return Ok(Vec::new());
+        }
+
         let branch = self.get_current_branch()?;
         let mut reference = self
             .repo
@@ -57,6 +61,12 @@ impl Repo {
                 date,
                 author,
             });
+
+            if let Some(limit) = limit {
+                if commits.len() >= limit {
+                    break;
+                }
+            }
         }
 
         Ok(commits)

@@ -1,11 +1,11 @@
 use anyhow::Result;
 use colored::Colorize;
 
-pub fn log() -> Result<()> {
+pub fn log(limit: Option<usize>) -> Result<()> {
     let repo = sage_git::Repo::open()?;
     let current_branch = repo.get_current_branch()?;
 
-    let mut logs = repo.get_commits()?;
+    let mut logs = repo.get_commits(limit)?;
     logs.reverse();
 
     println!(
