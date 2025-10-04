@@ -20,6 +20,13 @@ impl WorkCommand {
     pub fn run(self) -> Result<()> {
         let console = sage_fmt::Console::new();
         console.header("work")?;
-        work(self.branch, self.parent, self.fuzzy, self.push, self.root)
+        work(
+            self.branch,
+            self.parent,
+            self.fuzzy,
+            self.push,
+            self.root,
+            &console,
+        )
     }
 }

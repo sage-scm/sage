@@ -1,4 +1,6 @@
 use anyhow::{Result, bail};
+use colored::Colorize;
+use sage_fmt::MessageType;
 
 use crate::{fetch_if_stale, fuzzy_match_branch};
 
@@ -8,18 +10,23 @@ pub fn work(
     fuzzy: bool,
     push: bool,
     root: bool,
+    console: &sage_fmt::Console,
 ) -> Result<()> {
     let mut repo = sage_git::Repo::open()?;
-    let _ = fetch_if_stale(&repo)?;
+    let _ = fetch_if_stale(&repo, console)?;
     let current_branch = repo.get_current_branch()?;
 
     if branch == current_branch {
-        println!("Already on that branch");
+        console.message(MessageType::Info, "Already on the current branch")?;
         return Ok(());
     }
 
     if repo.has_branch(branch.to_string())? {
         repo.switch_branch(&branch)?;
+        console.message(
+            MessageType::Success,
+            &format!("Switched to '{}'", branch.bright_blue()),
+        )?;
         return Ok(());
     }
 
@@ -28,7 +35,12 @@ pub fn work(
         let potential_branch = fuzzy_match_branch(&branch, branch_list)?;
         match potential_branch {
             Some(branch) => {
-                return repo.switch_branch(&branch);
+                repo.switch_branch(&branch)?;
+                console.message(
+                    MessageType::Success,
+                    &format!("Switched to '{}'", branch.bright_blue()),
+                )?;
+                return Ok(());
             }
             None => {
                 bail!("No local branch found");
@@ -50,10 +62,16 @@ pub fn work(
     }
 
     repo.create_branch(&branch)?;
+    console.message(MessageType::Success, "Created branch")?;
     repo.switch_branch(&branch)?;
+    console.message(
+        MessageType::Success,
+        &format!("Switched to '{}'", branch.bright_blue()),
+    )?;
 
     if push {
-        return repo.set_upstream();
+        repo.set_upstream()?;
+        console.message(MessageType::Success, "Set upstream tracking")?;
     }
 
     Ok(())

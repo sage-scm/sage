@@ -15,7 +15,7 @@ const FETCH_MAX_AGE_SECS: u64 = 60 * 5;
 ///
 /// Returns `true` when a fetch was performed, `false` when it was skipped because
 /// the cached result is still fresh.
-pub fn fetch_if_stale(repo: &sage_git::Repo) -> Result<bool> {
+pub fn fetch_if_stale(repo: &sage_git::Repo, console: &sage_fmt::Console) -> Result<bool> {
     let git_dir = repo.git_dir();
     let stamp_path = git_dir.join(FETCH_STAMP_FILE);
 
@@ -39,10 +39,13 @@ pub fn fetch_if_stale(repo: &sage_git::Repo) -> Result<bool> {
         return Ok(false);
     }
 
+    let progress = console.progress("Fetching remote");
     repo.fetch()?;
 
     fs::write(&stamp_path, b"fetched")
         .with_context(|| format!("failed to update fetch stamp at {}", stamp_path.display()))?;
+    progress.done();
+    console.message(sage_fmt::MessageType::Success, "Fetched remote")?;
 
     Ok(true)
 }
