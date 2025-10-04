@@ -19,6 +19,14 @@ case "$CLIPPY_MODE" in
         ;;
 esac
 
+AUTOFIX_MODE="${SAGE_HOOKS_AUTOFIX:-on}"
+case "$AUTOFIX_MODE" in
+    on|off) ;;
+    *)
+        AUTOFIX_MODE="on"
+        ;;
+esac
+
 ORIGINAL_STAGED_FILES=()
 while IFS= read -r file; do
     if [ -n "$file" ]; then
@@ -54,6 +62,47 @@ restage_original_files() {
 }
 
 RUST_FILES=()
+MANIFEST_PATHS=()
+
+add_manifest_path() {
+    local candidate="$1"
+    if [ -z "$candidate" ]; then
+        return
+    fi
+
+    local existing
+    if [ ${#MANIFEST_PATHS[@]} -gt 0 ]; then
+        for existing in "${MANIFEST_PATHS[@]}"; do
+            if [ "$existing" = "$candidate" ]; then
+                return
+            fi
+        done
+    fi
+
+    MANIFEST_PATHS+=("$candidate")
+}
+
+find_manifest_for_file() {
+    local file="$1"
+    local dir
+
+    dir=$(dirname "$file")
+    while [ "$dir" != "." ] && [ "$dir" != "/" ]; do
+        if [ -f "$dir/Cargo.toml" ]; then
+            printf '%s\n' "$dir/Cargo.toml"
+            return 0
+        fi
+        dir=$(dirname "$dir")
+    done
+
+    if [ -f Cargo.toml ]; then
+        printf '%s\n' "Cargo.toml"
+        return 0
+    fi
+
+    return 1
+}
+
 CARGO_LOCK_WAS_STAGED=0
 for file in "${ORIGINAL_STAGED_FILES[@]}"; do
     case "$file" in
@@ -62,6 +111,10 @@ for file in "${ORIGINAL_STAGED_FILES[@]}"; do
                 RUST_FILES=("$file")
             else
                 RUST_FILES=("${RUST_FILES[@]}" "$file")
+            fi
+            manifest_path="$(find_manifest_for_file "$file" || true)"
+            if [ -n "$manifest_path" ]; then
+                add_manifest_path "$manifest_path"
             fi
             ;;
         Cargo.lock)
@@ -99,7 +152,38 @@ else
     echo -e "${YELLOW}No staged Rust files, skipping formatting.${NC}"
 fi
 
-# 2. Advisory clippy run
+# 2. Auto-fix common warnings (unused imports, etc.)
+if [ ${#RUST_FILES[@]} -gt 0 ] && [ "$AUTOFIX_MODE" = "on" ]; then
+    if [ ${#MANIFEST_PATHS[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No Rust crate manifests detected; skipping cargo fix.${NC}"
+    else
+        echo -e "${YELLOW}🛠️  Running cargo fix on affected crates...${NC}"
+        AUTOFIX_FAILED=0
+        for manifest in "${MANIFEST_PATHS[@]}"; do
+            manifest_dir=$(dirname "$manifest")
+            echo -e "${YELLOW}   › cargo fix: ${manifest_dir}${NC}"
+            if cargo fix --allow-dirty --allow-staged --all-targets --manifest-path "$manifest" > /dev/null 2>&1; then
+                continue
+            else
+                AUTOFIX_FAILED=1
+                echo -e "${RED}✗ cargo fix failed for ${manifest}${NC}"
+                break
+            fi
+        done
+
+        if [ $AUTOFIX_FAILED -eq 1 ]; then
+            echo -e "${YELLOW}  › Run 'cargo fix --allow-dirty --allow-staged --all-targets' manually to debug${NC}"
+            exit 1
+        fi
+
+        restage_original_files
+        echo -e "${GREEN}✓ Auto-fix applied${NC}"
+    fi
+elif [ "$AUTOFIX_MODE" = "off" ]; then
+    echo -e "${YELLOW}Skipping cargo fix (SAGE_HOOKS_AUTOFIX=off).${NC}"
+fi
+
+# 3. Advisory clippy run
 if [ ${#RUST_FILES[@]} -eq 0 ]; then
     echo -e "${YELLOW}No staged Rust files, skipping clippy.${NC}"
 elif [ "$CLIPPY_MODE" = "skip" ]; then
@@ -117,7 +201,7 @@ else
     fi
 fi
 
-# 3. Check for TODO/FIXME in staged files (optional warning)
+# 4. Check for TODO/FIXME in staged files (optional warning)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rs|toml)$' || true)
 if [ -n "$STAGED_FILES" ]; then
     TODO_MATCHES=$(echo "$STAGED_FILES" | xargs grep -E "(TODO|FIXME|XXX|HACK)" 2>/dev/null || true)
@@ -130,7 +214,7 @@ if [ -n "$STAGED_FILES" ]; then
     fi
 fi
 
-# 4. Ensure Cargo.lock is up to date if Cargo.toml changed
+# 5. Ensure Cargo.lock is up to date if Cargo.toml changed
 if git diff --cached --name-only | grep -q "Cargo.toml"; then
     echo -e "${YELLOW}📦 Validating Cargo.lock...${NC}"
     if ! cargo update --workspace --dry-run > /dev/null 2>&1; then
