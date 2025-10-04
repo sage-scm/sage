@@ -62,10 +62,10 @@ impl Repo {
                 author,
             });
 
-            if let Some(limit) = limit {
-                if commits.len() >= limit {
-                    break;
-                }
+            if let Some(limit) = limit
+                && commits.len() >= limit
+            {
+                break;
             }
         }
 
