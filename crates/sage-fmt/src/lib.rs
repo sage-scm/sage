@@ -10,6 +10,10 @@ mod theme;
 use symbols::{Symbols, ascii_mode as symbols_ascii_mode};
 pub use theme::Theme;
 
+mod progress;
+use progress::PROGRESS_FRAMES;
+pub use progress::ProgressIndicator;
+
 #[allow(dead_code)]
 pub struct Console {
     theme: Theme,
@@ -68,6 +72,35 @@ impl Console {
         } else {
             text.to_string()
         }
+    }
+
+    pub fn progress(&self, message: impl Into<String>) -> ProgressIndicator {
+        let message = message.into();
+
+        if self.is_ci || !std::io::stdout().is_terminal() {
+            println!("  {}", message);
+            return ProgressIndicator::noop(self.needs_clear.clone());
+        }
+
+        let rendered_message = if self.use_color {
+            self.style(&message, self.theme.muted)
+        } else {
+            message.clone()
+        };
+
+        let frames: Vec<String> = if self.use_color {
+            PROGRESS_FRAMES
+                .iter()
+                .map(|frame| self.style(frame, self.theme.info))
+                .collect()
+        } else {
+            PROGRESS_FRAMES
+                .iter()
+                .map(|frame| (*frame).to_string())
+                .collect()
+        };
+
+        ProgressIndicator::spinner(rendered_message, frames, self.needs_clear.clone())
     }
 }
 
