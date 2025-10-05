@@ -1,0 +1,13 @@
+[package]
+name = "sage-ai"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+rig-core = { version = "0.21", features = ["reqwest-rustls"] }
+hack-workspace = { version = "0.1", path = "../../hack-workspace" }
+
+[target.'cfg(not(windows))'.dependencies]
+openssl = "0.10"

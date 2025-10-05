@@ -15,8 +15,14 @@ publish = false
 
 ### BEGIN HAKARI SECTION
 [dependencies]
+form_urlencoded = { version = "1" }
+num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1" }
+percent-encoding = { version = "2" }
+serde = { version = "1", features = ["alloc", "derive"] }
+serde_core = { version = "1", default-features = false, features = ["alloc", "result", "std"] }
 smallvec = { version = "1", default-features = false, features = ["const_generics", "write"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 
 [build-dependencies]
 proc-macro2 = { version = "1" }
