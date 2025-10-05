@@ -62,7 +62,7 @@ impl Repo {
     }
 
     pub fn staged_changes(&self) -> Result<Vec<String>> {
-        let mut iter = self
+        let iter = self
             .repo
             .status(Discard)?
             .index_worktree_submodules(None)
@@ -73,7 +73,7 @@ impl Repo {
 
         let mut changes = Vec::new();
 
-        while let Some(item) = iter.next() {
+        for item in iter {
             let item = item?;
             if let StatusItem::TreeIndex(change) = item {
                 collect_staged_change(&mut changes, change);

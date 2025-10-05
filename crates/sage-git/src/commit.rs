@@ -22,7 +22,7 @@ impl Repo {
         if amend {
             command = command.arg("--amend");
         }
-        command.arg("-m").arg(&format!("{}", message)).run()
+        command.arg("-m").arg(message).run()
     }
 
     pub fn get_current_commit(&self) -> Result<Id<'_>> {
