@@ -2,7 +2,7 @@ use anyhow::{Result, bail};
 use colored::Colorize;
 use sage_fmt::MessageType;
 
-use crate::{fetch_if_stale, fuzzy_match_branch};
+use crate::fuzzy_match_branch;
 
 pub fn work(
     branch: String,
@@ -13,7 +13,6 @@ pub fn work(
     console: &sage_fmt::Console,
 ) -> Result<()> {
     let mut repo = sage_git::Repo::open()?;
-    let _ = fetch_if_stale(&repo, console)?;
     let current_branch = repo.get_current_branch()?;
 
     if branch == current_branch {
