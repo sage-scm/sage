@@ -303,7 +303,7 @@ impl Repo {
         Ok(())
     }
 
-    pub fn push(&self) -> Result<()> {
+    pub fn push(&self, force: bool) -> Result<()> {
         // Get upstream from config using string_by (correct method for subsections)
         let config = self.repo.config_snapshot();
         let current_branch = self.get_current_branch()?;
@@ -317,9 +317,16 @@ impl Repo {
             .ok_or_else(|| anyhow!("No merge ref configured for branch {}", current_branch))?
             .to_string();
 
+        let force_flag = if force {
+            "--force"
+        } else {
+            "--force-with-lease"
+        };
+
         // Run external git push (since gix lacks native push)
         self.git()?
             .arg("push")
+            .arg(force_flag)
             .arg("--no-progress")
             .arg(remote_name)
             .arg(format!(
