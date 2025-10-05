@@ -3,6 +3,8 @@ use rig::{client::CompletionClient, completion::Prompt, providers::openai};
 use std::env;
 use std::time::Duration;
 
+mod prompts;
+
 const MAX_RETRIES: usize = 3;
 
 /// Asks the AI with a prompt
