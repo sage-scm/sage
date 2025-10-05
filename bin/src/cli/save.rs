@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Args;
+use sage_core::save;
 
 #[derive(Debug, Args)]
 pub struct SaveCommand {
@@ -15,6 +16,9 @@ pub struct SaveCommand {
 
 impl SaveCommand {
     pub fn run(self) -> Result<()> {
-        todo!()
+        let console = sage_fmt::Console::new();
+        console.header("save")?;
+
+        save(self.message, self.force, self.ai, self.push, &console)
     }
 }
