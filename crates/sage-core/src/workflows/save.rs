@@ -6,7 +6,7 @@ use crate::{fetch_if_stale, stage_changes};
 pub fn save(
     message: Option<String>,
     force: bool,
-    ai: bool,
+    _ai: bool,
     push: bool,
     console: &sage_fmt::Console,
 ) -> Result<()> {
