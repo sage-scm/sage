@@ -1,7 +1,8 @@
 use std::convert::TryFrom;
 
 use anyhow::{Context, Result};
-use gix::{ObjectId, progress::Discard, status as gix_status};
+use gix::status::Item as StatusItem;
+use gix::{ObjectId, diff::index::Change as IndexChange, progress::Discard, status as gix_status};
 
 use gix_status::plumbing::index_as_worktree_with_renames::Summary;
 
@@ -60,6 +61,30 @@ impl Repo {
         Ok(files)
     }
 
+    pub fn staged_changes(&self) -> Result<Vec<String>> {
+        let mut iter = self
+            .repo
+            .status(Discard)?
+            .index_worktree_submodules(None)
+            .index_worktree_options_mut(|opts| {
+                opts.dirwalk_options = None;
+            })
+            .into_iter(Vec::new())?;
+
+        let mut changes = Vec::new();
+
+        while let Some(item) = iter.next() {
+            let item = item?;
+            if let StatusItem::TreeIndex(change) = item {
+                collect_staged_change(&mut changes, change);
+            }
+        }
+
+        changes.sort();
+        changes.dedup();
+        Ok(changes)
+    }
+
     pub fn above_below(&self, branch: &str) -> Result<(i32, i32)> {
         let target_ref = if !branch.starts_with("refs/") {
             self.as_ref(branch)
@@ -92,5 +117,28 @@ impl Repo {
         }
 
         Ok(count)
+    }
+}
+
+fn collect_staged_change(output: &mut Vec<String>, change: IndexChange) {
+    match change {
+        IndexChange::Addition { location, .. } | IndexChange::Modification { location, .. } => {
+            output.push(location.to_string());
+        }
+        IndexChange::Deletion { location, .. } => {
+            output.push(location.to_string());
+        }
+        IndexChange::Rewrite {
+            source_location,
+            location,
+            copy,
+            ..
+        } => {
+            if copy {
+                output.push(format!("{} -> {} (copy)", source_location, location));
+            } else {
+                output.push(format!("{} -> {}", source_location, location));
+            }
+        }
     }
 }
