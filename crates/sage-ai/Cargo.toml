@@ -8,6 +8,8 @@ anyhow.workspace = true
 serde.workspace = true
 rig-core = { version = "0.21", features = ["reqwest-rustls"] }
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
+reqwest = { version = "0.12", features = ["__rustls", "__rustls-ring"] }
+tokio = "1.47"
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = "0.10"
