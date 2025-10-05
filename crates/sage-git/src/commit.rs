@@ -14,6 +14,17 @@ pub struct Commit {
 }
 
 impl Repo {
+    pub fn create_commit(&self, message: &str, allow_empty: bool, amend: bool) -> Result<()> {
+        let mut command = self.git()?.arg("commit");
+        if allow_empty {
+            command = command.arg("--allow-empty");
+        }
+        if amend {
+            command = command.arg("--amend");
+        }
+        command.arg("-m").arg(&format!("{}", message)).run()
+    }
+
     pub fn get_current_commit(&self) -> Result<Id<'_>> {
         let found = self.repo.head_commit()?;
         Ok(found.id())
