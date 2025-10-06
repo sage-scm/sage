@@ -1,6 +1,7 @@
 //! Prompts used for AI-powered features
 
 /// Maximum tokens that can be processed in a single request
+#[allow(dead_code)]
 pub const MAX_TOKENS: usize = 1_048_576;
 
 /// Improved prompt for generating conventional commit messages, focused and streamlined for LLM reliability
@@ -39,6 +40,7 @@ Bad examples (avoid):
 }
 
 /// Prompt for generating pull request title
+#[allow(dead_code)]
 pub async fn pr_title_prompt(commits: Vec<String>) -> String {
     // Join the commits into a block that can be pasted into the prompt.
     let commit_log = commits.join("\n");
@@ -69,6 +71,7 @@ pub async fn pr_title_prompt(commits: Vec<String>) -> String {
 }
 
 /// Prompt for generating pull request descriptions
+#[allow(dead_code)]
 pub fn pr_description_prompt(title: &str, commits: Vec<String>, template: &str) -> String {
     // Join the commits into a block that can be injected into the prompt.
     let commit_log = commits.join("\n");
