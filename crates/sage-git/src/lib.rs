@@ -6,6 +6,7 @@ use gix::Repository;
 mod branch;
 mod commit;
 mod config;
+mod diff;
 mod exec;
 mod stage;
 mod status;
