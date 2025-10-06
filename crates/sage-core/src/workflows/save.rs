@@ -1,4 +1,5 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
+use colored::Colorize;
 use sage_ai::commit_message;
 use sage_fmt::MessageType;
 
@@ -32,11 +33,15 @@ pub async fn save(
         message = Some(generated);
     }
 
-    let message = match message {
-        Some(msg) => msg,
-        None => bail!("Commit message required. Use --message or --ai."),
-    };
-    repo.create_commit(&message, false, false)?;
+    repo.create_commit(&message.unwrap(), false, false)?;
+
+    let last_commit = repo.get_current_commit()?;
+    let mut hash = last_commit.to_hex().to_string();
+    hash.truncate(8);
+    console.message(
+        MessageType::Success,
+        &format!("Created commit {}", hash.dimmed()),
+    )?;
 
     if push {
         repo.push(force)?;
