@@ -54,15 +54,15 @@ jobs:
       checkout_ref: ${{ steps.release_branch.outputs.checkout_ref }}
       dry_run: ${{ steps.release_branch.outputs.dry_run }}
     env:
-      RELEASE_BRANCH: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || 'main' }}
-      RELEASE_CHECKOUT_REF: ${{ (github.event_name == 'workflow_call' && (inputs.branch || 'main')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main')) || github.ref }}
+      WORKFLOW_CALL_BRANCH: ${{ github.event_name == 'workflow_call' && inputs.branch || '' }}
+      WORKFLOW_DISPATCH_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || '' }}
       DRY_RUN: ${{ format('{0}', (github.event_name == 'workflow_call' && inputs.dry_run) || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') || false) }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SERVICE_ACCOUNT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-          ref: ${{ env.RELEASE_CHECKOUT_REF }}
+          ref: ${{ env.WORKFLOW_CALL_BRANCH != '' && env.WORKFLOW_CALL_BRANCH || env.WORKFLOW_DISPATCH_BRANCH != '' && env.WORKFLOW_DISPATCH_BRANCH || github.ref }}
 
       - name: Determine version
         id: version
@@ -123,9 +123,25 @@ jobs:
 
       - name: Record release branch context
         id: release_branch
+        env:
+          WORKFLOW_CALL_BRANCH: ${{ env.WORKFLOW_CALL_BRANCH }}
+          WORKFLOW_DISPATCH_BRANCH: ${{ env.WORKFLOW_DISPATCH_BRANCH }}
         run: |
+          TARGET_BRANCH="$WORKFLOW_CALL_BRANCH"
+          if [ -z "$TARGET_BRANCH" ]; then
+            TARGET_BRANCH="$WORKFLOW_DISPATCH_BRANCH"
+          fi
+          if [ -z "$TARGET_BRANCH" ]; then
+            TARGET_BRANCH="main"
+          fi
+
+          TARGET_BRANCH="${TARGET_BRANCH#refs/heads/}"
+          TARGET_BRANCH="${TARGET_BRANCH#refs/remotes/}"
+
+          echo "Using release branch: ${TARGET_BRANCH}"
+
           COMMIT_SHA=$(git rev-parse HEAD)
-          echo "branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "branch=${TARGET_BRANCH}" >> "$GITHUB_OUTPUT"
           echo "checkout_ref=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
           if [ "${DRY_RUN}" = "true" ]; then
             echo "dry_run=true" >> "$GITHUB_OUTPUT"
