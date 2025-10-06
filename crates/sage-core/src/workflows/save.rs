@@ -17,7 +17,7 @@ pub async fn save(
 
     stage_changes(&repo, console)?;
 
-    let msg = commit_message(&repo, &console, message, ai).await?;
+    let msg = commit_message(&repo, console, message, ai).await?;
 
     repo.create_commit(&msg, false, false)?;
 

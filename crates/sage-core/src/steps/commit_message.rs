@@ -17,9 +17,9 @@ pub async fn commit_message(
         return Ok(generated);
     }
 
-    if message.is_some() {
+    if let Some(message) = message {
         console.message(sage_fmt::MessageType::Info, "Using provided message")?;
-        return Ok(message.unwrap());
+        return Ok(message);
     }
 
     Ok(String::new())
