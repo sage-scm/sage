@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use gix::revision::walk::Sorting;
@@ -22,7 +24,7 @@ impl Repo {
         if amend {
             command = command.arg("--amend");
         }
-        command.arg("-m").arg(message).run()
+        command.arg("-m").arg(message).stdout(Stdio::null()).run()
     }
 
     pub fn get_current_commit(&self) -> Result<Id<'_>> {
