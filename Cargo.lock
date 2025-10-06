@@ -2827,6 +2827,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hack-workspace",
+ "once_cell",
  "openssl",
  "reqwest",
  "rig-core",
@@ -2854,6 +2855,7 @@ dependencies = [
  "colored",
  "fuzzy-matcher",
  "hack-workspace",
+ "sage-ai",
  "sage-fmt",
  "sage-git",
 ]

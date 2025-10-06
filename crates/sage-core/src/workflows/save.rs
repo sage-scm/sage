@@ -1,12 +1,13 @@
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
+use sage_ai::commit_message;
 use sage_fmt::MessageType;
 
 use crate::{fetch_if_stale, stage_changes};
 
-pub fn save(
-    message: Option<String>,
+pub async fn save(
+    mut message: Option<String>,
     force: bool,
-    _ai: bool,
+    ai: bool,
     push: bool,
     console: &sage_fmt::Console,
 ) -> Result<()> {
@@ -20,7 +21,22 @@ pub fn save(
         console.message(MessageType::Info, "Using provided message")?;
     }
 
-    repo.create_commit(&message.unwrap(), false, false)?;
+    if message.is_none() && ai {
+        let progress = console.progress("Generating message with AI");
+        let diff = repo.diff_ai()?;
+        let generated = commit_message(&diff)
+            .await
+            .context("AI failed to generate a commit message")?;
+        progress.done();
+        console.message(MessageType::Success, "AI provided commit message")?;
+        message = Some(generated);
+    }
+
+    let message = match message {
+        Some(msg) => msg,
+        None => bail!("Commit message required. Use --message or --ai."),
+    };
+    repo.create_commit(&message, false, false)?;
 
     if push {
         repo.push(force)?;

@@ -10,4 +10,5 @@ colored = "3.0"
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 sage-git = { version = "0.1.0", path = "../sage-git" }
 sage-fmt = { version = "0.1.0", path = "../sage-fmt" }
+sage-ai = { version = "0.1.0", path = "../sage-ai" }
 fuzzy-matcher = "0.3"

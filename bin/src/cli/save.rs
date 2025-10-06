@@ -15,10 +15,10 @@ pub struct SaveCommand {
 }
 
 impl SaveCommand {
-    pub fn run(self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
         let console = sage_fmt::Console::new();
         console.header("save")?;
 
-        save(self.message, self.force, self.ai, self.push, &console)
+        save(self.message, self.force, self.ai, self.push, &console).await
     }
 }

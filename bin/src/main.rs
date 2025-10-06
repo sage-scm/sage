@@ -5,12 +5,17 @@ use crate::cli::{Cli, Command};
 
 mod cli;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Save(command) => command.run(),
+        // Create commits
+        Command::Save(command) => command.run().await,
+        // Change branches
         Command::Work(command) => command.run(),
+        // List branches
         Command::List(command) => command.run(),
+        // List commits
         Command::Log(command) => command.run(),
     }
 }
