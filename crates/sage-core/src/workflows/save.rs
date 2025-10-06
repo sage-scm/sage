@@ -32,6 +32,7 @@ pub async fn save(
 
     if push {
         repo.push(force)?;
+        console.message(MessageType::Success, "Pushed to remote")?;
     }
 
     Ok(())
