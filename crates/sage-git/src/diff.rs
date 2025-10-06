@@ -32,11 +32,11 @@ impl Repo {
                 if let gix::worktree::open_index::Error::IndexFile(
                     gix::index::file::init::Error::Io(io_err),
                 ) = &err
+                    && io_err.kind() == std::io::ErrorKind::NotFound
                 {
-                    if io_err.kind() == std::io::ErrorKind::NotFound {
-                        bail!("No staged changes to diff.");
-                    }
+                    bail!("No staged changes to diff.");
                 }
+
                 Err(err).context("failed to open git index")?
             }
         };
@@ -242,7 +242,7 @@ fn set_side(
     fallback: Option<&Side>,
 ) -> Result<()> {
     if let Some(side) = primary {
-        cache.set_resource(side.id.clone(), side.kind, side.path.as_bstr(), role, repo)?;
+        cache.set_resource(side.id, side.kind, side.path.as_bstr(), role, repo)?;
     } else if let Some(side) = fallback {
         cache.set_resource(hash_kind.null(), side.kind, side.path.as_bstr(), role, repo)?;
     }
