@@ -12,6 +12,10 @@ pub struct SaveCommand {
     pub ai: bool,
     #[arg(short = 'p', long = "push")]
     pub push: bool,
+    #[arg(short = 'e', long = "empty")]
+    pub empty: bool,
+    #[arg(short = 'A', long = "amend")]
+    pub amend: bool,
 }
 
 impl SaveCommand {
@@ -19,6 +23,15 @@ impl SaveCommand {
         let console = sage_fmt::Console::new();
         console.header("save")?;
 
-        save(self.message, self.force, self.ai, self.push, &console).await
+        save(
+            self.message,
+            self.force,
+            self.ai,
+            self.push,
+            self.empty,
+            self.amend,
+            &console,
+        )
+        .await
     }
 }

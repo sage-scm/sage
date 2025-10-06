@@ -9,6 +9,8 @@ pub async fn save(
     force: bool,
     ai: bool,
     push: bool,
+    empty: bool,
+    amend: bool,
     console: &sage_fmt::Console,
 ) -> Result<()> {
     let repo = sage_git::Repo::open()?;
@@ -19,7 +21,7 @@ pub async fn save(
 
     let msg = commit_message(&repo, console, message, ai).await?;
 
-    repo.create_commit(&msg, false, false)?;
+    repo.create_commit(&msg, empty, amend)?;
 
     let last_commit = repo.get_current_commit()?;
     let mut hash = last_commit.to_hex().to_string();
