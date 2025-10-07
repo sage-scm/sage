@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use once_cell::sync::OnceCell;
 use rig::providers::openai;
-use std::env;
+use sage_config::Config;
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 60;
@@ -33,30 +33,48 @@ fn sanitize(value: String) -> String {
 
 pub(crate) fn ai_context() -> Result<&'static AiContext> {
     AI_CONTEXT.get_or_try_init(|| {
-        let api_key = sanitize(env::var("OPENAI_API_KEY").context("OPENAI_API_KEY not set")?);
-        let ai_model = sanitize(env::var("OPENAI_MODEL").context("OPENAI_MODEL not set")?);
-        let api_url = sanitize(env::var("OPENAI_URL").context("OPENAI_URL not set")?);
+        let config = Config::load()?;
+        let api_key = config
+            .get("ai.api_key")?
+            .map(sanitize)
+            .filter(|value| !value.is_empty())
+            .expect("AI API key not set");
+        let ai_model = config
+            .get("ai.model")?
+            .map(sanitize)
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "gpt-5-nano".to_string());
+        let api_url = config
+            .get("ai.url")?
+            .map(sanitize)
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
 
-        let timeout_secs = env::var("OPENAI_TIMEOUT")
-            .ok()
-            .and_then(|v| v.trim().parse::<u64>().ok())
+        let timeout_secs = config
+            .get("ai.timeout")?
+            .map(sanitize)
+            .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(DEFAULT_TIMEOUT_SECS);
+
         let timeout_duration = Duration::from_secs(timeout_secs);
 
-        let max_tokens = env::var("OPENAI_MAX_TOKENS")
-            .ok()
-            .and_then(|v| v.trim().parse::<u64>().ok())
+        let max_tokens = config
+            .get("ai.max_tokens")?
+            .map(sanitize)
+            .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(DEFAULT_MAX_TOKENS);
 
-        let max_retries = env::var("OPENAI_MAX_RETRIES")
-            .ok()
-            .and_then(|v| v.trim().parse::<usize>().ok())
+        let max_retries = config
+            .get("ai.max_retries")?
+            .map(sanitize)
+            .and_then(|v| v.parse::<usize>().ok())
             .filter(|&retries| retries > 0)
             .unwrap_or(DEFAULT_MAX_RETRIES);
 
-        let retry_delay_ms = env::var("OPENAI_RETRY_DELAY_MS")
-            .ok()
-            .and_then(|v| v.trim().parse::<u64>().ok())
+        let retry_delay_ms = config
+            .get("ai.retry_delay_ms")?
+            .map(sanitize)
+            .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(DEFAULT_RETRY_DELAY_MS);
 
         let trimmed_api_url = api_url.trim();
