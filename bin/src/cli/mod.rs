@@ -1,8 +1,10 @@
+pub mod config;
 pub mod list;
 pub mod log;
 pub mod save;
 pub mod work;
 
+pub use config::ConfigCommand;
 pub use list::ListCommand;
 pub use log::LogCommand;
 pub use save::SaveCommand;
@@ -23,4 +25,5 @@ pub enum Command {
     Work(WorkCommand),
     List(ListCommand),
     Log(LogCommand),
+    Config(ConfigCommand),
 }

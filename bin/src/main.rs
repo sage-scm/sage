@@ -17,5 +17,7 @@ async fn main() -> Result<()> {
         Command::List(command) => command.run(),
         // List commits
         Command::Log(command) => command.run(),
+        // Manage configuration
+        Command::Config(command) => command.run(),
     }
 }
