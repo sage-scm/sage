@@ -15,16 +15,24 @@ publish = false
 
 ### BEGIN HAKARI SECTION
 [dependencies]
+bitflags = { version = "2", default-features = false, features = ["serde"] }
 form_urlencoded = { version = "1" }
+hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15" }
+hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", default-features = false, features = ["raw"] }
+memchr = { version = "2" }
 num-traits = { version = "0.2", default-features = false, features = ["std"] }
 once_cell = { version = "1" }
 percent-encoding = { version = "2" }
 serde = { version = "1", features = ["alloc", "derive"] }
-serde_core = { version = "1", default-features = false, features = ["alloc", "result", "std"] }
+serde_core = { version = "1", features = ["alloc"] }
+serde_json = { version = "1", features = ["alloc"] }
 smallvec = { version = "1", default-features = false, features = ["const_generics", "write"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+winnow = { version = "0.7", features = ["simd"] }
 
 [build-dependencies]
+memchr = { version = "2" }
+once_cell = { version = "1" }
 proc-macro2 = { version = "1" }
 quote = { version = "1" }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }

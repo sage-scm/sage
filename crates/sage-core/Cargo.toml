@@ -11,4 +11,5 @@ hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 sage-git = { version = "0.1.0", path = "../sage-git" }
 sage-fmt = { version = "0.1.0", path = "../sage-fmt" }
 sage-ai = { version = "0.1.0", path = "../sage-ai" }
+sage-config = { version = "0.1.0", path = "../sage-config" }
 fuzzy-matcher = "0.3"

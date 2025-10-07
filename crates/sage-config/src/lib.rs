@@ -187,15 +187,14 @@ impl Config {
             return table.remove(segments[0]).is_some();
         }
 
-        if let Some(child) = table.get_mut(segments[0]) {
-            if let Some(child_table) = child.as_table_mut() {
-                if Self::remove_from_table(child_table, &segments[1..]) {
-                    if child_table.is_empty() {
-                        table.remove(segments[0]);
-                    }
-                    return true;
-                }
+        if let Some(child) = table.get_mut(segments[0])
+            && let Some(child_table) = child.as_table_mut()
+            && Self::remove_from_table(child_table, &segments[1..])
+        {
+            if child_table.is_empty() {
+                table.remove(segments[0]);
             }
+            return true;
         }
 
         false
