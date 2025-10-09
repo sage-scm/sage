@@ -7,6 +7,6 @@ edition = "2024"
 [dependencies]
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 anyhow.workspace = true
+chrono.workspace = true
 gix = "0.73"
 gix-worktree-state = "0.20"
-chrono = "0.4"
