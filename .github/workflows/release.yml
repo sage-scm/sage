@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 2024-10-09)'
+        description: 'Version to release (e.g., 2025-01-15)'
         required: true
         type: string
       branch:
@@ -23,7 +23,7 @@ on:
   workflow_call:
     inputs:
       version:
-        description: 'Version to release (e.g., 2024-10-09)'
+        description: 'Version to release (e.g., 2025-01-15)'
         required: true
         type: string
       branch:

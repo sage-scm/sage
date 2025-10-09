@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Args;
-use sage_core::save;
+use sage_core::{SaveOptions, save};
 
 #[derive(Debug, Args)]
 pub struct SaveCommand {
@@ -25,16 +25,16 @@ impl SaveCommand {
         let console = sage_fmt::Console::new();
         console.header("save")?;
 
-        save(
-            self.message,
-            self.force,
-            self.ai,
-            self.push,
-            self.empty,
-            self.amend,
-            self.paths,
-            &console,
-        )
-        .await
+        let options = SaveOptions {
+            message: self.message,
+            force: self.force,
+            ai: self.ai,
+            push: self.push,
+            empty: self.empty,
+            amend: self.amend,
+            paths: self.paths,
+        };
+
+        save(options, &console).await
     }
 }

@@ -4,16 +4,27 @@ use sage_fmt::MessageType;
 
 use crate::{commit_message, fetch_if_stale, stage_changes};
 
-pub async fn save(
-    message: Option<String>,
-    force: bool,
-    ai: bool,
-    push: bool,
-    empty: bool,
-    amend: bool,
-    paths: Option<Vec<String>>,
-    console: &sage_fmt::Console,
-) -> Result<()> {
+pub struct SaveOptions {
+    pub message: Option<String>,
+    pub force: bool,
+    pub ai: bool,
+    pub push: bool,
+    pub empty: bool,
+    pub amend: bool,
+    pub paths: Option<Vec<String>>,
+}
+
+pub async fn save(options: SaveOptions, console: &sage_fmt::Console) -> Result<()> {
+    let SaveOptions {
+        message,
+        force,
+        ai,
+        push,
+        empty,
+        amend,
+        paths,
+    } = options;
+
     let repo = sage_git::Repo::open()?;
     let _ = fetch_if_stale(&repo, console)?;
     let _current_branch = repo.get_current_branch()?;
