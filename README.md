@@ -84,7 +84,10 @@ cargo install --git https://github.com/sage-scm/sage sage-cli
 
 ## AI-Assisted Commits
 
-Prefer AI-generated commit messages? See [docs/USING_OLLAMA.md](docs/USING_OLLAMA.md) for configuration details while the feature evolves.
+Prefer AI-generated commit messages? Pick the guide that matches your setup:
+
+- [docs/USING_OLLAMA.md](docs/USING_OLLAMA.md) — local Ollama models
+- [docs/USING_OPENAI.md](docs/USING_OPENAI.md) — OpenAI GPT and compatible endpoints
 
 ---
 
@@ -103,6 +106,7 @@ sage/
 ├── docs/
 │   ├── GETTING_STARTED.md
 │   ├── USING_OLLAMA.md
+│   ├── USING_OPENAI.md
 │   ├── CONTRIBUTING.md
 │   └── image.png      # project logo
 └── install-local.sh   # helper for local installs
