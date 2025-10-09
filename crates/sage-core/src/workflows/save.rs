@@ -11,13 +11,14 @@ pub async fn save(
     push: bool,
     empty: bool,
     amend: bool,
+    paths: Option<Vec<String>>,
     console: &sage_fmt::Console,
 ) -> Result<()> {
     let repo = sage_git::Repo::open()?;
     let _ = fetch_if_stale(&repo, console)?;
     let _current_branch = repo.get_current_branch()?;
 
-    stage_changes(&repo, console)?;
+    stage_changes(&repo, console, paths)?;
 
     let msg = commit_message(&repo, console, message, ai).await?;
 

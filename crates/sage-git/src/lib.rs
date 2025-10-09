@@ -34,7 +34,13 @@ impl Repo {
     }
 
     pub fn workdir(&self) -> Option<PathBuf> {
-        self.repo.workdir().map(|dir| dir.to_path_buf())
+        self.repo.workdir().map(|dir| {
+            if dir.is_absolute() {
+                dir.to_path_buf()
+            } else {
+                self.repo.current_dir().join(dir)
+            }
+        })
     }
 
     pub fn repo_root(&self) -> PathBuf {

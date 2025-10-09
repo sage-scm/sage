@@ -1,7 +1,16 @@
 use anyhow::Result;
 use sage_fmt::MessageType;
 
-pub fn stage_changes(repo: &sage_git::Repo, console: &sage_fmt::Console) -> Result<()> {
+pub fn stage_changes(
+    repo: &sage_git::Repo,
+    console: &sage_fmt::Console,
+    paths: Option<Vec<String>>,
+) -> Result<()> {
+    if let Some(stage_paths) = paths {
+        repo.stage_paths(stage_paths)?;
+        console.message(MessageType::Success, "Staged provided paths")?;
+    }
+
     let untracked_files = repo.untracked_files()?;
     let unstaged_files = repo.unstaged_files()?;
     let staged_changes = repo.staged_changes()?;

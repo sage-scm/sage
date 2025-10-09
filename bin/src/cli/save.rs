@@ -16,6 +16,8 @@ pub struct SaveCommand {
     pub empty: bool,
     #[arg(short = 'A', long = "amend")]
     pub amend: bool,
+    #[arg(long = "paths", num_args = 1.., value_name = "PATH")]
+    pub paths: Option<Vec<String>>,
 }
 
 impl SaveCommand {
@@ -30,6 +32,7 @@ impl SaveCommand {
             self.push,
             self.empty,
             self.amend,
+            self.paths,
             &console,
         )
         .await

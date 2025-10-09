@@ -43,7 +43,6 @@ impl Repo {
 
     fn normalize_path(&self, path: &Path) -> Result<NormalizedPath> {
         let workdir = self
-            .repo
             .workdir()
             .ok_or_else(|| anyhow!("repository has no worktree"))?;
         let current_dir = self.repo.current_dir();
