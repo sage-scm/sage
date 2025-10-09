@@ -2791,7 +2791,7 @@ dependencies = [
 
 [[package]]
 name = "sage-cli"
-version = "2025.10.3"
+version = "2025.10.9"
 dependencies = [
  "anyhow",
  "chrono",
