@@ -8,7 +8,7 @@
 
 Sage wraps everyday Git pain points behind a single, intuitive CLI (installed as `sg`) and an optional sync server for shared stacks. It keeps branch stacks tidy, automates the boring bits, and gives you a slick TUI when you feel fancy – **no magic, no yak shaving, just clean commits**.
 
-👉 **Just getting started?** Follow the [Quick Setup](docs/CONTRIBUTING.md#quick-setup) section in the contributing guide while we draft a new dedicated onboarding doc.
+👉 **Just getting started?** Read the [Getting Started guide](docs/GETTING_STARTED.md) for a walkthrough of the stacked workflow (currently being rebuilt).
 
 > ⚠️ **Alpha in motion:** Sage is in the middle of a major restructuring. Commands, flags, and workflows are being iterated on rapidly and may change without notice while we stabilize the new architecture.
 
@@ -80,31 +80,11 @@ brew install sage-scm/cask/sage
 cargo install --git https://github.com/sage-scm/sage sage-cli
 ```
 
-> **Note**: All features including stacked‑diff commands and AI commit message generation are enabled by default.
-
 ---
 
-## Using Ollama for AI Features
+## AI-Assisted Commits
 
-To configure Sage to use your locally running Ollama API for AI-powered commit messages:
-
-```bash
-# Set the API endpoint (default Ollama port is 11434)
-sg config set ai.api_url http://localhost:11434
-
-# Set your preferred model (e.g., llama2, codellama, mistral)
-sg config set ai.model gemma3n:latest
-
-# Verify your configuration
-sg config get ai
-```
-
-Now you can use the AI features with your local Ollama instance:
-
-```bash
-# Generate commit message using local Ollama
-sg save --ai
-```
+Prefer AI-generated commit messages? See [docs/USING_OLLAMA.md](docs/USING_OLLAMA.md) for configuration details while the feature evolves.
 
 ---
 
@@ -121,6 +101,8 @@ sage/
 │   ├── sage-git/       # git plumbing helpers
 │   └── sage-graph/     # stack graph modelling
 ├── docs/
+│   ├── GETTING_STARTED.md
+│   ├── USING_OLLAMA.md
 │   ├── CONTRIBUTING.md
 │   └── image.png      # project logo
 └── install-local.sh   # helper for local installs
@@ -162,10 +144,6 @@ We believe in using our own medicine. Throughout development **Sage manages its 
 We welcome contributions! Everything you need—including setup steps, conventions, and release details—is now recorded in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ---
-
-## Disclaimer
-
-Sage is **early‑stage and evolving rapidly**. Features are still landing, and behaviour may change without notice while we burn away the rough edges.
 
 ## License
 
