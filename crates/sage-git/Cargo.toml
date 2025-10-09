@@ -5,8 +5,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { version = "1.0.98", default-features = false }
-serde = { version = "1.0.219", default-features = false }
-once_cell = { version = "1.21.3", default-features = false }
-chrono = { workspace = true, features = ["serde"] }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+hack-workspace = { version = "0.1", path = "../../hack-workspace" }
+anyhow.workspace = true
+chrono.workspace = true
+gix = "0.73"
+gix-worktree-state = "0.20"

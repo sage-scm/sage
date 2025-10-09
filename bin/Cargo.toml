@@ -1,0 +1,23 @@
+[package]
+license = "MIT OR Apache-2.0"
+name = "sage-cli"
+version = "2025.10.3"
+edition = "2024"
+description = "🌿 Sage — A Git workflow tool for managing branches and commits"
+repository = "https://github.com/sage-scm/sage"
+readme = "../../README.md"
+keywords = ["git", "workflow", "cli", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "sg"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+anyhow.workspace = true
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread"] }
+hack-workspace = { version = "0.1", path = "../hack-workspace" }
+sage-core = { version = "0.1.0", path = "../crates/sage-core" }
+sage-fmt = { version = "0.1.0", path = "../crates/sage-fmt" }
+chrono.workspace = true

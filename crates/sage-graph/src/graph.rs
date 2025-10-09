@@ -1,361 +1,340 @@
-//! Core logic: stacks **+** loose branches.
+use std::{fs, path::PathBuf};
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, bail};
 use hashbrown::HashMap;
-use sage_git::branch::get_default_branch;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    branch::{BranchId, BranchInfo},
-    persist,
-};
-
-/* ───────────────────────── Stack (tree under a name) ────────────────── */
+use crate::{BranchInfo, Stack};
+use sage_git::Repo;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct Stack {
-    pub name: String,
-    pub root: BranchId,
-    pub branches: HashMap<BranchId, BranchInfo>,
-    pub children_map: HashMap<BranchId, Vec<BranchId>>,
-}
-
-impl Stack {
-    /* ----- ctor ----- */
-
-    pub fn new(name: impl Into<String>, root: BranchId, author: impl Into<String>) -> Self {
-        let root_info = BranchInfo::new(root.clone(), root.clone(), author, 0);
-
-        let mut branches = HashMap::new();
-        let mut children_map = HashMap::new();
-        branches.insert(root.clone(), root_info);
-        children_map.insert(root.clone(), Vec::new());
-
-        Self {
-            name: name.into(),
-            root,
-            branches,
-            children_map,
-        }
-    }
-
-    /* ----- queries ----- */
-
-    pub fn contains(&self, b: &str) -> bool {
-        self.branches.contains_key(b)
-    }
-
-    pub fn get_parent(&self, b: &str) -> Option<&BranchInfo> {
-        for (parent, child_map) in self.children_map.iter() {
-            if child_map.contains(&b.to_string()) {
-                return self.branches.get(parent);
-            }
-        }
-        None
-    }
-
-    pub fn info(&self, b: &str) -> Option<&BranchInfo> {
-        self.branches.get(b)
-    }
-
-    pub fn children(&self, b: &str) -> Vec<String> {
-        self.children_map.get(b).cloned().unwrap_or_default()
-    }
-
-    pub fn all_branches(&self) -> Vec<String> {
-        self.branches.keys().cloned().collect()
-    }
-
-    /* ----- mutation ----- */
-
-    pub fn add_child(
-        &mut self,
-        parent: &str,
-        child: BranchId,
-        author: Option<String>,
-    ) -> Result<()> {
-        if !self.contains(parent) {
-            bail!("unknown branch \"{parent}\"");
-        }
-        if self.contains(&child) {
-            bail!(
-                "branch \"{child}\" already exists in stack \"{}\"",
-                self.name
-            );
-        }
-
-        let depth = self.branches[parent].depth + 1;
-        let info = BranchInfo::new(
-            child.clone(),
-            parent.to_owned(),
-            author.unwrap_or_default(),
-            depth,
-        );
-
-        self.branches.insert(child.clone(), info);
-        self.children_map
-            .entry(parent.to_owned())
-            .or_default()
-            .push(child);
-        Ok(())
-    }
-}
-
-/* ───────────────────────────── SageGraph ────────────────────────────── */
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SageGraph {
-    /* persistent ------------------------------------------ */
     stacks: HashMap<String, Stack>,
-    loose: HashMap<BranchId, BranchInfo>,
-
-    /* runtime-only ---------------------------------------- */
+    loose_branches: HashMap<String, BranchInfo>,
     #[serde(skip)]
-    branch_to_stack: HashMap<BranchId, String>,
+    branch_to_stack: HashMap<String, String>,
     #[serde(skip)]
-    loose_children: HashMap<BranchId, Vec<BranchId>>,
+    loose_children: HashMap<String, Vec<String>>,
+    #[serde(skip)]
+    repo_root: Option<PathBuf>,
+    #[serde(skip)]
+    git_dir: Option<PathBuf>,
 }
-
-impl Default for SageGraph {
-    fn default() -> Self {
-        Self {
-            stacks: HashMap::new(),
-            loose: HashMap::new(),
-            branch_to_stack: HashMap::new(),
-            loose_children: HashMap::new(),
-        }
-    }
-}
-
-/* ----- public I/O ----------------------------------------------------- */
 
 impl SageGraph {
-    pub fn load_or_default() -> Result<Self> {
-        let mut g = persist::load()?;
-        g.reindex();
-        g.ensure_default_branch()?;
-        Ok(g)
+    pub fn load(repo: &Repo) -> Result<Self> {
+        let path = Self::storage_path(repo);
+        let data = match fs::read_to_string(&path) {
+            Ok(content) => serde_json::from_str(&content)?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => SageGraph::default(),
+            Err(e) => return Err(e).context("reading graph file"),
+        };
+        let mut graph = data;
+        graph.capture_repo_environment(repo);
+        graph.rebuild_indexes();
+        graph.add_default_branch_if_missing(repo)?;
+        Ok(graph)
     }
 
-    pub fn save(&self) -> Result<()> {
-        persist::save(self)
+    pub fn save(&mut self, repo: &Repo) -> Result<()> {
+        self.capture_repo_environment(repo);
+        let path = Self::storage_path(repo);
+        let json = serde_json::to_string_pretty(self)?;
+        fs::write(path, json).context("writing graph file")
     }
-}
 
-/* ----- runtime indexing ---------------------------------------------- */
+    fn storage_path(repo: &Repo) -> PathBuf {
+        repo.git_dir().join("sage_graph.json")
+    }
 
-impl SageGraph {
-    fn reindex(&mut self) {
+    fn rebuild_indexes(&mut self) {
         self.branch_to_stack.clear();
         self.loose_children.clear();
 
-        for (stack_name, stack) in &self.stacks {
-            for id in stack.branches.keys() {
-                self.branch_to_stack.insert(id.clone(), stack_name.clone());
+        for (name, stack) in &self.stacks {
+            for branch in stack.branches.keys() {
+                self.branch_to_stack.insert(branch.clone(), name.clone());
             }
         }
-        for (id, info) in &self.loose {
+
+        for (branch, info) in &self.loose_branches {
             self.loose_children
                 .entry(info.parent.clone())
                 .or_default()
-                .push(id.clone());
+                .push(branch.clone());
         }
     }
 
-    fn ensure_default_branch(&mut self) -> Result<()> {
-        let default = get_default_branch().context("getting default branch")?;
-        if self.tracks(&default) {
+    fn add_default_branch_if_missing(&mut self, repo: &Repo) -> Result<()> {
+        self.capture_repo_environment(repo);
+        let default = repo.get_default_branch()?;
+        if self.is_tracked(&default) {
             return Ok(());
         }
-        let info = BranchInfo::new(default.clone(), default.clone(), whoami::realname(), 0);
-        self.loose.insert(default.clone(), info);
-        self.reindex();
+        let author = Self::author_name(repo)?;
+        let info = BranchInfo::new(default.clone(), default.clone(), author, 0);
+        self.loose_branches.insert(default, info);
+        self.rebuild_indexes();
         Ok(())
     }
-}
 
-/* ----- stack API ------------------------------------------------------ */
-
-impl SageGraph {
-    pub fn new_stack(&mut self, name: impl Into<String>, root: BranchId) -> Result<()> {
-        let name = name.into();
+    pub fn create_stack(
+        &mut self,
+        repo: &Repo,
+        name: String,
+        root: String,
+        parent: String,
+    ) -> Result<()> {
+        self.capture_repo_environment(repo);
         if self.stacks.contains_key(&name) {
-            bail!("stack \"{name}\" already exists");
+            bail!("stack \"{name}\" exists");
         }
-        if self.tracks(&root) {
-            bail!("branch \"{root}\" already tracked");
+        if self.is_tracked(&root) {
+            bail!("branch \"{root}\" tracked");
+        }
+        if !self.is_tracked(&parent) {
+            bail!("parent \"{parent}\" not tracked");
         }
 
-        let stack = Stack::new(&name, root.clone(), whoami::realname());
+        let depth = self.get_depth(&parent).unwrap_or(0) + 1;
+        let author = Self::author_name(repo)?;
+        let stack = Stack::new(name.clone(), root.clone(), parent, depth, author);
         self.stacks.insert(name.clone(), stack);
         self.branch_to_stack.insert(root, name);
         Ok(())
     }
 
-    pub fn add_stack_child(
+    pub fn add_to_stack(
         &mut self,
+        repo: &Repo,
         stack_name: &str,
         parent: &str,
-        child: BranchId,
-        author: Option<String>,
+        child: String,
     ) -> Result<()> {
+        self.capture_repo_environment(repo);
         let stack = self
             .stacks
             .get_mut(stack_name)
-            .ok_or_else(|| anyhow!("unknown stack \"{stack_name}\""))?;
-        stack.add_child(parent, child.clone(), author)?;
+            .ok_or_else(|| anyhow::anyhow!("stack \"{stack_name}\" not found"))?;
+        let author = Self::author_name(repo)?;
+        let _ = stack.add_child(parent, child.clone(), author);
         self.branch_to_stack.insert(child, stack_name.to_owned());
         Ok(())
     }
 
-    pub fn stack_of(&self, b: &str) -> Option<&Stack> {
-        self.branch_to_stack.get(b).and_then(|s| self.stacks.get(s))
+    pub fn stack_for_branch(&self, branch: &str) -> Option<&Stack> {
+        self.branch_to_stack
+            .get(branch)
+            .and_then(|name| self.stacks.get(name))
     }
 
-    pub fn stack_name_of(&self, b: &str) -> Option<&String> {
-        self.branch_to_stack.get(b)
+    pub fn stack_name_for_branch(&self, branch: &str) -> Option<&String> {
+        self.branch_to_stack.get(branch)
     }
-}
 
-/* ----- loose-branch API ---------------------------------------------- */
-
-impl SageGraph {
-    pub fn add_loose_branch(
-        &mut self,
-        branch: BranchId,
-        parent: BranchId,
-        author: impl Into<String>,
-    ) -> Result<()> {
-        if self.tracks(&branch) {
-            bail!("branch \"{branch}\" already tracked");
+    pub fn add_loose_branch(&mut self, repo: &Repo, branch: String, parent: String) -> Result<()> {
+        self.capture_repo_environment(repo);
+        if self.is_tracked(&branch) {
+            bail!("branch \"{branch}\" tracked");
         }
-        if !self.tracks(&parent) {
+
+        if !self.is_tracked(&parent) {
             bail!("parent \"{parent}\" not tracked");
         }
-
-        let depth = self.depth(&parent).unwrap_or(0) + 1;
+        let depth = self.get_depth(&parent).unwrap_or(0) + 1;
+        let author = Self::author_name(repo)?;
         let info = BranchInfo::new(branch.clone(), parent.clone(), author, depth);
-
-        self.loose.insert(branch.clone(), info);
+        self.loose_branches.insert(branch.clone(), info.clone());
         self.loose_children.entry(parent).or_default().push(branch);
+        self.ensure_loose_no_cycle(&info.name)?;
         Ok(())
     }
 
-    pub fn is_loose(&self, b: &str) -> bool {
-        self.loose.contains_key(b)
-    }
-}
-
-/* ----- shared helpers ------------------------------------------------- */
-
-impl SageGraph {
-    pub fn tracks(&self, b: &str) -> bool {
-        self.branch_to_stack.contains_key(b) || self.loose.contains_key(b)
+    pub fn is_loose(&self, branch: &str) -> bool {
+        self.loose_branches.contains_key(branch)
     }
 
-    pub fn info(&self, b: &str) -> Option<&BranchInfo> {
-        self.stack_of(b)
-            .and_then(|s| s.info(b))
-            .or_else(|| self.loose.get(b))
+    pub fn is_tracked(&self, branch: &str) -> bool {
+        self.branch_to_stack.contains_key(branch) || self.loose_branches.contains_key(branch)
     }
 
-    fn depth(&self, b: &str) -> Option<usize> {
-        self.info(b).map(|i| i.depth)
+    pub fn get_info(&self, branch: &str) -> Option<&BranchInfo> {
+        self.stack_for_branch(branch)
+            .and_then(|s| s.info(branch))
+            .or_else(|| self.loose_branches.get(branch))
     }
 
-    /// Check if two branches are part of the same stack.
-    /// Returns true if both branches are in the same stack, false otherwise.
-    /// Returns false if either branch is not tracked or if they are loose branches.
-    pub fn same_stack(&self, branch1: &str, branch2: &str) -> bool {
-        match (self.stack_name_of(branch1), self.stack_name_of(branch2)) {
-            (Some(stack1), Some(stack2)) => stack1 == stack2,
+    fn get_depth(&self, branch: &str) -> Option<usize> {
+        self.get_info(branch).map(|info| info.depth)
+    }
+
+    pub fn in_same_stack(&self, first: &str, second: &str) -> bool {
+        match (
+            self.stack_name_for_branch(first),
+            self.stack_name_for_branch(second),
+        ) {
+            (Some(one), Some(two)) => one == two,
             _ => false,
         }
+    }
+
+    fn ensure_loose_no_cycle(&self, start: &str) -> Result<()> {
+        let mut visited = std::collections::HashSet::new();
+        let mut current = start;
+        while let Some(info) = self.loose_branches.get(current) {
+            if !visited.insert(info.parent.clone()) {
+                bail!("cycle in loose branches involving \"{start}\"");
+            }
+            current = &info.parent;
+        }
+        Ok(())
+    }
+
+    pub fn repo_root(&self) -> Option<&PathBuf> {
+        self.repo_root.as_ref()
+    }
+
+    pub fn git_dir(&self) -> Option<&PathBuf> {
+        self.git_dir.as_ref()
+    }
+
+    pub fn storage_path_cached(&self) -> Option<PathBuf> {
+        self.git_dir.as_ref().map(|dir| dir.join("sage_graph.json"))
+    }
+
+    fn author_name(repo: &Repo) -> Result<String> {
+        Ok(repo
+            .author_name()?
+            .unwrap_or_else(|| String::from("unknown")))
+    }
+
+    fn capture_repo_environment(&mut self, repo: &Repo) {
+        self.repo_root = Some(repo.repo_root());
+        self.git_dir = Some(repo.git_dir());
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sage_git::Repo;
+    use std::process::Command;
+    use tempfile::TempDir;
 
     #[test]
-    fn test_same_stack() {
+    fn same_stack_checks() {
+        let (_repo_dir, repo) = init_repo();
         let mut graph = SageGraph::default();
+        graph.loose_branches.insert(
+            "main".to_owned(),
+            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
+        );
+        graph.rebuild_indexes();
 
-        // Create a stack with two branches
         graph
-            .new_stack("feature-stack", "feature/base".to_string())
-            .unwrap();
-        graph
-            .add_stack_child(
-                "feature-stack",
-                "feature/base",
-                "feature/child".to_string(),
-                Some("test".to_string()),
+            .create_stack(
+                &repo,
+                "feat".to_owned(),
+                "feat/base".to_owned(),
+                "main".to_owned(),
             )
             .unwrap();
-
-        // Add a loose branch
         graph
-            .add_loose_branch("hotfix/bug".to_string(), "feature/base".to_string(), "test")
+            .add_to_stack(&repo, "feat", "feat/base", "feat/child".to_owned())
             .unwrap();
 
-        // Test same stack
-        assert!(graph.same_stack("feature/base", "feature/child"));
-        assert!(graph.same_stack("feature/child", "feature/base"));
+        graph
+            .add_loose_branch(&repo, "hotfix".to_owned(), "feat/base".to_owned())
+            .unwrap();
 
-        // Test different contexts (stack vs loose)
-        assert!(!graph.same_stack("feature/base", "hotfix/bug"));
-        assert!(!graph.same_stack("hotfix/bug", "feature/child"));
+        let feat_base = graph.get_info("feat/base").unwrap();
+        assert_eq!(feat_base.author, "Test User");
+        let feat_child = graph.get_info("feat/child").unwrap();
+        assert_eq!(feat_child.author, "Test User");
+        let hotfix = graph.get_info("hotfix").unwrap();
+        assert_eq!(hotfix.author, "Test User");
 
-        // Test non-existent branches
-        assert!(!graph.same_stack("feature/base", "non-existent"));
-        assert!(!graph.same_stack("non-existent", "feature/child"));
-        assert!(!graph.same_stack("non-existent1", "non-existent2"));
+        assert!(graph.in_same_stack("feat/base", "feat/child"));
+        assert!(!graph.in_same_stack("feat/base", "hotfix"));
+        assert!(!graph.in_same_stack("feat/base", "unknown"));
     }
 
     #[test]
-    fn test_stack_children_and_all_branches() {
+    fn stack_queries() {
+        let (_repo_dir, repo) = init_repo();
         let mut graph = SageGraph::default();
+        graph.loose_branches.insert(
+            "main".to_owned(),
+            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
+        );
+        graph.rebuild_indexes();
 
-        // Create a stack with multiple branches
         graph
-            .new_stack("feature-stack", "feature/base".to_string())
-            .unwrap();
-        graph
-            .add_stack_child(
-                "feature-stack",
-                "feature/base",
-                "feature/child1".to_string(),
-                Some("test".to_string()),
+            .create_stack(
+                &repo,
+                "feat".to_owned(),
+                "feat/base".to_owned(),
+                "main".to_owned(),
             )
             .unwrap();
         graph
-            .add_stack_child(
-                "feature-stack",
-                "feature/base",
-                "feature/child2".to_string(),
-                Some("test".to_string()),
+            .add_to_stack(&repo, "feat", "feat/base", "feat/one".to_owned())
+            .unwrap();
+        graph
+            .add_to_stack(&repo, "feat", "feat/base", "feat/two".to_owned())
+            .unwrap();
+
+        let stack = graph.stack_for_branch("feat/base").unwrap();
+        let kids = stack.children("feat/base");
+        assert_eq!(kids.len(), 2);
+        assert!(kids.contains(&"feat/one".to_owned()));
+        assert!(kids.contains(&"feat/two".to_owned()));
+
+        let all = stack.all_branches();
+        assert_eq!(all.len(), 3);
+    }
+
+    #[test]
+    fn repo_context_captured() {
+        let (repo_dir, repo) = init_repo();
+        let mut graph = SageGraph::default();
+        graph.loose_branches.insert(
+            "main".to_owned(),
+            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
+        );
+        graph.rebuild_indexes();
+
+        graph
+            .create_stack(
+                &repo,
+                "feat".to_owned(),
+                "feat/base".to_owned(),
+                "main".to_owned(),
             )
             .unwrap();
 
-        let stack = graph.stack_of("feature/base").unwrap();
+        let repo_root = graph.repo_root().expect("repo root cached");
+        assert_eq!(repo_root.as_path(), repo_dir.path());
 
-        // Test children method
-        let children = stack.children("feature/base");
-        assert_eq!(children.len(), 2);
-        assert!(children.contains(&"feature/child1".to_string()));
-        assert!(children.contains(&"feature/child2".to_string()));
+        let cached_path = graph.storage_path_cached().expect("storage path cached");
+        assert_eq!(cached_path, repo.git_dir().join("sage_graph.json"));
+    }
 
-        // Test all_branches method
-        let all_branches = stack.all_branches();
-        assert_eq!(all_branches.len(), 3);
-        assert!(all_branches.contains(&"feature/base".to_string()));
-        assert!(all_branches.contains(&"feature/child1".to_string()));
-        assert!(all_branches.contains(&"feature/child2".to_string()));
+    fn init_repo() -> (TempDir, Repo) {
+        let dir = TempDir::new().expect("temp repo");
+        run_git(&dir, ["init"]);
+        run_git(&dir, ["config", "user.name", "Test User"]);
+        run_git(&dir, ["config", "user.email", "test@example.com"]);
+        let repo = Repo::discover(dir.path()).expect("open repo");
+        (dir, repo)
+    }
 
-        // Test children for branch with no children
-        let no_children = stack.children("feature/child1");
-        assert!(no_children.is_empty());
+    fn run_git<const N: usize>(dir: &TempDir, args: [&str; N]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(dir.path())
+            .status()
+            .expect("run git");
+        assert!(status.success(), "git command failed");
     }
 }

@@ -21,3 +21,4 @@ cat <<'MSG'
 
 Re-run this script whenever the hooks change in the repo.
 MSG
+

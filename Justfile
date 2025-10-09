@@ -63,7 +63,7 @@ install-release:
 # Quick reinstall (skip checks)
 reinstall:
     @echo -e "${GREEN}Quick reinstall...${NC}"
-    cargo install --path ./bins/sage-cli --force
+    cargo install --path ./bin --force
 
 # ────────────────────────────────────────────────────────────────
 # 🧪 Testing & Quality
@@ -83,62 +83,60 @@ test-one pattern:
     cargo test --workspace {{pattern}}
 
 # Run tests continuously on file changes
-test-watch:
+test-watch: ensure-dev-tools
     cargo watch -x "test --workspace"
 
-# Run benchmarks (including ignored ones)
-bench:
-    @echo -e "${CYAN}Running benchmarks...${NC}"
-    cargo bench --workspace -- --include-ignored
-
 # Check code quality with clippy
-lint:
+lint: ensure-dev-tools
     @echo -e "${CYAN}Running clippy...${NC}"
     cargo clippy --workspace -- -D warnings
 
 # Fix lint issues automatically
-lint-fix:
+lint-fix: ensure-dev-tools
     cargo clippy --workspace --fix -- -D warnings
 
 # Format code
-fmt:
+fmt: ensure-dev-tools
     @echo -e "${CYAN}Formatting code...${NC}"
     cargo fmt
 
 # Check if code is formatted
-fmt-check:
+fmt-check: ensure-dev-tools
     cargo fmt -- --check
 
 # ────────────────────────────────────────────────────────────────
 # 🛠️ Development Workflow
 # ────────────────────────────────────────────────────────────────
 
-# Watch files and rebuild automatically
-watch:
-    @echo -e "${GREEN}Watching for changes...${NC}"
-    watchexec -re rs ./install-local.sh
+# Ensure required developer tooling is installed
+ensure-dev-tools:
+    @toolchain=$(rustup show active-toolchain 2>/dev/null | head -n1 | cut -d' ' -f1); \
+    if [ -z "$toolchain" ]; then \
+        toolchain=$(rustup default 2>/dev/null | head -n1 | cut -d' ' -f1); \
+    fi; \
+    if [ -n "$toolchain" ]; then \
+        echo -e "${CYAN}Ensuring rustfmt & clippy for toolchain $toolchain...${NC}"; \
+        rustup component add --toolchain "$toolchain" rustfmt clippy; \
+    else \
+        echo -e "${CYAN}Ensuring rustfmt & clippy for active toolchain...${NC}"; \
+        rustup component add rustfmt clippy; \
+    fi; \
+    if ! command -v cargo-watch >/dev/null 2>&1; then \
+        echo -e "${CYAN}Installing cargo-watch for live development...${NC}"; \
+        cargo install cargo-watch --locked; \
+    else \
+        echo -e "${GREEN}cargo-watch already installed.${NC}"; \
+    fi
 
-# Full development build (check + install)
-dev:
-    @echo -e "${GREEN}Running development build...${NC}"
-    ./build.sh
+# Watch files and rebuild automatically
+watch: ensure-dev-tools
+    @echo -e "${GREEN}Watching for changes...${NC}"
+    cargo watch -s './install-local.sh'
 
 # Try a sg command without installing (cargo run)
 try +args:
     @echo -e "${CYAN}Running: sg {{args}}${NC}"
     cargo run --bin sg -- {{args}}
-
-# Open sg TUI dashboard (requires installation)
-tui:
-    sg ui
-
-# Run sg with debug logging
-debug +args:
-    RUST_LOG=sage=debug sg {{args}}
-
-# Run sg with trace logging
-trace +args:
-    RUST_LOG=sage=trace sg {{args}}
 
 # ────────────────────────────────────────────────────────────────
 # 📚 Documentation
@@ -229,30 +227,6 @@ stats:
 work feature:
     sg work {{feature}}
 
-# Save current work
-save message:
-    sg save "{{message}}"
-
-# Save with AI-generated message
-save-ai:
-    sg save
-
-# Sync current branch
-sync:
-    sg sync
-
-# Share changes (create PR)
-share:
-    sg share
-
-# Show current stack
-stack:
-    sg stack
-
-# Show repository dashboard
-dashboard:
-    sg ui
-
 # ────────────────────────────────────────────────────────────────
 # 🧰 Utilities
 # ────────────────────────────────────────────────────────────────
@@ -273,17 +247,6 @@ find-dep pattern:
 version:
     @sg --version 2>/dev/null || echo "Sage not installed yet"
 
-# Show built-in features
-features:
-    @echo -e "${CYAN}Built-in features (always enabled):${NC}"
-    @echo "  • Advanced stacked-diff operations"
-    @echo "  • AI-powered commit messages (Ollama)"
-    @echo "  • Terminal UI dashboard"
-
 # Open repository in browser
 browse:
     @open https://github.com/$( git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/' ) 2>/dev/null || echo "Not a GitHub repo"
-
-# Show recent git history with sg
-history:
-    sg log --graph --oneline -n 20

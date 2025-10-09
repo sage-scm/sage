@@ -1,0 +1,13 @@
+[package]
+license = "MIT OR Apache-2.0"
+name = "sage-fmt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+which = "8.0"
+tempfile = "3.23"
+strip-ansi-escapes = "0.2"
+crossterm = "0.29"
+hack-workspace = { version = "0.1", path = "../../hack-workspace" }

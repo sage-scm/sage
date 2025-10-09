@@ -1,0 +1,32 @@
+use anyhow::Result;
+use clap::Args;
+use sage_core::work;
+
+#[derive(Debug, Args)]
+pub struct WorkCommand {
+    #[arg(value_name = "BRANCH")]
+    pub branch: String,
+    #[arg(long = "parent", value_name = "PARENT")]
+    pub parent: Option<String>,
+    #[arg(short = 'z', long = "fuzzy")]
+    pub fuzzy: bool,
+    #[arg(short = 'p', long = "push")]
+    pub push: bool,
+    #[arg(short = 'r', long = "root")]
+    pub root: bool,
+}
+
+impl WorkCommand {
+    pub fn run(self) -> Result<()> {
+        let console = sage_fmt::Console::new();
+        console.header("work")?;
+        work(
+            self.branch,
+            self.parent,
+            self.fuzzy,
+            self.push,
+            self.root,
+            &console,
+        )
+    }
+}

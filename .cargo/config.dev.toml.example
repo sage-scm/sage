@@ -1,0 +1,10 @@
+# Copy this file to `config.local.toml` on macOS development machines to
+# enable faster linking with Clang + LLD locally without affecting CI.
+
+[target.x86_64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]

@@ -1,25 +1,10 @@
-use crate::prelude::{Git, GitResult};
+use anyhow::Result;
+use gix::config::SnapshotMut;
 
-pub fn get_config(key: &str) -> GitResult<Option<String>> {
-    let output = Git::new("config").args(["--get", key]).raw_output()?;
+use super::Repo;
 
-    if output.status.success() {
-        Ok(Some(
-            String::from_utf8_lossy(&output.stdout).trim().to_string(),
-        ))
-    } else {
-        Ok(None)
+impl Repo {
+    pub fn get_config(&mut self) -> Result<SnapshotMut<'_>> {
+        Ok(self.repo.config_snapshot_mut())
     }
-}
-
-pub fn should_branch_rebase(branch: &str) -> GitResult<Option<bool>> {
-    if let Some(value) = get_config(&format!("branch.{branch}.rebase"))? {
-        return Ok(Some(value == "true"));
-    }
-
-    if let Some(value) = get_config("pull.rebase")? {
-        return Ok(Some(value == "true"));
-    }
-
-    Ok(None)
 }
