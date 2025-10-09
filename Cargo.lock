@@ -175,9 +175,6 @@ name = "bitflags"
 version = "2.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2261d10cca569e4643e526d8dc2e62e433cc8aba21ab764233731f8d369bf394"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "block-buffer"
@@ -254,6 +251,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link 0.2.1",
 ]
@@ -610,6 +608,12 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "foreign-types"
@@ -1691,10 +1695,8 @@ dependencies = [
 name = "hack-workspace"
 version = "0.1.0"
 dependencies = [
- "bitflags",
  "form_urlencoded",
- "hashbrown 0.14.5",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.0",
  "memchr",
  "num-traits",
  "once_cell",
@@ -1733,7 +1735,7 @@ checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash",
+ "foldhash 0.1.5",
 ]
 
 [[package]]
@@ -1741,6 +1743,12 @@ name = "hashbrown"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash 0.2.0",
+ "serde",
+]
 
 [[package]]
 name = "heapless"
@@ -2888,6 +2896,7 @@ name = "sage-cli"
 version = "2025.10.3"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "hack-workspace",
  "sage-core",
@@ -2940,6 +2949,20 @@ dependencies = [
  "gix",
  "gix-worktree-state",
  "hack-workspace",
+]
+
+[[package]]
+name = "sage-graph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "hack-workspace",
+ "hashbrown 0.16.0",
+ "sage-git",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -3798,9 +3821,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8983c3ab33d6fb807cfcdad2491c4ea8cbc8ed839181c7dfd9c67c83e261b2"
+checksum = "32b130c0d2d49f8b6889abc456e795e82525204f27c42cf767cf0d7734e089b8"
 dependencies = [
  "rustls-pki-types",
 ]
