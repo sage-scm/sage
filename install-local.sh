@@ -2,7 +2,7 @@
 set -e
 
 # Sage Local Development Install Script
-# Install sage from source with all features enabled
+# Install sage from source
 
 # Colors for output
 RED='\033[0;31m'
@@ -46,8 +46,6 @@ for arg in "$@"; do
             echo ""
             echo "Options:"
             echo "  --release    Build and install optimized release version"
-            echo ""
-            echo "Note: All features (AI, TUI, stack) are now always enabled"
             exit 0
             ;;
         *)
@@ -57,7 +55,7 @@ for arg in "$@"; do
 done
 
 # Build sage
-print_info "Building sage with all features..."
+print_info "Building sage..." 
 
 if [ "$RELEASE_MODE" = true ]; then
     print_info "Building in release mode (optimized)..."
@@ -97,11 +95,6 @@ if command -v $BINARY_NAME >/dev/null 2>&1; then
     print_success "Successfully installed sage!"
     print_info "Version: $INSTALLED_VERSION"
     print_info "Path: $(which $BINARY_NAME)"
-    echo ""
-    echo "All features are now enabled by default:"
-    echo "  ✓ AI-powered commit messages"
-    echo "  ✓ Terminal UI (TUI)"
-    echo "  ✓ Stack operations"
     echo ""
     echo "Get started with: $BINARY_NAME --help"
 else
