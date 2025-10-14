@@ -91,52 +91,6 @@ Prefer AI-generated commit messages? Pick the guide that matches your setup:
 
 ---
 
-## Layout
-
-```
-sage/
-├── bin/                 # 🌿 main CLI crate (produces the `sg` binary)
-├── crates/
-│   ├── sage-ai/        # AI integrations
-│   ├── sage-config/    # configuration handling
-│   ├── sage-core/      # domain logic and workflows
-│   ├── sage-fmt/       # user-facing output helpers
-│   ├── sage-git/       # git plumbing helpers
-│   └── sage-graph/     # stack graph modelling
-├── docs/
-│   ├── GETTING_STARTED.md
-│   ├── USING_OLLAMA.md
-│   ├── USING_OPENAI.md
-│   ├── CONTRIBUTING.md
-│   └── image.png      # project logo
-└── install-local.sh   # helper for local installs
-```
-
----
-
-## Development
-
-```bash
-# Quick check if code compiles
-just check
-
-# Run tests
-just test
-
-# Watch for changes and auto-rebuild
-just watch
-
-# Run full CI pipeline locally
-just ci
-
-# Build release version
-just release
-```
-
-For more development commands, run `just help`.
-
----
-
 ## Dog‑fooding
 
 We believe in using our own medicine. Throughout development **Sage manages its own repository**—every branch, save, sync, and PR is executed with the `sg` CLI you see taking shape here. Expect real‑world polish to land fast because we feel the pain first.
