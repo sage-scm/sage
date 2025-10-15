@@ -28,23 +28,54 @@ case "$AUTOFIX_MODE" in
 esac
 
 ORIGINAL_STAGED_FILES=()
-while IFS= read -r file; do
-    if [ -n "$file" ]; then
-        if [ ${#ORIGINAL_STAGED_FILES[@]} -eq 0 ]; then
-            ORIGINAL_STAGED_FILES=("$file")
-        else
-            ORIGINAL_STAGED_FILES=("${ORIGINAL_STAGED_FILES[@]}" "$file")
+while IFS= read -r -d '' file; do
+    ORIGINAL_STAGED_FILES+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+UNSTAGED_FILES=()
+while IFS= read -r -d '' file; do
+    UNSTAGED_FILES+=("$file")
+done < <(git diff --name-only --diff-filter=ACMR -z)
+
+FILES_TO_RESTAGE=()
+PARTIALLY_STAGED_FILES=()
+
+is_unstaged_file() {
+    local needle="$1"
+    for unstaged in "${UNSTAGED_FILES[@]+"${UNSTAGED_FILES[@]}"}"; do
+        if [ "$unstaged" = "$needle" ]; then
+            return 0
         fi
-    fi
-done < <(git diff --cached --name-only --diff-filter=ACMR)
+    done
+    return 1
+}
+
+if [ ${#ORIGINAL_STAGED_FILES[@]} -gt 0 ]; then
+    for file in "${ORIGINAL_STAGED_FILES[@]}"; do
+        if is_unstaged_file "$file"; then
+            PARTIALLY_STAGED_FILES+=("$file")
+        else
+            FILES_TO_RESTAGE+=("$file")
+        fi
+    done
+fi
+
+PARTIALLY_STAGED_COUNT=${#PARTIALLY_STAGED_FILES[@]}
+if [ $PARTIALLY_STAGED_COUNT -gt 0 ]; then
+    echo -e "${YELLOW}Partial staging detected; preserving staged hunks for:${NC}"
+    for file in "${PARTIALLY_STAGED_FILES[@]}"; do
+        echo "   $file"
+    done
+    echo -e "${YELLOW}Skipping auto-format and cargo fix for the files above.${NC}"
+fi
 
 restage_original_files() {
-    if [ ${#ORIGINAL_STAGED_FILES[@]} -eq 0 ]; then
+    if [ ${#FILES_TO_RESTAGE[@]} -eq 0 ]; then
         return
     fi
 
     local files_to_stage=()
-    for file in "${ORIGINAL_STAGED_FILES[@]}"; do
+    for file in "${FILES_TO_RESTAGE[@]}"; do
         if [ -e "$file" ] || [ -L "$file" ]; then
             if [ ${#files_to_stage[@]} -eq 0 ]; then
                 files_to_stage=("$file")
@@ -104,24 +135,26 @@ find_manifest_for_file() {
 }
 
 CARGO_LOCK_WAS_STAGED=0
-for file in "${ORIGINAL_STAGED_FILES[@]}"; do
-    case "$file" in
-        *.rs)
-            if [ ${#RUST_FILES[@]} -eq 0 ]; then
-                RUST_FILES=("$file")
-            else
-                RUST_FILES=("${RUST_FILES[@]}" "$file")
-            fi
-            manifest_path="$(find_manifest_for_file "$file" || true)"
-            if [ -n "$manifest_path" ]; then
-                add_manifest_path "$manifest_path"
-            fi
-            ;;
-        Cargo.lock)
-            CARGO_LOCK_WAS_STAGED=1
-            ;;
-    esac
-done
+if [ ${#FILES_TO_RESTAGE[@]} -gt 0 ]; then
+    for file in "${FILES_TO_RESTAGE[@]}"; do
+        case "$file" in
+            *.rs)
+                if [ ${#RUST_FILES[@]} -eq 0 ]; then
+                    RUST_FILES=("$file")
+                else
+                    RUST_FILES=("${RUST_FILES[@]}" "$file")
+                fi
+                manifest_path="$(find_manifest_for_file "$file" || true)"
+                if [ -n "$manifest_path" ]; then
+                    add_manifest_path "$manifest_path"
+                fi
+                ;;
+            Cargo.lock)
+                CARGO_LOCK_WAS_STAGED=1
+                ;;
+        esac
+    done
+fi
 
 echo -e "${YELLOW}Running pre-commit hooks...${NC}"
 
@@ -149,11 +182,15 @@ if [ ${#RUST_FILES[@]} -gt 0 ]; then
 
     restage_original_files
 else
-    echo -e "${YELLOW}No staged Rust files, skipping formatting.${NC}"
+    if [ $PARTIALLY_STAGED_COUNT -gt 0 ]; then
+        echo -e "${YELLOW}Skipping rustfmt to avoid altering partially staged files.${NC}"
+    else
+        echo -e "${YELLOW}No staged Rust files, skipping formatting.${NC}"
+    fi
 fi
 
 # 2. Auto-fix common warnings (unused imports, etc.)
-if [ ${#RUST_FILES[@]} -gt 0 ] && [ "$AUTOFIX_MODE" = "on" ]; then
+if [ ${#RUST_FILES[@]} -gt 0 ] && [ "$AUTOFIX_MODE" = "on" ] && [ $PARTIALLY_STAGED_COUNT -eq 0 ]; then
     if [ ${#MANIFEST_PATHS[@]} -eq 0 ]; then
         echo -e "${YELLOW}No Rust crate manifests detected; skipping cargo fix.${NC}"
     else
@@ -179,6 +216,8 @@ if [ ${#RUST_FILES[@]} -gt 0 ] && [ "$AUTOFIX_MODE" = "on" ]; then
         restage_original_files
         echo -e "${GREEN}✓ Auto-fix applied${NC}"
     fi
+elif [ ${#RUST_FILES[@]} -gt 0 ] && [ $PARTIALLY_STAGED_COUNT -gt 0 ]; then
+    echo -e "${YELLOW}Skipping cargo fix to preserve partially staged files.${NC}"
 elif [ "$AUTOFIX_MODE" = "off" ]; then
     echo -e "${YELLOW}Skipping cargo fix (SAGE_HOOKS_AUTOFIX=off).${NC}"
 fi
