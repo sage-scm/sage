@@ -8,7 +8,8 @@ pub const MAX_TOKENS: usize = 1_048_576;
 pub fn commit_message_prompt(diff: &str) -> String {
     let prefix = r#"Craft concise, developer-friendly git commit messages following Conventional Commits. Analyze the code diff provided between two `---` fence markers to:
 - Select ONE type: feat (new feature), fix (bug fix), docs (documentation), style (formatting), refactor (restructuring), test (tests), ci (CI/CD), or chore (maintenance).
-- Include a specific, concise scope in parentheses (e.g., module, file, feature) when relevant, avoiding vague terms.
+- Include a specific, concise scope in parentheses (e.g., module, subsystem, feature) when relevant, avoiding vague terms.
+- Never use raw file paths or file extensions as the scope (e.g., `src/foo/bar.rs`); prefer the logical component or package name instead.
 - Write a single, imperative-mood first line (30-50 characters, max 72) describing WHAT changed and WHY, clear for maintainers.
 - For breaking changes, append `!` after the scope/type (e.g., `feat(api)!:` or `feat!:`) AND add a `BREAKING CHANGE:` footer after a blank line describing the breaking change.
 - For generated files or unclear diffs, use `chore` with a specific description (e.g., `chore(gen): update auto-generated config`).
@@ -19,7 +20,7 @@ Good examples:
 - feat(api): add user authentication endpoint
 - fix(db): correct index for faster queries
 - feat(auth)!: replace token system with JWT
-- refactor(sage-git)!: migrate to Git wrapper API
+- refactor(cli-core)!: migrate to Git wrapper API
 
 BREAKING CHANGE: sage-git public API now uses GitResult instead of Result; update callers accordingly
 - chore(gen): update auto-generated API bindings
@@ -28,6 +29,7 @@ Bad examples (avoid):
 - chore: initial commit (except first repo commit)
 - feat: add stuff
 - fix: bug fixed
+- fix(src/folder/file.rs): bug fixed (file paths can break git)
 - fix!(auth): breaking change (missing BREAKING CHANGE footer)
 - refactor!(sage-git): migrate API (too vague, needs BREAKING CHANGE footer)
 
