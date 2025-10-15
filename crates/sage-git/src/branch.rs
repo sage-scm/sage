@@ -1,11 +1,6 @@
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    io::ErrorKind,
-    path::PathBuf,
-};
+use std::fs::File;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Result, anyhow, bail};
 use gix::{
     bstr::{BStr, ByteSlice},
     interrupt,
@@ -56,10 +51,38 @@ impl Repo {
         Ok(())
     }
 
+    pub fn create_branch_from(&self, name: &str, from: &str) -> Result<()> {
+        let source_ref = self.as_ref(from);
+        let mut old_ref = self.repo.find_reference(&source_ref)?;
+        let target_id = match old_ref.try_id() {
+            Some(id) => id.detach(),
+            None => old_ref.follow_to_object()?.detach(),
+        };
+
+        let new_ref_name = self.as_ref(name);
+
+        let log_message = format!("create branch {} from {}", name, from);
+        self.repo.reference(
+            new_ref_name,
+            target_id,
+            PreviousValue::MustNotExist,
+            log_message,
+        )?;
+
+        Ok(())
+    }
+
     pub fn switch_branch(&self, name: &str) -> Result<()> {
+        // Prefer gix for performance on clean trees. If there are local changes
+        // or untracked files, defer to native `git switch` to preserve user data.
+        let has_local_changes = self.is_dirty()? || !self.untracked_files()?.is_empty();
+        if has_local_changes {
+            let branch_name = self.remove_ref(name);
+            return self.git()?.arg("switch").arg(branch_name).run();
+        }
+
         let branch_ref = self.as_ref(name);
         let branch_full = FullName::try_from(branch_ref.as_str())?;
-        let previous_tree_id = self.repo.head_tree_id().ok().map(|id| id.detach());
 
         let edits = [RefEdit {
             change: Change::Update {
@@ -102,120 +125,6 @@ impl Repo {
         )?;
 
         index.write(Default::default())?;
-
-        let new_tree_id = head_tree_id.detach();
-        self.prune_removed_paths(previous_tree_id, &new_tree_id)?;
-
-        Ok(())
-    }
-
-    fn prune_removed_paths(
-        &self,
-        previous_tree_id: Option<gix::ObjectId>,
-        new_tree_id: &gix::ObjectId,
-    ) -> Result<()> {
-        let Some(previous_tree_id) = previous_tree_id else {
-            return Ok(());
-        };
-
-        if &previous_tree_id == new_tree_id {
-            return Ok(());
-        }
-
-        let Some(work_dir) = self.repo.workdir() else {
-            return Ok(());
-        };
-        let work_dir = work_dir.to_path_buf();
-
-        let previous_tree = self.repo.find_tree(previous_tree_id)?;
-        let new_tree = self.repo.find_tree(*new_tree_id)?;
-
-        let mut diff_platform = previous_tree
-            .changes()
-            .context("failed to prepare tree diff while pruning worktree")?;
-
-        let mut files_to_remove: Vec<PathBuf> = Vec::new();
-        let mut dirs_to_remove: HashMap<PathBuf, bool> = HashMap::new();
-
-        diff_platform
-            .for_each_to_obtain_tree(
-                &new_tree,
-                |change| -> Result<gix::object::tree::diff::Action> {
-                    if let gix::object::tree::diff::Change::Deletion {
-                        location,
-                        entry_mode,
-                        ..
-                    } = change
-                    {
-                        let relative =
-                            gix::path::try_from_bstr(location).map_err(anyhow::Error::new)?;
-                        let full_path = work_dir.join(relative.as_ref());
-
-                        if entry_mode.is_tree() {
-                            dirs_to_remove.entry(full_path).or_insert(false);
-                        } else if entry_mode.is_commit() {
-                            dirs_to_remove
-                                .entry(full_path)
-                                .and_modify(|recursive| *recursive = true)
-                                .or_insert(true);
-                        } else {
-                            files_to_remove.push(full_path);
-                        }
-                    }
-
-                    Ok(gix::object::tree::diff::Action::Continue)
-                },
-            )
-            .context("failed to collect deletions while pruning worktree")?;
-
-        for path in files_to_remove {
-            match fs::remove_file(&path) {
-                Ok(_) => {}
-                Err(err) if err.kind() == ErrorKind::NotFound => {}
-                Err(err) if err.kind() == ErrorKind::IsADirectory => {
-                    match fs::remove_dir_all(&path) {
-                        Ok(_) => {}
-                        Err(err) if err.kind() == ErrorKind::NotFound => {}
-                        Err(err) => {
-                            return Err(err)
-                                .context(format!("failed to remove directory {}", path.display()));
-                        }
-                    }
-                }
-                Err(err) => {
-                    return Err(err).context(format!("failed to remove file {}", path.display()));
-                }
-            }
-        }
-
-        let mut dirs: Vec<(PathBuf, bool)> = dirs_to_remove.into_iter().collect();
-        dirs.sort_by(|(a, _), (b, _)| b.components().count().cmp(&a.components().count()));
-
-        for (path, recursive) in dirs {
-            if recursive {
-                match fs::remove_dir_all(&path) {
-                    Ok(_) => {}
-                    Err(err) if err.kind() == ErrorKind::NotFound => {}
-                    Err(err) => {
-                        return Err(err)
-                            .context(format!("failed to remove directory {}", path.display()));
-                    }
-                }
-            } else {
-                match fs::remove_dir(&path) {
-                    Ok(_) => {}
-                    Err(err)
-                        if matches!(
-                            err.kind(),
-                            ErrorKind::NotFound | ErrorKind::DirectoryNotEmpty
-                        ) => {}
-                    Err(err) => {
-                        return Err(err)
-                            .context(format!("failed to remove directory {}", path.display()));
-                    }
-                }
-            }
-        }
 
         Ok(())
     }
@@ -376,6 +285,18 @@ impl Repo {
         }
     }
 
+    pub fn pull(&self) -> Result<()> {
+        if !self.has_remote()? {
+            return Ok(());
+        }
+
+        self.git()?
+            .arg("pull")
+            .arg("--ff-only")
+            .arg("--no-progress")
+            .run()
+    }
+
     fn is_ref(&self, name: &str) -> bool {
         name.starts_with("refs/heads/")
     }
@@ -388,5 +309,67 @@ impl Repo {
         } else {
             format!("refs/heads/{name}")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::testing::TestRepo;
+
+    #[test]
+    fn create_branch_adds_reference() {
+        let repo = TestRepo::builder()
+            .with_initial_commit()
+            .build()
+            .expect("temp repo");
+
+        repo.create_branch("feature").expect("create branch");
+
+        let branches = repo.list_branches().expect("list branches");
+        assert!(
+            branches.iter().any(|b| b == "refs/heads/feature"),
+            "branches missing new ref: {branches:?}"
+        );
+    }
+
+    #[test]
+    fn switch_branch_updates_head() {
+        let repo = TestRepo::builder()
+            .with_initial_commit()
+            .build()
+            .expect("temp repo");
+        repo.create_branch("feature").expect("create branch");
+
+        repo.switch_branch("feature").expect("switch branch");
+
+        let current = repo.get_current_branch().expect("current branch");
+        assert_eq!(current, "feature");
+    }
+
+    #[test]
+    fn has_branch_accepts_short_names() {
+        let repo = TestRepo::builder()
+            .with_initial_commit()
+            .build()
+            .expect("temp repo");
+        repo.create_branch("feature").expect("create branch");
+
+        assert!(
+            repo.has_branch("feature".to_owned())
+                .expect("check branch exists")
+        );
+        assert!(
+            repo.has_branch("refs/heads/feature".to_owned())
+                .expect("check branch exists by ref")
+        );
+    }
+
+    #[test]
+    fn ref_helpers_strip_prefixes() {
+        let repo = TestRepo::new().expect("temp repo");
+        assert_eq!(repo.remove_ref("refs/heads/main"), "main");
+        assert_eq!(repo.remove_ref("refs/remotes/origin/main"), "origin/main");
+        assert_eq!(repo.as_ref("main"), "refs/heads/main");
+        assert_eq!(repo.as_ref("refs/heads/feature"), "refs/heads/feature");
     }
 }
