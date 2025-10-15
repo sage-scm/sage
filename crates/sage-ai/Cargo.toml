@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
-rig-core = { version = "0.21", default-features = false, features = ["reqwest-rustls"] }
+rig-core = { version = "0.22", default-features = false, features = ["reqwest-rustls"] }
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 sage-config = { version = "0.1", path = "../sage-config" }

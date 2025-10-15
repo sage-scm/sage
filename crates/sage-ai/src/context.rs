@@ -88,16 +88,15 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .build()
             .context("Failed to build HTTP client for AI Provider")?;
 
-        let mut client_builder = openai::Client::builder(&api_key).custom_client(http_client);
+        let mut client_builder =
+            openai::Client::<reqwest::Client>::builder(&api_key).with_client(http_client);
 
         let trimmed_api_url = trimmed_api_url.trim_end_matches('/');
         if !trimmed_api_url.is_empty() {
             client_builder = client_builder.base_url(trimmed_api_url);
         }
 
-        let client = client_builder
-            .build()
-            .context("Failed to build OpenAI-compatible client")?;
+        let client = client_builder.build();
 
         Ok(AiContext {
             client,
