@@ -21,3 +21,6 @@ chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { version = "1.47", features = ["time"] }
+
+[dev-dependencies]
+sage-git = { version = "0.1.0", path = "../sage-git", features = ["testing"] }

@@ -35,3 +35,32 @@ pub fn stage_changes(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sage_git::testing::TestRepo;
+
+    #[test]
+    fn preserves_partially_staged_files() -> anyhow::Result<()> {
+        let repo = TestRepo::builder().with_initial_commit().build()?;
+
+        repo.write("file.txt", "line 1\n")?;
+        repo.commit_all("add file")?;
+
+        repo.write("file.txt", "line 1\nline 2 staged\n")?;
+        repo.run_git(["add", "file.txt"])?;
+        repo.write("file.txt", "line 1\nline 2 staged\nline 3 unstaged\n")?;
+
+        let console = sage_fmt::Console::new();
+        stage_changes(repo.repo(), &console, None)?;
+
+        let staged = repo.staged_changes()?;
+        assert_eq!(staged, vec!["file.txt"]);
+
+        let unstaged = repo.unstaged_files()?;
+        assert_eq!(unstaged, vec!["file.txt"]);
+
+        Ok(())
+    }
+}
