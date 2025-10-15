@@ -11,6 +11,9 @@ mod exec;
 mod stage;
 mod status;
 
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
+
 #[derive(Debug)]
 pub struct Repo {
     /// Repo
