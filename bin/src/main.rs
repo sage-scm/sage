@@ -8,10 +8,10 @@ mod cli;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    if let Err(err) = check_for_updates().await {
-        if cfg!(debug_assertions) {
-            eprintln!("check_for_updates failed: {err:#}");
-        }
+    if let Err(err) = check_for_updates().await
+        && cfg!(debug_assertions)
+    {
+        eprintln!("check_for_updates failed: {err:#}");
     }
     let cli = Cli::parse();
     match cli.command {
