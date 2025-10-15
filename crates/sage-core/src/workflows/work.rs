@@ -20,6 +20,8 @@ pub fn work(
         return Ok(());
     }
 
+    let mut graph = sage_graph::SageGraph::load(&repo)?;
+
     if repo.has_branch(branch.to_string())? {
         repo.switch_branch(&branch)?;
         console.message(
@@ -60,6 +62,8 @@ pub fn work(
         repo.switch_branch(&parent)?;
     }
 
+    let current_parent = repo.get_current_branch()?;
+
     repo.create_branch(&branch)?;
     console.message(MessageType::Success, "Created branch")?;
     repo.switch_branch(&branch)?;
@@ -72,6 +76,9 @@ pub fn work(
         repo.set_upstream()?;
         console.message(MessageType::Success, "Set upstream tracking")?;
     }
+
+    graph.add_loose_branch(&repo, branch.clone(), current_parent)?;
+    graph.save(&repo)?;
 
     Ok(())
 }
