@@ -217,19 +217,12 @@ impl SageGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sage_git::Repo;
-    use std::process::Command;
-    use tempfile::TempDir;
+    use sage_git::{Repo, testing::TestRepo};
 
     #[test]
     fn same_stack_checks() {
-        let (_repo_dir, repo) = init_repo();
-        let mut graph = SageGraph::default();
-        graph.loose_branches.insert(
-            "main".to_owned(),
-            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
-        );
-        graph.rebuild_indexes();
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
 
         graph
             .create_stack(
@@ -261,13 +254,8 @@ mod tests {
 
     #[test]
     fn stack_queries() {
-        let (_repo_dir, repo) = init_repo();
-        let mut graph = SageGraph::default();
-        graph.loose_branches.insert(
-            "main".to_owned(),
-            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
-        );
-        graph.rebuild_indexes();
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
 
         graph
             .create_stack(
@@ -296,13 +284,8 @@ mod tests {
 
     #[test]
     fn repo_context_captured() {
-        let (repo_dir, repo) = init_repo();
-        let mut graph = SageGraph::default();
-        graph.loose_branches.insert(
-            "main".to_owned(),
-            BranchInfo::new("main".to_owned(), "main".to_owned(), "test".to_owned(), 0),
-        );
-        graph.rebuild_indexes();
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
 
         graph
             .create_stack(
@@ -314,27 +297,69 @@ mod tests {
             .unwrap();
 
         let repo_root = graph.repo_root().expect("repo root cached");
-        assert_eq!(repo_root.as_path(), repo_dir.path());
+        assert_eq!(repo_root.as_path(), repo.path());
 
         let cached_path = graph.storage_path_cached().expect("storage path cached");
         assert_eq!(cached_path, repo.git_dir().join("sage_graph.json"));
     }
 
-    fn init_repo() -> (TempDir, Repo) {
-        let dir = TempDir::new().expect("temp repo");
-        run_git(&dir, ["init"]);
-        run_git(&dir, ["config", "user.name", "Test User"]);
-        run_git(&dir, ["config", "user.email", "test@example.com"]);
-        let repo = Repo::discover(dir.path()).expect("open repo");
-        (dir, repo)
+    #[test]
+    fn add_loose_branch_requires_tracked_parent() {
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
+        let err = graph
+            .add_loose_branch(&repo, "feature".to_owned(), "unknown".to_owned())
+            .expect_err("untracked parent rejected");
+        assert!(
+            format!("{err:?}").contains("not tracked"),
+            "unexpected error: {err:?}"
+        );
     }
 
-    fn run_git<const N: usize>(dir: &TempDir, args: [&str; N]) {
-        let status = Command::new("git")
-            .args(args)
-            .current_dir(dir.path())
-            .status()
-            .expect("run git");
-        assert!(status.success(), "git command failed");
+    #[test]
+    fn create_stack_rejects_duplicates() {
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
+        graph
+            .create_stack(
+                &repo,
+                "feat".to_owned(),
+                "feat/base".to_owned(),
+                "main".to_owned(),
+            )
+            .expect("first stack succeeds");
+        let err = graph
+            .create_stack(
+                &repo,
+                "feat".to_owned(),
+                "feat/other".to_owned(),
+                "main".to_owned(),
+            )
+            .expect_err("duplicate stack rejected");
+        assert!(
+            format!("{err:?}").contains("exists"),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    fn test_repo() -> TestRepo {
+        TestRepo::builder()
+            .with_initial_commit()
+            .build()
+            .expect("temp repo")
+    }
+
+    fn graph_with_main(repo: &Repo) -> SageGraph {
+        let author = repo
+            .author_name()
+            .expect("author query")
+            .expect("author configured");
+        let mut graph = SageGraph::default();
+        graph.loose_branches.insert(
+            "main".to_owned(),
+            BranchInfo::new("main".to_owned(), "main".to_owned(), author, 0),
+        );
+        graph.rebuild_indexes();
+        graph
     }
 }

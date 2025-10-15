@@ -13,4 +13,4 @@ sage-git = { version = "0.1.0", path = "../sage-git" }
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 
 [dev-dependencies]
-tempfile = "3.10"
+sage-git = { version = "0.1.0", path = "../sage-git", features = ["testing"] }
