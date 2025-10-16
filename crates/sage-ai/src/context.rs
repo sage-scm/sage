@@ -45,7 +45,7 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| "gpt-5-nano".to_string());
         let api_url = config
-            .get("ai.url")?
+            .get("ai.api_url")?
             .map(sanitize)
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
