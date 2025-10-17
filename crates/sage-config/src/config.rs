@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SageConfig {
     #[serde(default)]
     pub ai: AiConfig,
@@ -8,16 +8,6 @@ pub struct SageConfig {
     pub git: GitConfig,
     #[serde(default)]
     pub general: GeneralConfig,
-}
-
-impl Default for SageConfig {
-    fn default() -> Self {
-        Self {
-            ai: AiConfig::default(),
-            git: GitConfig::default(),
-            general: GeneralConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
