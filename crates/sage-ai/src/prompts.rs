@@ -5,7 +5,7 @@
 pub const MAX_TOKENS: usize = 1_048_576;
 
 /// Improved prompt for generating conventional commit messages, focused and streamlined for LLM reliability
-pub fn commit_message_prompt(diff: &str) -> String {
+pub fn commit_message_prompt(diff: &str, additional_prompt: Option<&str>) -> String {
     let prefix = r#"Craft concise, developer-friendly git commit messages following Conventional Commits. Analyze the code diff provided between two `---` fence markers to:
 - Select ONE type: feat (new feature), fix (bug fix), docs (documentation), style (formatting), refactor (restructuring), test (tests), ci (CI/CD), or chore (maintenance).
 - Include a specific, concise scope in parentheses (e.g., module, subsystem, feature) when relevant, avoiding vague terms.
@@ -32,13 +32,21 @@ Bad examples (avoid):
 - fix(src/folder/file.rs): bug fixed (file paths can break git)
 - fix!(auth): breaking change (missing BREAKING CHANGE footer)
 - refactor!(sage-git): migrate API (too vague, needs BREAKING CHANGE footer)
-
----
 "#;
+
+    let additional_instructions = if let Some(prompt) = additional_prompt {
+        if !prompt.trim().is_empty() {
+            format!("\nAdditional instructions:\n{}\n", prompt.trim())
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
 
     let footer = "\n---\nOutput:";
 
-    format!("{prefix}{diff}{footer}")
+    format!("{prefix}{additional_instructions}\n---\n{diff}{footer}")
 }
 
 /// Prompt for generating pull request title

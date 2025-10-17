@@ -14,6 +14,7 @@ These values come from `crates/sage-ai/src/context.rs` and are applied when no e
 | Max output tokens | `ai.max_tokens` | `2048` |
 | Retry attempts | `ai.max_retries` | `1` |
 | Retry delay | `ai.retry_delay_ms` | `0` ms (no delay) |
+| Additional commit prompt | `ai.additional_commit_prompt` | `None` (optional) |
 
 You **must** provide an API key (`ai.api_key`) before Sage can reach OpenAI. The key is trimmed automatically, so you can paste values copied with quotes or leading `=` signs (common with CI secret injection).
 
@@ -75,6 +76,13 @@ Sage gathers the staged diff, crafts a prompt, and asks OpenAI for a commit mess
   ```
 
 - Setting `ai.timeout` to `0` removes the HTTP timeout; otherwise Sage enforces the configured duration.
+- **`ai.additional_commit_prompt`** allows you to provide custom instructions that will be appended to the commit message generation prompt. This is useful for enforcing team-specific conventions or adding context. For example:
+
+  ```bash
+  sg config --key ai.additional_commit_prompt --value "Always include ticket numbers in the format [PROJ-123]"
+  # or
+  sg config --key ai.additional_commit_prompt --value "Use present tense and focus on the business impact"
+  ```
 
 ## Troubleshooting
 

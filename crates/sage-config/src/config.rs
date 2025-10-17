@@ -20,6 +20,9 @@ pub struct AiConfig {
 
     #[serde(default = "default_model")]
     pub model: String,
+
+    #[serde(default)]
+    pub additional_commit_prompt: Option<String>,
 }
 
 impl Default for AiConfig {
@@ -28,6 +31,7 @@ impl Default for AiConfig {
             provider: default_ai_provider(),
             api_key: None,
             model: default_model(),
+            additional_commit_prompt: None,
         }
     }
 }

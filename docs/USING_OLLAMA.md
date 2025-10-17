@@ -53,6 +53,18 @@ just try save --ai
 
 Sage will call Ollama, suggest a commit message, and let you accept or edit it before finishing the save.
 
+## Customizing Commit Message Generation
+
+You can provide additional instructions to guide the AI when generating commit messages:
+
+```bash
+sg config --key ai.additional_commit_prompt --value "Always include ticket numbers in the format [PROJ-123]"
+# or
+sg config --key ai.additional_commit_prompt --value "Use present tense and focus on the business impact"
+```
+
+This custom prompt will be appended to the base commit message generation instructions, allowing you to enforce team-specific conventions or add context.
+
 ## Troubleshooting
 
 - Make sure `ollama serve` is reachable on `http://localhost:11434`.

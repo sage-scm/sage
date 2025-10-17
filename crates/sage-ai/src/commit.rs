@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 
 const MAX_DIFF_SIZE: usize = 12_288;
 
-pub async fn commit_message(diff: &str) -> Result<String> {
+pub async fn commit_message(diff: &str, additional_prompt: Option<&str>) -> Result<String> {
     let diff = diff.trim();
     if diff.is_empty() {
         return Ok("chore: no functional changes".to_string());
@@ -18,7 +18,7 @@ pub async fn commit_message(diff: &str) -> Result<String> {
         diff.to_string()
     };
 
-    let prompt = prompts::commit_message_prompt(&diff_for_prompt);
+    let prompt = prompts::commit_message_prompt(&diff_for_prompt, additional_prompt);
     let res = super::ask(&prompt).await?;
     let res = clean_response(res)?;
 
