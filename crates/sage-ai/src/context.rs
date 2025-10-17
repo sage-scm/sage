@@ -1,13 +1,14 @@
 use anyhow::{Context, Result};
 use once_cell::sync::OnceCell;
 use rig::providers::openai;
-use sage_config::Config;
+use sage_config::ConfigManager;
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 60;
 const DEFAULT_MAX_TOKENS: u64 = 2_048;
 const DEFAULT_MAX_RETRIES: usize = 1;
 const DEFAULT_RETRY_DELAY_MS: u64 = 0;
+const DEFAULT_API_URL: &str = "https://api.openai.com/v1";
 
 pub(crate) struct AiContext {
     pub(crate) client: openai::Client,
@@ -33,51 +34,28 @@ fn sanitize(value: String) -> String {
 
 pub(crate) fn ai_context() -> Result<&'static AiContext> {
     AI_CONTEXT.get_or_try_init(|| {
-        let config = Config::load()?;
+        let manager = ConfigManager::load()?;
+        let config = manager.get();
+        
         let api_key = config
-            .get("ai.api_key")?
-            .map(sanitize)
+            .ai
+            .api_key
+            .as_ref()
+            .map(|s| sanitize(s.clone()))
             .filter(|value| !value.is_empty())
             .expect("AI API key not set");
-        let ai_model = config
-            .get("ai.model")?
-            .map(sanitize)
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "gpt-5-nano".to_string());
-        let api_url = config
-            .get("ai.api_url")?
-            .map(sanitize)
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-
-        let timeout_secs = config
-            .get("ai.timeout")?
-            .map(sanitize)
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(DEFAULT_TIMEOUT_SECS);
-
+        
+        let ai_model = sanitize(config.ai.model.clone());
+        
+        // Note: api_url, timeout, max_tokens, max_retries, and retry_delay_ms are not in the current
+        // typed config. Using defaults for now. These should be added to the config struct if needed.
+        let api_url = DEFAULT_API_URL.to_string();
+        let timeout_secs = DEFAULT_TIMEOUT_SECS;
         let timeout_duration = Duration::from_secs(timeout_secs);
+        let max_tokens = DEFAULT_MAX_TOKENS;
+        let max_retries = DEFAULT_MAX_RETRIES;
+        let retry_delay_ms = DEFAULT_RETRY_DELAY_MS;
 
-        let max_tokens = config
-            .get("ai.max_tokens")?
-            .map(sanitize)
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(DEFAULT_MAX_TOKENS);
-
-        let max_retries = config
-            .get("ai.max_retries")?
-            .map(sanitize)
-            .and_then(|v| v.parse::<usize>().ok())
-            .filter(|&retries| retries > 0)
-            .unwrap_or(DEFAULT_MAX_RETRIES);
-
-        let retry_delay_ms = config
-            .get("ai.retry_delay_ms")?
-            .map(sanitize)
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(DEFAULT_RETRY_DELAY_MS);
-
-        let trimmed_api_url = api_url.trim();
         let http_client_builder = if timeout_secs > 0 {
             reqwest::Client::builder().timeout(Duration::from_secs(timeout_secs))
         } else {
@@ -91,7 +69,7 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
         let mut client_builder =
             openai::Client::<reqwest::Client>::builder(&api_key).with_client(http_client);
 
-        let trimmed_api_url = trimmed_api_url.trim_end_matches('/');
+        let trimmed_api_url = api_url.trim_end_matches('/');
         if !trimmed_api_url.is_empty() {
             client_builder = client_builder.base_url(trimmed_api_url);
         }

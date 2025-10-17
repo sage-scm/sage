@@ -2925,6 +2925,8 @@ dependencies = [
  "anyhow",
  "dirs",
  "hack-workspace",
+ "serde",
+ "thiserror 2.0.17",
  "toml",
 ]
 
