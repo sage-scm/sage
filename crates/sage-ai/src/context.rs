@@ -34,19 +34,23 @@ fn sanitize(value: String) -> String {
 
 pub(crate) fn ai_context() -> Result<&'static AiContext> {
     AI_CONTEXT.get_or_try_init(|| {
-        let manager = ConfigManager::load()?;
+        let manager = ConfigManager::load().context("Failed to load configuration")?;
         let config = manager.get();
-        
+
         let api_key = config
             .ai
             .api_key
             .as_ref()
             .map(|s| sanitize(s.clone()))
             .filter(|value| !value.is_empty())
-            .expect("AI API key not set");
-        
+            .context("AI API key not set. Please configure it in your sage config.")?;
+
         let ai_model = sanitize(config.ai.model.clone());
-        
+
+        if ai_model.is_empty() {
+            anyhow::bail!("AI model not set. Please configure it in your sage config.");
+        }
+
         // Note: api_url, timeout, max_tokens, max_retries, and retry_delay_ms are not in the current
         // typed config. Using defaults for now. These should be added to the config struct if needed.
         let api_url = DEFAULT_API_URL.to_string();

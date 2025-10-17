@@ -25,14 +25,16 @@ pub async fn ask(prompt: &str) -> Result<String> {
     while attempts > 0 {
         match tokio::time::timeout(context.timeout, agent.prompt(prompt)).await {
             Ok(Ok(response)) => {
-                if response.trim().is_empty() {
+                // Extract the actual content from the response
+                let content = response.to_string();
+                if content.trim().is_empty() {
                     last_error = Some(anyhow!("AI provider returned empty response"));
                 } else {
-                    return Ok(response);
+                    return Ok(content);
                 }
             }
             Ok(Err(e)) => {
-                last_error = Some(anyhow::Error::from(e));
+                last_error = Some(anyhow!("AI request failed: {}", e));
             }
             Err(_) => {
                 last_error = Some(anyhow!(
