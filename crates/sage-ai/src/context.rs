@@ -4,12 +4,6 @@ use rig::providers::openai;
 use sage_config::ConfigManager;
 use std::time::Duration;
 
-const DEFAULT_TIMEOUT_SECS: u64 = 60;
-const DEFAULT_MAX_TOKENS: u64 = 2_048;
-const DEFAULT_MAX_RETRIES: usize = 1;
-const DEFAULT_RETRY_DELAY_MS: u64 = 0;
-const DEFAULT_API_URL: &str = "https://api.openai.com/v1";
-
 pub(crate) struct AiContext {
     pub(crate) client: openai::Client,
     pub(crate) model: String,
@@ -41,7 +35,7 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .ai
             .api_key
             .as_ref()
-            .map(|s| sanitize(s.clone()))
+            .map(|s| sanitize(s.expose().to_string()))
             .filter(|value| !value.is_empty())
             .context("AI API key not set. Please configure it in your sage config.")?;
 
@@ -51,17 +45,15 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             anyhow::bail!("AI model not set. Please configure it in your sage config.");
         }
 
-        // Note: api_url, timeout, max_tokens, max_retries, and retry_delay_ms are not in the current
-        // typed config. Using defaults for now. These should be added to the config struct if needed.
-        let api_url = DEFAULT_API_URL.to_string();
-        let timeout_secs = DEFAULT_TIMEOUT_SECS;
+        let api_url = sanitize(config.ai.api_url.clone());
+        let timeout_secs = config.ai.timeout_secs;
         let timeout_duration = Duration::from_secs(timeout_secs);
-        let max_tokens = DEFAULT_MAX_TOKENS;
-        let max_retries = DEFAULT_MAX_RETRIES;
-        let retry_delay_ms = DEFAULT_RETRY_DELAY_MS;
+        let max_tokens = config.ai.max_tokens;
+        let max_retries = config.ai.max_retries;
+        let retry_delay_ms = config.ai.retry_delay_ms;
 
         let http_client_builder = if timeout_secs > 0 {
-            reqwest::Client::builder().timeout(Duration::from_secs(timeout_secs))
+            reqwest::Client::builder().timeout(timeout_duration)
         } else {
             reqwest::Client::builder()
         };

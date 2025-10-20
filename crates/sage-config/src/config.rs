@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::SecretString;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SageConfig {
     #[serde(default)]
@@ -16,10 +18,25 @@ pub struct AiConfig {
     pub provider: String,
 
     #[serde(default)]
-    pub api_key: Option<String>,
+    pub api_key: Option<SecretString>,
 
     #[serde(default = "default_model")]
     pub model: String,
+
+    #[serde(default = "default_api_url")]
+    pub api_url: String,
+
+    #[serde(default = "default_timeout_secs")]
+    pub timeout_secs: u64,
+
+    #[serde(default = "default_max_tokens")]
+    pub max_tokens: u64,
+
+    #[serde(default = "default_max_retries")]
+    pub max_retries: usize,
+
+    #[serde(default = "default_retry_delay_ms")]
+    pub retry_delay_ms: u64,
 
     #[serde(default)]
     pub additional_commit_prompt: Option<String>,
@@ -31,6 +48,11 @@ impl Default for AiConfig {
             provider: default_ai_provider(),
             api_key: None,
             model: default_model(),
+            api_url: default_api_url(),
+            timeout_secs: default_timeout_secs(),
+            max_tokens: default_max_tokens(),
+            max_retries: default_max_retries(),
+            retry_delay_ms: default_retry_delay_ms(),
             additional_commit_prompt: None,
         }
     }
@@ -78,6 +100,28 @@ fn default_ai_provider() -> String {
 
 fn default_model() -> String {
     "gpt-4".to_string()
+}
+
+pub const SECRET_KEYS: &[&str] = &["ai.api_key"];
+
+fn default_api_url() -> String {
+    "https://api.openai.com/v1".to_string()
+}
+
+fn default_timeout_secs() -> u64 {
+    60
+}
+
+fn default_max_tokens() -> u64 {
+    2_048
+}
+
+fn default_max_retries() -> usize {
+    1
+}
+
+fn default_retry_delay_ms() -> u64 {
+    0
 }
 
 fn default_auto_stage() -> bool {

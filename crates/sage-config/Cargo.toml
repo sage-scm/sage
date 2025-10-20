@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+config = { version = "0.14", default-features = false, features = ["toml"] }
 dirs = "6.0"
 hack-workspace = { version = "0.1", path = "../../hack-workspace" }
 serde = { version = "1.0", features = ["derive"] }

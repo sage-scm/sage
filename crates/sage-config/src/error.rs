@@ -19,6 +19,12 @@ pub enum ConfigError {
     #[error("Failed to serialize config: {0}")]
     Serialize(#[from] toml::ser::Error),
 
+    #[error("Failed to load configuration: {source}")]
+    Load {
+        #[from]
+        source: config::ConfigError,
+    },
+
     #[error("Invalid field path '{path}': {reason}")]
     InvalidFieldPath { path: String, reason: String },
 
