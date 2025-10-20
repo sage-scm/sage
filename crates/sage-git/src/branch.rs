@@ -267,6 +267,9 @@ impl Repo {
     }
 
     pub fn get_default_branch(&self) -> Result<String> {
+        if !self.has_remote()? {
+            return Ok(String::from("main"));
+        }
         let remote_name = self.remote_name()?.unwrap();
         let head_ref_name = format!("refs/remotes/{}/{}", remote_name, "HEAD");
 
