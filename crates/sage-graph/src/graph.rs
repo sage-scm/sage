@@ -150,6 +150,53 @@ impl SageGraph {
         Ok(())
     }
 
+    pub fn has_children(&self, branch: &str) -> bool {
+        if !self.is_tracked(branch) {
+            return false;
+        } // We dont track the branch, so we cant tell.
+
+        let is_loose = self.loose_branches.contains_key(branch);
+
+        if is_loose {
+            if let Some(children) = self.loose_children.get(branch) {
+                let has_real_children = children.iter().any(|child| child != branch);
+                if has_real_children {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        #[allow(clippy::collapsible_if)]
+        if let Some(stack) = self.stack_for_branch(branch) {
+            if !stack.children.is_empty() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn remove_loose_branch(&mut self, branch: &str) -> Result<()> {
+        if self.has_children(branch) {
+            bail!("branch \"{branch}\" has loose children");
+        }
+        let info = self
+            .loose_branches
+            .remove(branch)
+            .ok_or_else(|| anyhow::anyhow!("branch \"{branch}\" is not a loose branch"))?;
+        if let Some(children) = self.loose_children.get_mut(&info.parent) {
+            if let Some(pos) = children.iter().position(|child| child == branch) {
+                children.remove(pos);
+            }
+            if children.is_empty() {
+                self.loose_children.remove(&info.parent);
+            }
+        }
+        self.loose_children.remove(branch);
+        Ok(())
+    }
+
     pub fn is_loose(&self, branch: &str) -> bool {
         self.loose_branches.contains_key(branch)
     }
@@ -182,6 +229,13 @@ impl SageGraph {
         let mut visited = std::collections::HashSet::new();
         let mut current = start;
         while let Some(info) = self.loose_branches.get(current) {
+            if info.parent == *current {
+                if info.depth == 0 {
+                    break;
+                } else {
+                    bail!("cycle in loose branches involving \"{start}\"");
+                }
+            }
             if !visited.insert(info.parent.clone()) {
                 bail!("cycle in loose branches involving \"{start}\"");
             }
@@ -340,6 +394,36 @@ mod tests {
             format!("{err:?}").contains("exists"),
             "unexpected error: {err:?}"
         );
+    }
+
+    #[test]
+    fn test_loose_no_cycle() {
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
+        graph
+            .add_loose_branch(&repo, "hotfix".to_owned(), "main".to_owned())
+            .unwrap();
+
+        assert!(graph.ensure_loose_no_cycle("hotfix").is_ok());
+        assert!(graph.is_loose("hotfix"));
+        assert!(!graph.is_loose("main"));
+    }
+
+    #[test]
+    fn remove_loose_branch() {
+        let repo = test_repo();
+        let mut graph = graph_with_main(&repo);
+        graph
+            .add_loose_branch(&repo, "hotfix".to_owned(), "main".to_owned())
+            .unwrap();
+
+        assert!(graph.is_loose("hotfix"));
+        assert!(graph.is_loose("main"));
+
+        graph.remove_loose_branch("hotfix").unwrap();
+
+        assert!(!graph.is_loose("hotfix"));
+        assert!(graph.is_loose("main"));
     }
 
     fn test_repo() -> TestRepo {
