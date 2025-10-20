@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use sage_fmt::MessageType;
 
 use crate::fetch_if_stale;
 
@@ -38,7 +39,10 @@ pub fn start(options: &StartOptions, console: &sage_fmt::Console) -> Result<()> 
     }
 
     // We need to make the new branch first, so that we can set the upstream tracking
-    repo.create_branch_from(&options.name, &parent_branch)?;
+    if !repo.has_branch(options.name.clone())? {
+        repo.create_branch_from(&options.name, &parent_branch)?;
+        console.message(MessageType::Success, "Created branch")?;
+    }
     graph.create_stack(
         &repo,
         options.name.clone().to_string(),
