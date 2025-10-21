@@ -63,6 +63,9 @@ pub struct GitConfig {
     #[serde(default = "default_auto_stage")]
     pub auto_stage: bool,
 
+    #[serde(default = "default_disable_intermittent_fetch")]
+    pub disable_intermittent_fetch: bool,
+
     #[serde(default = "default_commit_template")]
     pub commit_template: String,
 }
@@ -71,6 +74,7 @@ impl Default for GitConfig {
     fn default() -> Self {
         Self {
             auto_stage: default_auto_stage(),
+            disable_intermittent_fetch: default_disable_intermittent_fetch(),
             commit_template: default_commit_template(),
         }
     }
@@ -126,6 +130,10 @@ fn default_retry_delay_ms() -> u64 {
 
 fn default_auto_stage() -> bool {
     true
+}
+
+fn default_disable_intermittent_fetch() -> bool {
+    false
 }
 
 fn default_commit_template() -> String {

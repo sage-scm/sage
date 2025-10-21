@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use sage_config::ConfigManager;
 
 const FETCH_STAMP_FILE: &str = "sage-last-fetch";
 // TODO: make configurable
@@ -16,6 +17,11 @@ const FETCH_MAX_AGE_SECS: u64 = 60 * 5;
 /// Returns `true` when a fetch was performed, `false` when it was skipped because
 /// the cached result is still fresh.
 pub fn fetch_if_stale(repo: &sage_git::Repo, console: &sage_fmt::Console) -> Result<bool> {
+    let config_manager = ConfigManager::load().context("Failed to load configuration")?;
+    if config_manager.get().git.disable_intermittent_fetch {
+        return Ok(false);
+    }
+
     let git_dir = repo.git_dir();
     let stamp_path = git_dir.join(FETCH_STAMP_FILE);
 
