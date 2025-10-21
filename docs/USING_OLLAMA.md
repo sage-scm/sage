@@ -18,17 +18,17 @@ Sage can ask a locally running [Ollama](https://ollama.com) instance to draft co
 ### If you installed `sg`
 
 ```bash
+sg config --key ai.provider --value ollama
 sg config --key ai.api_url --value http://localhost:11434
 sg config --key ai.model --value gemma3:2b
-sg config --key ai.enabled --value true
 ```
 
 ### If you are running from source
 
 ```bash
+just try config --key ai.provider --value ollama
 just try config --key ai.api_url --value http://localhost:11434
 just try config --key ai.model --value gemma3:2b
-just try config --key ai.enabled --value true
 ```
 
 To inspect the current values at any time:
@@ -69,4 +69,3 @@ This custom prompt will be appended to the base commit message generation instru
 
 - Make sure `ollama serve` is reachable on `http://localhost:11434`.
 - If Sage cannot contact Ollama, it falls back to manual commit messages.
-- Toggle the feature off with `sg config --key ai.enabled --value false` (or `just try …`) if you want to opt out temporarily.

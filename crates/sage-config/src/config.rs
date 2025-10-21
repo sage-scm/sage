@@ -99,6 +99,7 @@ impl Default for GeneralConfig {
 }
 
 fn default_ai_provider() -> String {
+    // Default remains OpenAI; users can set to "ollama"
     "openai".to_string()
 }
 

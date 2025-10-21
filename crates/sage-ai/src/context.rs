@@ -4,8 +4,13 @@ use rig::providers::openai;
 use sage_config::ConfigManager;
 use std::time::Duration;
 
+pub(crate) enum AiProvider {
+    OpenAI { client: openai::Client },
+    Ollama { http: reqwest::Client, base_url: String },
+}
+
 pub(crate) struct AiContext {
-    pub(crate) client: openai::Client,
+    pub(crate) provider: AiProvider,
     pub(crate) model: String,
     pub(crate) timeout: Duration,
     pub(crate) max_tokens: Option<u64>,
@@ -31,13 +36,7 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
         let manager = ConfigManager::load().context("Failed to load configuration")?;
         let config = manager.get();
 
-        let api_key = config
-            .ai
-            .api_key
-            .as_ref()
-            .map(|s| sanitize(s.expose().to_string()))
-            .filter(|value| !value.is_empty())
-            .context("AI API key not set. Please configure it in your sage config.")?;
+        let provider_name = sanitize(config.ai.provider.clone()).to_lowercase();
 
         let ai_model = sanitize(config.ai.model.clone());
 
@@ -62,18 +61,50 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .build()
             .context("Failed to build HTTP client for AI Provider")?;
 
-        let mut client_builder =
-            openai::Client::<reqwest::Client>::builder(&api_key).with_client(http_client);
+        // Construct provider-specific clients
+        let provider = match provider_name.as_str() {
+            // OpenAI requires an API key
+            "openai" => {
+                let api_key = config
+                    .ai
+                    .api_key
+                    .as_ref()
+                    .map(|s| sanitize(s.expose().to_string()))
+                    .filter(|value| !value.is_empty())
+                    .context("AI API key not set. Please configure it in your sage config.")?;
 
-        let trimmed_api_url = api_url.trim_end_matches('/');
-        if !trimmed_api_url.is_empty() {
-            client_builder = client_builder.base_url(trimmed_api_url);
-        }
+                let mut client_builder =
+                    openai::Client::<reqwest::Client>::builder(&api_key).with_client(http_client);
 
-        let client = client_builder.build();
+                let trimmed_api_url = api_url.trim_end_matches('/');
+                if !trimmed_api_url.is_empty() {
+                    client_builder = client_builder.base_url(trimmed_api_url);
+                }
+
+                let client = client_builder.build();
+                AiProvider::OpenAI { client }
+            }
+            // Ollama talks to a local HTTP API; no API key
+            "ollama" => {
+                let base_url = api_url.trim_end_matches('/').to_string();
+                if base_url.is_empty() {
+                    // Common default for local Ollama
+                    AiProvider::Ollama {
+                        http: http_client,
+                        base_url: "http://localhost:11434".to_string(),
+                    }
+                } else {
+                    AiProvider::Ollama {
+                        http: http_client,
+                        base_url,
+                    }
+                }
+            }
+            other => anyhow::bail!("Unsupported AI provider: {}", other),
+        };
 
         Ok(AiContext {
-            client,
+            provider,
             model: ai_model,
             timeout: timeout_duration,
             max_tokens: (max_tokens > 0).then_some(max_tokens),
