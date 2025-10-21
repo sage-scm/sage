@@ -3,10 +3,10 @@ use rig::{client::CompletionClient, completion::Prompt};
 
 mod commit;
 mod context;
-mod prompts;
 mod ollama;
+mod prompts;
 
-use context::{ai_context, AiProvider};
+use context::{AiProvider, ai_context};
 
 pub use commit::commit_message;
 

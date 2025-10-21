@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -77,9 +77,14 @@ pub async fn request(
     let chat_url = endpoint(base_url, "chat");
     let body = ChatRequest {
         model,
-        messages: vec![Message { role: "user", content: prompt }],
+        messages: vec![Message {
+            role: "user",
+            content: prompt,
+        }],
         stream: false,
-        options: Some(Options { num_predict: max_tokens }),
+        options: Some(Options {
+            num_predict: max_tokens,
+        }),
     };
 
     let fut = http.post(&chat_url).json(&body).send();
@@ -111,7 +116,9 @@ pub async fn request(
                     model,
                     prompt,
                     stream: false,
-                    options: Some(Options { num_predict: max_tokens }),
+                    options: Some(Options {
+                        num_predict: max_tokens,
+                    }),
                 };
                 let gen_fut = http.post(&gen_url).json(&gen_body).send();
                 match tokio::time::timeout(timeout, gen_fut).await {
@@ -144,4 +151,3 @@ pub async fn request(
         Err(_) => Err(anyhow!("timeout")),
     }
 }
-

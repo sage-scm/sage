@@ -5,8 +5,13 @@ use sage_config::ConfigManager;
 use std::time::Duration;
 
 pub(crate) enum AiProvider {
-    OpenAI { client: openai::Client },
-    Ollama { http: reqwest::Client, base_url: String },
+    OpenAI {
+        client: openai::Client,
+    },
+    Ollama {
+        http: reqwest::Client,
+        base_url: String,
+    },
 }
 
 pub(crate) struct AiContext {
