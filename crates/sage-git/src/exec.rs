@@ -81,7 +81,12 @@ impl GitCommand {
     }
 
     pub fn run(self) -> Result<()> {
-        self.run_with_status().map(|_| ())
+        let capture_output = self.stdout.is_none() && self.stderr.is_none();
+        if capture_output {
+            self.run_with_output().map(|_| ())
+        } else {
+            self.run_with_status().map(|_| ())
+        }
     }
 
     pub fn run_with_status(mut self) -> Result<ExitStatus> {
