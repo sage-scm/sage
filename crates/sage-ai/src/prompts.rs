@@ -52,10 +52,8 @@ Bad examples (avoid):
 /// Prompt for generating pull request title
 #[allow(dead_code)]
 pub async fn pr_title_prompt(commits: Vec<String>) -> String {
-    // Join the commits into a block that can be pasted into the prompt.
     let commit_log = commits.join("\n");
 
-    // The prompt that instructs the LLM to generate the title.
     format!(
         r#"You are an assistant that converts a list of git commit messages into a single Conventional Commit pull request title.
 
@@ -83,10 +81,8 @@ pub async fn pr_title_prompt(commits: Vec<String>) -> String {
 /// Prompt for generating pull request descriptions
 #[allow(dead_code)]
 pub fn pr_description_prompt(title: &str, commits: Vec<String>, template: &str) -> String {
-    // Join the commits into a block that can be injected into the prompt.
     let commit_log = commits.join("\n");
 
-    // The prompt text – it changes slightly depending on whether a template is supplied.
     if template.trim().is_empty() {
         format!(
             r#"You are an assistant that writes a concise, professional GitHub pull‑request body.
@@ -109,8 +105,6 @@ pub fn pr_description_prompt(title: &str, commits: Vec<String>, template: &str) 
             The body should be clean, no extraneous commentary, and ready to be pasted directly into the GitHub PR description field. Return only the Markdown body, nothing else."#
         )
     } else {
-        // A non‑empty template was supplied – we ask the LLM to replace the
-        // placeholders ({{summary}}, {{details}}, etc.) with appropriate content.
         format!(
             r#"You are an assistant that fills in a pull‑request template.
 

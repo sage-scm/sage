@@ -3,10 +3,9 @@ use rig::{client::CompletionClient, completion::Prompt};
 
 mod commit;
 mod context;
-mod ollama;
 mod prompts;
 
-use context::{AiProvider, ai_context};
+use context::ai_context;
 
 pub use commit::commit_message;
 
@@ -14,58 +13,37 @@ pub use commit::commit_message;
 pub async fn ask(prompt: &str) -> Result<String> {
     let context = ai_context()?;
 
-    let agent = match &context.provider {
-        AiProvider::OpenAI { client } => {
-            let mut builder = client.agent(&context.model);
-            if let Some(max_tokens) = context.max_tokens {
-                builder = builder.max_tokens(max_tokens);
-            }
-            Some(builder.build())
-        }
-        AiProvider::Ollama { .. } => None,
-    };
+    let mut builder = context.client.agent(&context.model);
+    if let Some(max_tokens) = context.max_tokens {
+        builder = builder.max_tokens(max_tokens);
+    }
+    if let Some(reasoning_effort) = &context.reasoning_effort {
+        builder = builder.additional_params(serde_json::json!({
+            "reasoning_effort": reasoning_effort
+        }));
+    }
+    let agent = builder.build();
 
-    // Retry logic
     let mut attempts = context.max_retries;
     let mut last_error = None;
     while attempts > 0 {
-        match &context.provider {
-            AiProvider::OpenAI { .. } => {
-                let agent = agent.as_ref().expect("agent must exist for OpenAI");
-                match tokio::time::timeout(context.timeout, agent.prompt(prompt)).await {
-                    Ok(Ok(response)) => {
-                        let content = response.to_string();
-                        if content.trim().is_empty() {
-                            last_error = Some(anyhow!("AI provider returned empty response"));
-                        } else {
-                            return Ok(content);
-                        }
-                    }
-                    Ok(Err(e)) => {
-                        last_error = Some(anyhow!("AI request failed: {}", e));
-                    }
-                    Err(_) => {
-                        last_error = Some(anyhow!(
-                            "Request timed out after {} seconds",
-                            context.timeout.as_secs()
-                        ));
-                    }
+        match tokio::time::timeout(context.timeout, agent.prompt(prompt)).await {
+            Ok(Ok(response)) => {
+                let content = response.to_string();
+                if content.trim().is_empty() {
+                    last_error = Some(anyhow!("AI provider returned empty response"));
+                } else {
+                    return Ok(content);
                 }
             }
-            AiProvider::Ollama { http, base_url } => {
-                match ollama::request(
-                    http,
-                    base_url,
-                    &context.model,
-                    prompt,
-                    context.max_tokens,
-                    context.timeout,
-                )
-                .await
-                {
-                    Ok(content) => return Ok(content),
-                    Err(e) => last_error = Some(anyhow!("AI request failed: {}", e)),
-                }
+            Ok(Err(e)) => {
+                last_error = Some(anyhow!("AI request failed: {}", e));
+            }
+            Err(_) => {
+                last_error = Some(anyhow!(
+                    "Request timed out after {} seconds",
+                    context.timeout.as_secs()
+                ));
             }
         }
 
