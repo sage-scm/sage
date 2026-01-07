@@ -60,11 +60,6 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .map(sanitize)
             .filter(|s| !s.eq_ignore_ascii_case("none"));
 
-        println!(
-            "Decided reasoning effort: {}",
-            reasoning_effort.clone().unwrap_or_default()
-        );
-
         let mut client_builder = openai::Client::builder().api_key(&api_key);
 
         let trimmed_api_url = api_url.trim_end_matches('/');
