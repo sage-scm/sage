@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use once_cell::sync::OnceCell;
 use rig::providers::openai;
 use sage_config::ConfigManager;
@@ -38,14 +38,15 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
 
         let api_url = sanitize(config.ai.api_url.clone());
 
-        // If API key is present, use it. If not, default to "no-key" (works for Ollama/local).
         let api_key = config
             .ai
             .api_key
             .as_ref()
             .map(|s| sanitize(s.expose().to_string()))
             .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "no-key".to_string());
+            .ok_or_else(|| {
+                anyhow!("AI API key not set. Please configure ai.api_key in your sage config.")
+            })?;
 
         let timeout_secs = config.ai.timeout_secs;
         let timeout_duration = Duration::from_secs(timeout_secs);
@@ -59,6 +60,11 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             .map(sanitize)
             .filter(|s| !s.eq_ignore_ascii_case("none"));
 
+        println!(
+            "Decided reasoning effort: {}",
+            reasoning_effort.clone().unwrap_or_default()
+        );
+
         let mut client_builder = openai::Client::builder().api_key(&api_key);
 
         let trimmed_api_url = api_url.trim_end_matches('/');
@@ -66,7 +72,9 @@ pub(crate) fn ai_context() -> Result<&'static AiContext> {
             client_builder = client_builder.base_url(trimmed_api_url);
         }
 
-        let client = client_builder.build()?;
+        let client = client_builder
+            .build()
+            .context("Failed to build OpenAI client")?;
 
         Ok(AiContext {
             client,

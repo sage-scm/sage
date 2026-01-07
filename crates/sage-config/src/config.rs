@@ -14,19 +14,16 @@ pub struct SageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiConfig {
-    #[serde(default = "default_ai_provider")]
-    pub provider: String,
-
     #[serde(default)]
     pub api_key: Option<SecretString>,
 
     #[serde(default = "default_model")]
     pub model: String,
 
-    #[serde(default = "default_api_url")]
+    #[serde(default = "default_api_url", alias = "url")]
     pub api_url: String,
 
-    #[serde(default = "default_timeout_secs")]
+    #[serde(default = "default_timeout_secs", alias = "timeout")]
     pub timeout_secs: u64,
 
     #[serde(default = "default_max_tokens")]
@@ -40,12 +37,14 @@ pub struct AiConfig {
 
     #[serde(default)]
     pub additional_commit_prompt: Option<String>,
+
+    #[serde(default = "default_reasoning_effort")]
+    pub reasoning_effort: Option<String>,
 }
 
 impl Default for AiConfig {
     fn default() -> Self {
         Self {
-            provider: default_ai_provider(),
             api_key: None,
             model: default_model(),
             api_url: default_api_url(),
@@ -54,6 +53,7 @@ impl Default for AiConfig {
             max_retries: default_max_retries(),
             retry_delay_ms: default_retry_delay_ms(),
             additional_commit_prompt: None,
+            reasoning_effort: default_reasoning_effort(),
         }
     }
 }
@@ -96,11 +96,6 @@ impl Default for GeneralConfig {
             telemetry: default_telemetry(),
         }
     }
-}
-
-fn default_ai_provider() -> String {
-    // Default remains OpenAI; users can set to "ollama"
-    "openai".to_string()
 }
 
 fn default_model() -> String {
@@ -147,4 +142,8 @@ fn default_update_check() -> bool {
 
 fn default_telemetry() -> bool {
     false
+}
+
+fn default_reasoning_effort() -> Option<String> {
+    Some("minimal".to_string())
 }
