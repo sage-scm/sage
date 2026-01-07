@@ -10,6 +10,7 @@ use sage_git::Repo;
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SageGraph {
     stacks: HashMap<String, Stack>,
+    #[serde(default, alias = "loose")]
     loose_branches: HashMap<String, BranchInfo>,
     #[serde(skip)]
     branch_to_stack: HashMap<String, String>,
