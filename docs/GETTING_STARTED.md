@@ -72,6 +72,6 @@ Follow this short walkthrough inside any Git repository.
 
 - Need the new branch to start from the default branch instead of your current feature branch? Use `sg work new-branch --root`.
 - Want to anchor a feature branch to another local branch? Use `sg work new-branch --parent other-branch`.
-- Configure AI-assisted commit messages by following either [docs/USING_OPENAI.md](USING_OPENAI.md) or [docs/USING_OLLAMA.md](USING_OLLAMA.md).
+- Configure AI-assisted commit messages by following [docs/USING_OPENAI.md](USING_OPENAI.md).
 
 That is everything you need while we finish rebuilding stack support. Feedback is welcome—every `sg save` helps shape the next release.

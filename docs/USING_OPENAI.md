@@ -4,17 +4,18 @@ Sage can talk to OpenAI-compatible APIs to draft commit messages. The integratio
 
 ## Defaults at a Glance
 
-These values come from `crates/sage-ai/src/context.rs` and are applied when no explicit configuration is provided:
+These values come from `crates/sage-config/src/config.rs` and are applied when no explicit configuration is provided:
 
 | Setting | Config key | Default |
 | --- | --- | --- |
-| API base URL | `ai.url` | `https://api.openai.com/v1` |
-| Model name | `ai.model` | `gpt-5-nano` |
-| Request timeout | `ai.timeout` | `60` seconds |
+| API base URL | `ai.api_url` | `https://api.openai.com/v1` |
+| Model name | `ai.model` | `gpt-4` |
+| Request timeout | `ai.timeout_secs` | `60` seconds |
 | Max output tokens | `ai.max_tokens` | `2048` |
 | Retry attempts | `ai.max_retries` | `1` |
 | Retry delay | `ai.retry_delay_ms` | `0` ms (no delay) |
 | Additional commit prompt | `ai.additional_commit_prompt` | `None` (optional) |
+| Reasoning effort | `ai.reasoning_effort` | `minimal` |
 
 You **must** provide an API key (`ai.api_key`) before Sage can reach OpenAI. The key is trimmed automatically, so you can paste values copied with quotes or leading `=` signs (common with CI secret injection).
 
@@ -25,13 +26,13 @@ You **must** provide an API key (`ai.api_key`) before Sage can reach OpenAI. The
 ```bash
 sg config --key ai.api_key --value sk-your-openai-key
 sg config --key ai.model --value gpt-4.1-mini      # optional override
-sg config --key ai.timeout --value 120             # seconds, optional
+sg config --key ai.timeout_secs --value 120        # seconds, optional
 ```
 
 To target a custom-compatible endpoint (e.g., Azure OpenAI), set:
 
 ```bash
-sg config --key ai.url --value https://your-endpoint.openai.azure.com/v1
+sg config --key ai.api_url --value https://your-endpoint.openai.azure.com/v1
 ```
 
 ### If you are running from source
@@ -39,14 +40,14 @@ sg config --key ai.url --value https://your-endpoint.openai.azure.com/v1
 ```bash
 just try config --key ai.api_key --value sk-your-openai-key
 just try config --key ai.model --value gpt-4.1-mini
-just try config --key ai.url --value https://api.openai.com/v1
+just try config --key ai.api_url --value https://api.openai.com/v1
 ```
 
 You can inspect the current values at any time:
 
 ```bash
 sg config --key ai.model
-sg config --key ai.url
+sg config --key ai.api_url
 # or
 just try config --key ai.model
 ```
@@ -75,7 +76,8 @@ Sage gathers the staged diff, crafts a prompt, and asks OpenAI for a commit mess
   sg config --key ai.retry_delay_ms --value 500
   ```
 
-- Setting `ai.timeout` to `0` removes the HTTP timeout; otherwise Sage enforces the configured duration.
+- Setting `ai.timeout_secs` to `0` removes the HTTP timeout; otherwise Sage enforces the configured duration.
+- **`ai.reasoning_effort`** is passed through for models that support it. Set it to `none` to omit the parameter entirely.
 - **`ai.additional_commit_prompt`** allows you to provide custom instructions that will be appended to the commit message generation prompt. This is useful for enforcing team-specific conventions or adding context. For example:
 
   ```bash

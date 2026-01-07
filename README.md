@@ -86,7 +86,6 @@ cargo install --git https://github.com/sage-scm/sage sage-cli
 
 Prefer AI-generated commit messages? Pick the guide that matches your setup:
 
-- [docs/USING_OLLAMA.md](docs/USING_OLLAMA.md) — local Ollama models
 - [docs/USING_OPENAI.md](docs/USING_OPENAI.md) — OpenAI GPT and compatible endpoints
 
 ---
