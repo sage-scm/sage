@@ -78,13 +78,11 @@ pub fn list_branches(show_stack: bool) -> Result<()> {
             print!(" {}", "(default)".dimmed());
         }
 
-        if show_stack {
-            if let Some(stack_name) = graph.stack_name_for_branch(&cleaned_name) {
-                if let Some(color) = stack_colors.get(stack_name.as_str()) {
-                    print!(" {}", format!("({stack_name})").color(*color));
-                } else {
-                    print!(" {}", format!("({stack_name})").dimmed());
-                }
+        if show_stack && let Some(stack_name) = graph.stack_name_for_branch(&cleaned_name) {
+            if let Some(color) = stack_colors.get(stack_name.as_str()) {
+                print!(" {}", format!("({stack_name})").color(*color));
+            } else {
+                print!(" {}", format!("({stack_name})").dimmed());
             }
         }
 
